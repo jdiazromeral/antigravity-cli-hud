@@ -16,13 +16,8 @@ This plugin was engineered with strict defensive paradigms and advanced layout a
 
 ## Installation
 
-You can install the plugin directly from GitHub into your Antigravity CLI:
+To install the plugin, clone the repository, build it, and install it locally via the Antigravity CLI:
 
-```bash
-agy plugin install jdiazromeral/antigravity-cli-hud@main
-```
-
-Or install it locally:
 ```bash
 git clone https://github.com/jdiazromeral/antigravity-cli-hud.git
 cd antigravity-cli-hud
