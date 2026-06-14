@@ -30,7 +30,7 @@ agy plugin install .
 
 To customize exactly what information appears on your HUD (and in what order), simply invoke the built-in configuration skill directly inside an active Antigravity chat session:
 
-> `/hud-config`
+> `/hud:hud-config`
 
 The AI will interactively guide you through customizing your layouts for Small, Medium, and Large terminal widths, and automatically recompile the binary for you!
 
