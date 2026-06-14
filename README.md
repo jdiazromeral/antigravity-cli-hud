@@ -1,5 +1,7 @@
 # Antigravity HUD Plugin
 
+![Antigravity HUD Demo](assets/hud-demo.png)
+
 A production-grade, highly responsive terminal HUD for the Antigravity CLI. It dynamically monitors your agent state, token context, quota buckets, and active subagents in real-time.
 
 ## Architecture & Features

@@ -1,13 +1,14 @@
-import { parseStream } from './parser.js';
-import { formatMetrics } from './formatter.js';
+export { parseStream, ParsedMetrics, AntigravityPayload, SubagentInfo } from './parser.js';
+export { formatMetrics, HUD_CONFIG } from './formatter.js';
+import { parseStream as _parseStream } from './parser.js';
+import { formatMetrics as _formatMetrics } from './formatter.js';
 
 async function main() {
   try {
-    const metrics = await parseStream(process.stdin);
-    // Use stdout columns to provide terminal width, fallback to 80
+    const metrics = await _parseStream(process.stdin);
     const width = process.stdout.columns || 80;
     
-    const output = formatMetrics(metrics, width);
+    const output = _formatMetrics(metrics, width);
     process.stdout.write(output, () => {
       process.exit(0);
     });
@@ -21,4 +22,6 @@ async function main() {
   }
 }
 
+// Ensure the CLI runs when executed directly
 main();
+

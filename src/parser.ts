@@ -22,6 +22,9 @@ export interface AntigravityPayload {
   version?: string;
   email?: string;
   plan_tier?: string;
+  terminal_width?: number;
+  session_id?: string;
+  cwd?: string;
 }
 
 import * as fs from 'fs';
@@ -73,9 +76,9 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   if (!data.trim()) throw new Error('Empty or invalid payload');
 
-  let parsed: any;
+  let parsed: Partial<AntigravityPayload>;
   try {
-    parsed = JSON.parse(data);
+    parsed = JSON.parse(data) as Partial<AntigravityPayload>;
   } catch (e) {
     throw new Error('Failed to parse JSON');
   }
@@ -101,18 +104,31 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const q5hObj = isGemini ? getQuotaObj('gemini-5h') : getQuotaObj('3p-5h');
 
   const widthFile = path.join(os.homedir(), '.gemini', 'hud_width.cache');
-  let termWidth = 80;
   let oldWidth = 80;
   
-  try { oldWidth = parseInt(fs.readFileSync(widthFile, 'utf8')) || 80; } catch(e) {}
-  termWidth = oldWidth;
+  try {
+    if (fs.existsSync(widthFile)) {
+      oldWidth = parseInt(fs.readFileSync(widthFile, 'utf8')) || 80;
+    }
+  } catch(e) {
+    // Silently ignore cache read errors to prevent console output from corrupting the HUD layout
+  }
+  
+  let termWidth = oldWidth;
 
   if (parsed.terminal_width && parsed.terminal_width > 0) {
     const newWidth = parsed.terminal_width;
     // Hysteresis filter: Ignore micro-fluctuations (< 5 columns) caused by UI padding bugs
     if (Math.abs(newWidth - oldWidth) > 5) {
       termWidth = newWidth;
-      try { fs.writeFileSync(widthFile, termWidth.toString(), { mode: 0o600 }); } catch(e) {}
+      try { 
+        if (!fs.existsSync(path.dirname(widthFile))) {
+          fs.mkdirSync(path.dirname(widthFile), { recursive: true });
+        }
+        fs.writeFileSync(widthFile, termWidth.toString(), { mode: 0o600 }); 
+      } catch(e) {
+        // Silently ignore cache write errors
+      }
     }
   }
 

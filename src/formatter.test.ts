@@ -31,7 +31,7 @@ describe('formatMetrics', () => {
     expect(out).toContain('WORKING');
     expect(out).toContain('Gemini 3.1 Pro');
     expect(out).toContain('Unsandboxed');
-    expect(out).toContain('6d 09h'); // The weekly quota conversion
+    expect(out).toContain('6d 9h'); // The weekly quota conversion
   });
 
   it('degrades gracefully on extremely narrow terminals', () => {
