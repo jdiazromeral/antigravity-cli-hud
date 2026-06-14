@@ -40,8 +40,8 @@ export const HUD_CONFIG = {
       ['tasks', 'subagents']
     ],
     small: [
-      ['state', 'model'],
-      ['permissions', 'sandbox'],
+      ['state', 'model', 'permissions'],
+      ['sandbox'],
       ['workspace', 'ctx'],
       ['5h', 'weekly'],
       ['tasks', 'subagents']
