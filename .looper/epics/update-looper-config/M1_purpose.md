@@ -2,7 +2,7 @@
 validator: "test -f AGENTS.md && ! test -f LOOPER.md && grep -q \"/looper:tdd\" AGENTS.md"
 max_iterations: 8
 branch: update-looper-config-M1
-status: IN_PROGRESS
+status: DONE
 ---
 
 # Purpose
