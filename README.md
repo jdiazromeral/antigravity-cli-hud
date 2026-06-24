@@ -77,6 +77,7 @@ Here are all the available blocks you can slot into your matrix:
 - **`git`**: The Active Branches block. Dynamically stacks line-by-line (`🌱 Active Branches:`) to cleanly display multi-repo worktrees alongside their active branches.
 - **`artifacts`**: The Active Artifacts block. Dynamically stacks line-by-line (`📄 Artifacts:`) to list the `.md` files generated during the active AI session. Automatically hides itself if no artifacts exist.
 - **`ctx`**: Context window saturation limit. Shows percentage used and raw token count.
+- **`cache`**: Context window caching telemetry (`⚡ Cache: 70k`). Displays how many tokens were read from cache, allowing you to instantly visualize your cost savings. Automatically hides if 0.
 - **`5h` / `weekly`**: Rolling quota buckets. Shows percentage used and the countdown timer until the quota bucket resets.
 - **`tasks`**: Active asynchronous background processes (shell commands, cron jobs, active timers, or background scripts) spawned by the CLI.
 - **`subagents`**: Active parallel AI subagents. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.

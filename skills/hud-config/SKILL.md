@@ -24,6 +24,7 @@ When the user invokes this skill:
    - `'workspace'`: The `$PWD` directory or Repo Root
    - `'artifacts'`: Active session artifacts list (Stacked block, MUST be the last item on a row or on its own row)
    - `'ctx'`: Context window percentage
+   - `'cache'`: Context window cache read tokens (e.g., ⚡ Cache: 70k)
    - `'5h'`: 5-hour Gemini quota
    - `'weekly'`: Weekly Gemini quota
    - `'tasks'`: Active background task count

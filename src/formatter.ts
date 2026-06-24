@@ -30,7 +30,7 @@ export const HUD_CONFIG = {
   layouts: {
     large: [
       ['state', 'model', 'permissions'],
-      ['workspace', 'sandbox', 'ctx', '5h', 'weekly'],
+      ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
       ['artifacts'],
       ['git']
@@ -38,7 +38,7 @@ export const HUD_CONFIG = {
     medium: [
       ['state', 'model', 'permissions'],
       ['workspace', 'sandbox'],
-      ['ctx', '5h', 'weekly'],
+      ['ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
       ['artifacts'],
       ['git']
@@ -46,7 +46,7 @@ export const HUD_CONFIG = {
     small: [
       ['state', 'model', 'permissions'],
       ['sandbox'],
-      ['workspace', 'ctx'],
+      ['workspace', 'ctx', 'cache'],
       ['5h', 'weekly'],
       ['tasks', 'subagents'],
       ['artifacts'],
@@ -98,6 +98,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     git: metrics.gitBranch ? `🌱 ${colors.cyan}${metrics.gitBranch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
     ctx: `🎧 Ctx: ${ctxColor}${metrics.contextUsage}%${colors.reset} (${Math.round(metrics.totalInputTokens/1000)}k)${exceedWarning}`,
+    cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${Math.round(metrics.cacheTokens/1000)}k${colors.reset}` : '',
     '5h': `🕒 5h: ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
@@ -164,6 +165,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     }
     if (!metrics.gitBranches || metrics.gitBranches.length === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'git'));
+    }
+    if (metrics.cacheTokens === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'cache'));
     }
   }
 
