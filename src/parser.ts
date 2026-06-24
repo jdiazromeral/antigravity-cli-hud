@@ -25,11 +25,13 @@ export interface AntigravityPayload {
   terminal_width?: number;
   session_id?: string;
   cwd?: string;
+  artifacts?: any[];
 }
 
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as cp from 'child_process';
 
 export interface SubagentInfo {
   name: string;
@@ -59,6 +61,10 @@ export interface ParsedMetrics {
   email: string;
   planTier: string;
   skipPermissions: boolean;
+  gitBranches: { name: string, branch: string }[];
+  artifactCount: number;
+  conversationId?: string;
+  artifacts?: string[];
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -85,8 +91,10 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   if (!parsed || typeof parsed !== 'object') throw new Error('Missing required metrics in payload');
 
+  const conversationId = parsed.conversation_id || parsed.session_id;
+
   const getQuotaObj = (key: string) => {
-    const q = parsed.quota && parsed.quota[key];
+    const q = parsed.quota && parsed.quota[key as keyof typeof parsed.quota];
     if (!q) return { percent: 0, resetSeconds: 0 };
     return {
       percent: Math.round((1 - (q.remaining_fraction || 0)) * 100),
@@ -97,7 +105,6 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const sessName = parsed.session_id ? parsed.session_id.substring(0, 6) : 'Unknown';
   let modelName = parsed.model?.display_name || 'Unknown Model';
   if (modelName.length > 25) modelName = modelName.substring(0, 22) + '...';
-  let workspaceName = parsed.cwd ? path.basename(parsed.cwd) : 'Unknown Workspace';
 
   const isGemini = modelName.toLowerCase().includes('gemini');
   const qWeeklyObj = isGemini ? getQuotaObj('gemini-weekly') : getQuotaObj('3p-weekly');
@@ -132,6 +139,127 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
+  let gitBranches: {name: string, branch: string}[] = [];
+
+  if (parsed.cwd) {
+    const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
+    let useCache = false;
+
+    try {
+      if (fs.existsSync(gitCacheFile)) {
+        const cacheRaw = fs.readFileSync(gitCacheFile, 'utf8');
+        const cacheData = JSON.parse(cacheRaw);
+        // Use cache if it's less than 2 seconds old and cwd matches
+        if (cacheData.cwd === parsed.cwd && (Date.now() - cacheData.timestamp) < 2000) {
+          gitBranches = cacheData.gitBranches || [];
+          useCache = true;
+        }
+      }
+    } catch(e) {}
+
+    if (!useCache) {
+      try {
+        let targetDir = parsed.cwd;
+        // Check if current dir is a git repo
+        try {
+          cp.execSync('git rev-parse --is-inside-work-tree', { cwd: targetDir, stdio: 'ignore', timeout: 50 });
+          // If it is, just use it
+          const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: targetDir, stdio: 'pipe', timeout: 50 }).toString().trim();
+          const gitCommonDir = cp.execSync('git rev-parse --git-common-dir', { cwd: targetDir, stdio: 'pipe', timeout: 50 }).toString().trim();
+          if (gitCommonDir) {
+            const r = path.basename(path.dirname(path.resolve(targetDir, gitCommonDir)));
+            gitBranches.push({ name: r, branch: b });
+          }
+        } catch (e) {
+          // If not inside a git repo, determine active subdirectories
+          const activeRepos: string[] = [];
+          
+          // 1. Session-based Explicit Targeting (AI-driven)
+          if (conversationId) {
+             const sessionContextFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, 'hud_context.json');
+             if (fs.existsSync(sessionContextFile)) {
+                try {
+                  const targetDirs = JSON.parse(fs.readFileSync(sessionContextFile, 'utf8'));
+                  if (Array.isArray(targetDirs)) {
+                     for (const d of targetDirs) {
+                       const p = path.join(targetDir, d);
+                       if (fs.existsSync(path.join(p, '.git'))) activeRepos.push(p);
+                     }
+                  }
+                } catch(err) {}
+             }
+          }
+
+          // 2. Fallback: Auto-Detect dirty Git trees
+          if (activeRepos.length === 0) {
+            const dirs = fs.readdirSync(targetDir, { withFileTypes: true }).filter((d: any) => d.isDirectory() && !d.name.startsWith('.'));
+            const now = Date.now();
+            
+            for (const d of dirs) {
+              const p = path.join(targetDir, d.name);
+              const gitDir = path.join(p, '.git');
+              if (fs.existsSync(gitDir)) {
+                try {
+                  const stat = fs.statSync(gitDir).mtimeMs;
+                  if (now - stat < 60 * 60 * 1000) { 
+                    activeRepos.push(p);
+                    continue;
+                  }
+                  
+                  const status = cp.execSync('git status --porcelain', { cwd: p, stdio: 'pipe', timeout: 100 }).toString().trim();
+                  if (status.length > 0) {
+                    activeRepos.push(p);
+                  }
+                } catch (err) {}
+              }
+            }
+          }
+
+          if (activeRepos.length > 0) {
+            for (const p of activeRepos) {
+               try {
+                 const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 50 }).toString().trim();
+                 const cDir = cp.execSync('git rev-parse --git-common-dir', { cwd: p, stdio: 'pipe', timeout: 50 }).toString().trim();
+                 const r = path.basename(path.dirname(path.resolve(p, cDir)));
+                 gitBranches.push({ name: r, branch: b });
+               } catch(err) {}
+            }
+          }
+        }
+      } catch (e) {
+        gitBranches = [];
+      }
+
+      // Write to cache safely
+      try {
+        fs.writeFileSync(gitCacheFile, JSON.stringify({
+          cwd: parsed.cwd,
+          gitBranches,
+          timestamp: Date.now()
+        }), { mode: 0o600 });
+      } catch (e) {}
+    }
+  }
+  
+  let workspaceName = parsed.cwd ? path.basename(parsed.cwd) : 'Unknown Workspace';
+
+  const artifactCount = typeof parsed.artifact_count === 'number' ? parsed.artifact_count : 0;
+  
+  let artifactList: string[] = [];
+  if (conversationId) {
+    const brainDir = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId);
+    if (fs.existsSync(brainDir)) {
+      try {
+        const files = fs.readdirSync(brainDir, { withFileTypes: true });
+        for (const f of files) {
+          if (f.isFile() && f.name.endsWith('.md')) {
+             artifactList.push(f.name);
+          }
+        }
+      } catch(e) {}
+    }
+  }
+
   return {
     agentState: (parsed.agent_state || 'UNKNOWN').toUpperCase(),
     contextUsage: Math.round(parsed.context_window?.used_percentage || 0),
@@ -153,6 +281,10 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     email: parsed.email || 'unknown',
     planTier: parsed.plan_tier || 'Unknown Tier',
     terminalWidth: termWidth,
-    skipPermissions: process.env.AGY_SKIP_PERMISSIONS === 'true'
+    skipPermissions: process.env.AGY_SKIP_PERMISSIONS === 'true',
+    gitBranches,
+    artifactCount,
+    conversationId,
+    artifacts: artifactList
   };
 }

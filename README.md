@@ -42,6 +42,12 @@ To activate the HUD inside an active Antigravity chat session, run the following
 /statusline ~/.gemini/config/plugins/hud/hooks/status-line.sh
 ```
 
+To activate the dynamic Terminal Title hook:
+
+```bash
+/title ~/.gemini/config/plugins/hud/hooks/title.sh
+```
+
 To revert back to the default minimal status line:
 
 ```bash
@@ -67,8 +73,11 @@ Here are all the available blocks you can slot into your matrix:
 - **`model`**: The underlying AI model currently driving the agent (e.g. Gemini 3.1 Pro).
 - **`sandbox`**: The file-system security boundary (🔒 Sandboxed or 🔓 Unsandboxed).
 - **`permissions`**: The Danger Mode indicator. Visually flags if the agent was granted recursive `AGY_SKIP_PERMISSIONS=1` access across the process tree.
-- **`workspace`**: The absolute path of the current active working directory.
+- **`workspace`**: The true repository name. **Smart Detection:** If your CLI is running from a non-git parent folder, the HUD natively tracks AI session context to dynamically chain all active repositories! (e.g. `📂 hud + iam`)
+- **`git`**: The Active Branches block. Dynamically stacks line-by-line (`🌱 Active Branches:`) to cleanly display multi-repo worktrees alongside their active branches.
+- **`artifacts`**: The Active Artifacts block. Dynamically stacks line-by-line (`📄 Artifacts:`) to list the `.md` files generated during the active AI session. Automatically hides itself if no artifacts exist.
 - **`ctx`**: Context window saturation limit. Shows percentage used and raw token count.
+- **`cache`**: Context window caching telemetry (`⚡ Cache: 70k`). Displays how many tokens were read from cache, allowing you to instantly visualize your cost savings. Automatically hides if 0.
 - **`5h` / `weekly`**: Rolling quota buckets. Shows percentage used and the countdown timer until the quota bucket resets.
 - **`tasks`**: Active asynchronous background processes (shell commands, cron jobs, active timers, or background scripts) spawned by the CLI.
 - **`subagents`**: Active parallel AI subagents. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.

@@ -15,7 +15,7 @@ const colors = {
 // ============================================================================
 // HUD LAYOUT CONFIGURATION
 // You can dynamically re-arrange the terminal layout here!
-// Available blocks: 'state', 'model', 'sandbox', 'permissions', 'workspace', 'ctx', '5h', 'weekly', 'tasks', 'subagents'
+// Available blocks: 'state', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents'
 // ============================================================================
 export const HUD_CONFIG = {
   // Whether to dynamically hide 'tasks' and 'subagents' blocks from the UI when their count is 0
@@ -30,21 +30,27 @@ export const HUD_CONFIG = {
   layouts: {
     large: [
       ['state', 'model', 'permissions'],
-      ['workspace', 'sandbox', 'ctx', '5h', 'weekly'],
-      ['tasks', 'subagents']
+      ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
+      ['tasks', 'subagents'],
+      ['artifacts'],
+      ['git']
     ],
     medium: [
       ['state', 'model', 'permissions'],
       ['workspace', 'sandbox'],
-      ['ctx', '5h', 'weekly'],
-      ['tasks', 'subagents']
+      ['ctx', 'cache', '5h', 'weekly'],
+      ['tasks', 'subagents'],
+      ['artifacts'],
+      ['git']
     ],
     small: [
       ['state', 'model', 'permissions'],
       ['sandbox'],
-      ['workspace', 'ctx'],
+      ['workspace', 'ctx', 'cache'],
       ['5h', 'weekly'],
-      ['tasks', 'subagents']
+      ['tasks', 'subagents'],
+      ['artifacts'],
+      ['git']
     ]
   }
 };
@@ -89,7 +95,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     sandbox: metrics.isSandboxed ? `${colors.gray}🔒 Sandboxed${colors.reset}` : `${colors.yellow}🔓 Unsandboxed${colors.reset}`,
     permissions: metrics.skipPermissions ? `${colors.red}☢️  Danger Mode${colors.reset}` : '',
     workspace: `📂 ${colors.blue}${metrics.workspace}${colors.reset}`,
+    git: metrics.gitBranch ? `🌱 ${colors.cyan}${metrics.gitBranch}${colors.reset}` : '',
+    artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
     ctx: `🎧 Ctx: ${ctxColor}${metrics.contextUsage}%${colors.reset} (${Math.round(metrics.totalInputTokens/1000)}k)${exceedWarning}`,
+    cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${Math.round(metrics.cacheTokens/1000)}k${colors.reset}` : '',
     '5h': `🕒 5h: ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
@@ -98,29 +107,33 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     plan: `💎 ${metrics.planTier}`
   };
 
-  // Pre-calculate subagent chunks
-  let chunkedSubagents: string[][] = [];
-  if (metrics.subagents.length === 0) {
-    chunkedSubagents.push([]);
-  } else {
-    const subStrs = metrics.subagents.map(s => {
-      const c = s.status === 'completed' ? colors.green : (s.status === 'error' ? colors.red : colors.yellow);
-      let shortRole = s.role;
-      if (shortRole.length > 25) shortRole = shortRole.substring(0, 22) + '...';
-      return `${s.name} [${c}${s.status}${colors.reset}] (${shortRole})`;
-    });
-
-    const maxSubagentsToShow = 3;
-    const displaySubagents = subStrs.slice(0, maxSubagentsToShow);
-    const hiddenCount = subStrs.length - maxSubagentsToShow;
-
-    for (let i = 0; i < displaySubagents.length; i++) {
-      chunkedSubagents.push([displaySubagents[i]]);
+  // Generalized pre-calculator for stacked blocks
+  const calculateStackedChunks = (items: string[], maxVisible: number) => {
+    let chunks: string[][] = [];
+    if (items.length === 0) {
+      chunks.push([]);
+    } else {
+      const displayItems = items.slice(0, maxVisible);
+      const hiddenCount = items.length - maxVisible;
+      for (const item of displayItems) chunks.push([item]);
+      if (hiddenCount > 0) chunks.push([`...and ${hiddenCount} more hidden`]);
     }
-    if (hiddenCount > 0) {
-      chunkedSubagents.push([`...and ${hiddenCount} more hidden`]);
-    }
-  }
+    return chunks;
+  };
+
+  const subStrs = metrics.subagents.map(s => {
+    const c = s.status === 'completed' ? colors.green : (s.status === 'error' ? colors.red : colors.yellow);
+    let shortRole = s.role;
+    if (shortRole.length > 25) shortRole = shortRole.substring(0, 22) + '...';
+    return `${s.name} [${c}${s.status}${colors.reset}] (${shortRole})`;
+  });
+  const chunkedSubagents = calculateStackedChunks(subStrs, 3);
+
+  const gitStrs = (metrics.gitBranches || []).map(g => `${g.name} (${colors.cyan}${g.branch}${colors.reset})`);
+  const chunkedGit = calculateStackedChunks(gitStrs, 5);
+  
+  const artStrs = (metrics.artifacts || []).map(a => `${colors.yellow}${a}${colors.reset}`);
+  const chunkedArtifacts = calculateStackedChunks(artStrs, 5);
 
   // 2. Responsive Router
   let activeLayout: string[][] = [];
@@ -147,6 +160,15 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     if (metrics.subagents.length === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'subagents'));
     }
+    if (!metrics.artifacts || metrics.artifacts.length === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'artifacts'));
+    }
+    if (!metrics.gitBranches || metrics.gitBranches.length === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'git'));
+    }
+    if (metrics.cacheTokens === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'cache'));
+    }
   }
 
   // Clean up any rows that became entirely empty
@@ -159,34 +181,54 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     const rowKeys = activeLayout[rowIndex];
     
     const subIdx = rowKeys.indexOf('subagents');
-    if (subIdx !== -1) {
-      const beforeSub = rowKeys.slice(0, subIdx).map(k => blocks[k]).filter(Boolean);
-      const afterSub = rowKeys.slice(subIdx + 1).map(k => blocks[k]).filter(Boolean);
+    const gitIdx = rowKeys.indexOf('git');
+    const artIdx = rowKeys.indexOf('artifacts');
+    
+    const stackedKey = subIdx !== -1 ? 'subagents' : (gitIdx !== -1 ? 'git' : (artIdx !== -1 ? 'artifacts' : null));
+    
+    if (stackedKey) {
+      const isSub = stackedKey === 'subagents';
+      const isGit = stackedKey === 'git';
+      const stackedIdx = isSub ? subIdx : (isGit ? gitIdx : artIdx);
+      const chunks = isSub ? chunkedSubagents : (isGit ? chunkedGit : chunkedArtifacts);
       
-      const beforeStr = beforeSub.length > 0 ? beforeSub.join('  |  ') + '  |  ' : '';
-      const afterStr = afterSub.length > 0 ? '  |  ' + afterSub.join('  |  ') : '';
+      const emptyTitle = isSub ? '👥 Subagents (0)' : (isGit ? '🌱 Branches (0)' : '📄 Artifacts (0)');
+      
+      let populatedTitle = '';
+      if (isSub) populatedTitle = '👥 Subagents:';
+      else if (isGit) populatedTitle = '🌱 Active Branches:';
+      else {
+         const shortId = metrics.conversationId ? metrics.conversationId.substring(0, 8) : '';
+         populatedTitle = `📄 Artifacts (open ~/.gemini/antigravity-cli/brain/${shortId}*):`;
+      }
+      
+      const beforeStack = rowKeys.slice(0, stackedIdx).map(k => blocks[k]).filter(Boolean);
+      const afterStack = rowKeys.slice(stackedIdx + 1).map(k => blocks[k]).filter(Boolean);
+      
+      const beforeStr = beforeStack.length > 0 ? beforeStack.join('  |  ') + '  |  ' : '';
+      const afterStr = afterStack.length > 0 ? '  |  ' + afterStack.join('  |  ') : '';
 
       // Calculate visual padding to align wrapped lines under the title
       const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
       const padLen = stripAnsi(beforeStr).length + 4; // indent 4 spaces relative to the title
       const padding = ' '.repeat(Math.max(0, padLen));
 
-      for (let i = 0; i < chunkedSubagents.length; i++) {
-        const subStr = chunkedSubagents[i].join('  •  ');
+      for (let i = 0; i < chunks.length; i++) {
+        const stackItemStr = chunks[i].join('  •  ');
         
         let rowContent = '';
         if (i === 0) {
-           if (metrics.subagents.length === 0) {
-             rowContent = `${beforeStr}👥 Subagents (0)${afterStr}`;
+           if (chunks[0].length === 0 || !chunks[0][0]) {
+             rowContent = `${beforeStr}${emptyTitle}${afterStr}`;
              finalLines.push(rowContent);
            } else {
-             rowContent = `${beforeStr}👥 Subagents:${afterStr}`;
+             rowContent = `${beforeStr}${populatedTitle}${afterStr}`;
              finalLines.push(rowContent);
-             rowContent = `${padding}${colors.dim}${subStr}${colors.reset}`;
+             rowContent = `${padding}${colors.dim}• ${stackItemStr}${colors.reset}`;
              finalLines.push(rowContent);
            }
         } else {
-           rowContent = `${padding}${colors.dim}${subStr}${colors.reset}`;
+           rowContent = `${padding}${colors.dim}• ${stackItemStr}${colors.reset}`;
            finalLines.push(rowContent);
         }
       }

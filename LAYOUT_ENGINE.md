@@ -34,12 +34,16 @@ You can drag and drop these string keys into any layout array:
 - `'state'`: (🟢 IDLE, 🔵 WORKING, etc.)
 - `'model'`: The active AI model.
 - `'sandbox'`: The sandbox security indicator.
-- `'workspace'`: The current `$PWD` directory name.
+- `'permissions'`: The Danger Mode indicator.
+- `'workspace'`: The current `$PWD` directory name or actively chained repository roots.
+- `'artifacts'`: The list of active session artifacts. (Stacked block, MUST be the last item on a row or its own row).
 - `'ctx'`: The token context window percentage.
+- `'cache'`: Context cache token reads for Gemini 1.5/2.0 API.
 - `'5h'`: The 5-hour rolling Gemini token quota.
 - `'weekly'`: The weekly rolling Gemini token quota.
 - `'tasks'`: The active background task count.
-- `'subagents'`: The list of active subagents and their roles.
+- `'git'`: The list of Active Git Branches. (Stacked block, MUST be the last item on a row or its own row).
+- `'subagents'`: The list of active subagents and their roles. (Stacked block, MUST be the last item on a row or its own row).
 - `'version'`: The active Antigravity CLI version (e.g. 📦 v1.0.8).
 - `'email'`: Your authenticated Google account email.
 - `'plan'`: Your active billing tier (e.g. 💎 Google AI Pro).

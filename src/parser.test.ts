@@ -52,7 +52,11 @@ describe('parseStream', () => {
       email: 'user@example.com',
       planTier: 'Pro',
       terminalWidth: 105,
-      skipPermissions: false
+      skipPermissions: false,
+      gitBranches: [],
+      artifactCount: 0,
+      artifacts: [],
+      conversationId: '123'
     });
   });
 
@@ -71,5 +75,7 @@ describe('parseStream', () => {
     expect(result.contextUsage).toBe(0);
     expect(result.model).toBe('Unknown Model');
     expect(result.skipPermissions).toBe(false);
+    expect(result.gitBranches).toEqual([]);
+    expect(result.artifactCount).toBe(0);
   });
 });
