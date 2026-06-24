@@ -6,7 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "lint": "eslint .",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js"
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js && esbuild src/title.ts --bundle --platform=node --format=esm --outfile=dist/title.js"
   },
   "keywords": [],
   "author": "Javier Diaz",

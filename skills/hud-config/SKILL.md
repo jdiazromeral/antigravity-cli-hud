@@ -20,20 +20,23 @@ When the user invokes this skill:
    - `'state'`: (🟢 IDLE, 🔵 WORKING)
    - `'model'`: The active AI model
    - `'sandbox'`: Security boundary
-   - `'workspace'`: The `$PWD` directory
+   - `'permissions'`: Danger mode flag
+   - `'workspace'`: The `$PWD` directory or Repo Root
+   - `'artifacts'`: Active session artifacts list (Stacked block, MUST be the last item on a row or on its own row)
    - `'ctx'`: Context window percentage
    - `'5h'`: 5-hour Gemini quota
    - `'weekly'`: Weekly Gemini quota
    - `'tasks'`: Active background task count
-   - `'subagents'`: Active subagents list (MUST be the last item on a row)
+   - `'git'`: Active Branches list (Stacked block, MUST be the last item on a row or on its own row)
+   - `'subagents'`: Active subagents list (Stacked block, MUST be the last item on a row or on its own row)
    - `'version'`: Antigravity CLI version
    - `'email'`: User's email
    - `'plan'`: Billing tier
 
 3. **Interactive Configuration**:
    Ask the user how they would like to configure their `large`, `medium`, and `small` breakpoints. Ask them row by row, or ask if they want to apply a predefined preset (e.g., "Standard", "Minimalist", "Full Telemetry").
-   - *Standard*: The default layout. Prioritizes State, Model, Security, Workspace, Quotas, Tasks, and Subagents.
-   - *Minimalist*: Only State, Model, Workspace.
+   - *Standard*: The default layout. Prioritizes State, Model, Security, Workspace, Git, Artifacts, Quotas, Tasks, and Subagents.
+   - *Minimalist*: Only State, Model, Workspace, and Git.
    - *Full Telemetry*: Everything enabled.
 
 4. **Apply and Recompile**:
