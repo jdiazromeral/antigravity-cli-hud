@@ -39,6 +39,9 @@ When the user invokes this skill:
    - *Minimalist*: Only State, Model, Workspace, and Git.
    - *Full Telemetry*: Everything enabled.
 
+   **Auto-Hide Feature**:
+   Always ask the user if they want to enable or disable `autoHideEmptyBlocks` (Boolean, defaults to true). Explain that when enabled, empty blocks like `tasks`, `subagents`, `artifacts`, and `git` will automatically collapse and hide to save screen real estate.
+
 4. **Apply and Recompile**:
    Once they agree on a new JSON layout:
    - Use the `replace_file_content` tool to safely overwrite the `HUD_CONFIG` object inside `~/.gemini/config/plugins/hud/src/formatter.ts`.
