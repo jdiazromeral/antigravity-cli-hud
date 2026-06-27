@@ -190,42 +190,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
              }
           }
 
-          // 2. Fallback: Auto-Detect dirty Git trees
-          if (activeRepos.length === 0) {
-            const dirs = fs.readdirSync(targetDir, { withFileTypes: true }).filter((d: any) => d.isDirectory() && !d.name.startsWith('.'));
-            const now = Date.now();
-            
-            const checkActiveRepo = (repoPath: string) => {
-              const gitDir = path.join(repoPath, '.git');
-              if (!fs.existsSync(gitDir)) return;
-              try {
-                const stat = fs.statSync(gitDir).mtimeMs;
-                if (now - stat < 60 * 60 * 1000) { 
-                  activeRepos.push(repoPath);
-                  return;
-                }
-                const status = cp.execSync('git status --porcelain', { cwd: repoPath, stdio: 'pipe', timeout: 100 }).toString().trim();
-                if (status.length > 0) {
-                  activeRepos.push(repoPath);
-                }
-              } catch (err) {}
-            };
 
-            for (const d of dirs) {
-              const p = path.join(targetDir, d.name);
-              
-              if (d.name === 'lab' || d.name === 'worktrees') {
-                try {
-                  const subDirs = fs.readdirSync(p, { withFileTypes: true }).filter((sd: any) => sd.isDirectory() && !sd.name.startsWith('.'));
-                  for (const sd of subDirs) {
-                    checkActiveRepo(path.join(p, sd.name));
-                  }
-                } catch(e) {}
-              } else {
-                checkActiveRepo(p);
-              }
-            }
-          }
 
           if (activeRepos.length > 0) {
             for (const p of activeRepos) {
