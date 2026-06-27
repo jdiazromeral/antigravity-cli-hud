@@ -197,6 +197,31 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
             
             for (const d of dirs) {
               const p = path.join(targetDir, d.name);
+              
+              if (d.name === 'lab' || d.name === 'worktrees') {
+                try {
+                  const subDirs = fs.readdirSync(p, { withFileTypes: true }).filter((sd: any) => sd.isDirectory() && !sd.name.startsWith('.'));
+                  for (const sd of subDirs) {
+                    const subP = path.join(p, sd.name);
+                    const subGitDir = path.join(subP, '.git');
+                    if (fs.existsSync(subGitDir)) {
+                      try {
+                        const stat = fs.statSync(subGitDir).mtimeMs;
+                        if (now - stat < 60 * 60 * 1000) { 
+                          activeRepos.push(subP);
+                          continue;
+                        }
+                        const status = cp.execSync('git status --porcelain', { cwd: subP, stdio: 'pipe', timeout: 100 }).toString().trim();
+                        if (status.length > 0) {
+                          activeRepos.push(subP);
+                        }
+                      } catch(err) {}
+                    }
+                  }
+                } catch(e) {}
+                continue;
+              }
+
               const gitDir = path.join(p, '.git');
               if (fs.existsSync(gitDir)) {
                 try {
