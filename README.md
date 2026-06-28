@@ -73,7 +73,8 @@ Here are all the available blocks you can slot into your matrix:
 - **`model`**: The underlying AI model currently driving the agent (e.g. Gemini 3.1 Pro).
 - **`sandbox`**: The file-system security boundary (🔒 Sandboxed or 🔓 Unsandboxed).
 - **`permissions`**: The Danger Mode indicator. Visually flags if the agent was granted recursive `AGY_SKIP_PERMISSIONS=1` access across the process tree.
-- **`workspace`**: The true repository name. **Smart Detection:** If your CLI is running from a non-git parent folder, the HUD natively tracks AI session context to dynamically chain all active repositories! (e.g. `📂 hud + iam`)
+- **`workspace`**: The true repository name. **Smart Detection:** If your CLI is running from a non-git parent folder, the HUD automatically scans `lab/` and `worktrees/` to surface repositories that are "active" (e.g., have uncommitted changes, are on a feature branch, or have active Looper missions). It also natively tracks AI session context via `hud_context.json` to ensure any explicitly targeted directories are always visible!
+- **`looper`**: The Active Looper Missions block. Dynamically scans `.looper/epics/` in your active repositories to track autonomous task progress. Stacks line-by-line (`🔄 Active Looper Missions:`) and renders statuses with custom colors (e.g., `sample_faqs - auth-system/M1 [IN_PROGRESS]`). Automatically hides itself if no missions are active.
 - **`git`**: The Active Branches block. Dynamically stacks line-by-line (`🌱 Active Branches:`) to cleanly display multi-repo worktrees alongside their active branches.
 - **`artifacts`**: The Active Artifacts block. Dynamically stacks line-by-line (`📄 Artifacts:`) to list the `.md` files generated during the active AI session. Automatically hides itself if no artifacts exist.
 - **`ctx`**: Context window saturation limit. Shows percentage used and raw token count.
