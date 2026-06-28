@@ -199,7 +199,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                                        if (f.endsWith('_purpose.md')) {
                                           const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
                                           const statusMatch = content.match(/^status:\s*([A-Z_]+)/m);
-                                          if (statusMatch && statusMatch[1] === 'IN_PROGRESS') {
+                                          if (statusMatch && statusMatch[1] !== 'DONE') {
                                              isActive = true;
                                              break;
                                           }
@@ -320,7 +320,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                   if (f.endsWith('_purpose.md')) {
                     const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
                     const statusMatch = content.match(/^status:\s*([A-Z_]+)/m);
-                    if (statusMatch && statusMatch[1]) {
+                    if (statusMatch && statusMatch[1] && statusMatch[1] !== 'DONE') {
                       const missionId = f.replace('_purpose.md', '');
                       looperMissions.push({ repo: repoName, epic: ep.name, mission: missionId, status: statusMatch[1] });
                     }
