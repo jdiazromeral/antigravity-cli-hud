@@ -347,7 +347,9 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                     const totalMissions = (content.match(/^##\s+\[[A-Za-z0-9_-]+\]/gm) || []).length;
                     if (totalMissions > 0) {
                       const doneMissions = (content.match(/^-\s+\*\*Status\*\*:\s*DONE/gim) || []).length;
-                      looperEpics.push({ repo: repoName, epic: ep.name, total: totalMissions, done: doneMissions });
+                      if (doneMissions < totalMissions) {
+                        looperEpics.push({ repo: repoName, epic: ep.name, total: totalMissions, done: doneMissions });
+                      }
                     }
                   } catch(e) {}
                 }
@@ -377,6 +379,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         }
       } catch (e) {
         looperMissions = prevLooperCache || [];
+        looperEpics = prevEpicsCache || [];
       }
 
       try {
