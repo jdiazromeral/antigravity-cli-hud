@@ -140,7 +140,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
 
   const looperStrs = (metrics.looperMissions || []).map(m => {
     const statusColor = m.status === 'IN_PROGRESS' ? colors.cyan : (m.status === 'FAILED' || m.status === 'BLOCKED' ? colors.red : colors.green);
-    return `${colors.bold}${m.epic}/${m.mission}${colors.reset} [${statusColor}${m.status}${colors.reset}]`;
+    return `${colors.dim}${m.repo} -${colors.reset} ${colors.bold}${m.epic}/${m.mission}${colors.reset} [${statusColor}${m.status}${colors.reset}]`;
   });
   const chunkedLooper = calculateStackedChunks(looperStrs, 3);
 

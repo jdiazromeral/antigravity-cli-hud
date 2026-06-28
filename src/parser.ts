@@ -65,7 +65,7 @@ export interface ParsedMetrics {
   artifactCount: number;
   conversationId?: string;
   artifacts?: string[];
-  looperMissions?: {epic: string, mission: string, status: string}[];
+  looperMissions?: {repo: string, epic: string, mission: string, status: string}[];
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -273,7 +273,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
-  let looperMissions: {epic: string, mission: string, status: string}[] = [];
+  let looperMissions: {repo: string, epic: string, mission: string, status: string}[] = [];
   if (parsed.cwd) {
     const looperCacheFile = path.join(os.homedir(), '.gemini', 'hud_looper.cache');
     let useLooperCache = false;
@@ -308,6 +308,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         if (repoRoots.length === 0) repoRoots.push(targetDir);
 
         for (const r of repoRoots) {
+          const repoName = path.basename(r);
           const looperDir = path.join(r, '.looper', 'epics');
           if (fs.existsSync(looperDir)) {
             const epics = fs.readdirSync(looperDir, { withFileTypes: true });
@@ -321,7 +322,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                     const statusMatch = content.match(/^status:\s*([A-Z_]+)/m);
                     if (statusMatch && statusMatch[1]) {
                       const missionId = f.replace('_purpose.md', '');
-                      looperMissions.push({ epic: ep.name, mission: missionId, status: statusMatch[1] });
+                      looperMissions.push({ repo: repoName, epic: ep.name, mission: missionId, status: statusMatch[1] });
                     }
                   }
                 }
