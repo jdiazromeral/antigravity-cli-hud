@@ -142,13 +142,14 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   let gitBranches: {name: string, branch: string}[] = [];
 
+  let activeWorkspaceRepos: string[] = [];
+  
   if (parsed.cwd) {
     const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
     let useCache = false;
 
     let previousCacheBranches: {name: string, branch: string}[] | null = null;
 
-    let activeWorkspaceRepos: string[] = [];
     if (conversationId) {
        const sessionContextFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, 'hud_context.json');
        if (fs.existsSync(sessionContextFile)) {
