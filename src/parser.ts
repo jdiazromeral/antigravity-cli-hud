@@ -65,6 +65,7 @@ export interface ParsedMetrics {
   artifactCount: number;
   conversationId?: string;
   artifacts?: string[];
+  looperMissions?: {epic: string, mission: string, status: string}[];
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -219,6 +220,69 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       } catch (e) {}
     }
   }
+
+  let looperMissions: {epic: string, mission: string, status: string}[] = [];
+  if (parsed.cwd) {
+    const looperCacheFile = path.join(os.homedir(), '.gemini', 'hud_looper.cache');
+    let useLooperCache = false;
+    let prevLooperCache: any[] | null = null;
+    try {
+      if (fs.existsSync(looperCacheFile)) {
+        const cRaw = fs.readFileSync(looperCacheFile, 'utf8');
+        const cData = JSON.parse(cRaw);
+        prevLooperCache = cData.looperMissions || [];
+        if (cData.cwd === parsed.cwd && (Date.now() - cData.timestamp) < 5000) {
+          looperMissions = prevLooperCache || [];
+          useLooperCache = true;
+        }
+      }
+    } catch(e) {}
+
+    if (!useLooperCache) {
+      try {
+        let repoRoots: string[] = [];
+        try {
+          const root = cp.execSync('git rev-parse --show-toplevel', { cwd: parsed.cwd, stdio: 'pipe', timeout: 200 }).toString().trim();
+          if (root) repoRoots.push(root);
+        } catch(e) {}
+        
+        if (repoRoots.length === 0) repoRoots.push(parsed.cwd);
+
+        for (const r of repoRoots) {
+          const looperDir = path.join(r, '.looper', 'epics');
+          if (fs.existsSync(looperDir)) {
+            const epics = fs.readdirSync(looperDir, { withFileTypes: true });
+            for (const ep of epics) {
+              if (ep.isDirectory() && !ep.name.startsWith('.')) {
+                const epicPath = path.join(looperDir, ep.name);
+                const files = fs.readdirSync(epicPath);
+                for (const f of files) {
+                  if (f.endsWith('_purpose.md')) {
+                    const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
+                    const statusMatch = content.match(/^status:\s*([A-Z_]+)/m);
+                    if (statusMatch && statusMatch[1]) {
+                      const missionId = f.replace('_purpose.md', '');
+                      looperMissions.push({ epic: ep.name, mission: missionId, status: statusMatch[1] });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        looperMissions = prevLooperCache || [];
+      }
+
+      try {
+        fs.writeFileSync(looperCacheFile, JSON.stringify({
+          cwd: parsed.cwd,
+          looperMissions,
+          timestamp: Date.now()
+        }), { mode: 0o600 });
+      } catch(e) {}
+    }
+  }
   
   let workspaceName = parsed.cwd ? path.basename(parsed.cwd) : 'Unknown Workspace';
 
@@ -264,6 +328,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     gitBranches,
     artifactCount,
     conversationId,
-    artifacts: artifactList
+    artifacts: artifactList,
+    looperMissions
   };
 }

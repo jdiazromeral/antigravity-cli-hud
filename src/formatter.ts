@@ -33,6 +33,7 @@ export const HUD_CONFIG = {
       ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
       ['artifacts'],
+      ['looper'],
       ['git']
     ],
     medium: [
@@ -41,6 +42,7 @@ export const HUD_CONFIG = {
       ['ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
       ['artifacts'],
+      ['looper'],
       ['git']
     ],
     small: [
@@ -50,6 +52,7 @@ export const HUD_CONFIG = {
       ['5h', 'weekly'],
       ['tasks', 'subagents'],
       ['artifacts'],
+      ['looper'],
       ['git']
     ]
   }
@@ -135,6 +138,12 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const artStrs = (metrics.artifacts || []).map(a => `${colors.yellow}${a}${colors.reset}`);
   const chunkedArtifacts = calculateStackedChunks(artStrs, 5);
 
+  const looperStrs = (metrics.looperMissions || []).map(m => {
+    const statusColor = m.status === 'IN_PROGRESS' ? colors.cyan : (m.status === 'FAILED' || m.status === 'BLOCKED' ? colors.red : colors.green);
+    return `${colors.bold}${m.epic}/${m.mission}${colors.reset} [${statusColor}${m.status}${colors.reset}]`;
+  });
+  const chunkedLooper = calculateStackedChunks(looperStrs, 3);
+
   // 2. Responsive Router
   let activeLayout: string[][] = [];
   if (termWidth >= HUD_CONFIG.breakpoints.large) activeLayout = HUD_CONFIG.layouts.large;
@@ -163,6 +172,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     if (!metrics.artifacts || metrics.artifacts.length === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'artifacts'));
     }
+    if (!metrics.looperMissions || metrics.looperMissions.length === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'looper'));
+    }
     if (!metrics.gitBranches || metrics.gitBranches.length === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'git'));
     }
@@ -180,26 +192,32 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   for (let rowIndex = 0; rowIndex < activeLayout.length; rowIndex++) {
     const rowKeys = activeLayout[rowIndex];
     
-    const subIdx = rowKeys.indexOf('subagents');
-    const gitIdx = rowKeys.indexOf('git');
-    const artIdx = rowKeys.indexOf('artifacts');
-    
-    const stackedKey = subIdx !== -1 ? 'subagents' : (gitIdx !== -1 ? 'git' : (artIdx !== -1 ? 'artifacts' : null));
+    const stackableKeys = ['subagents', 'git', 'artifacts', 'looper'];
+    const stackedKey = stackableKeys.find(k => rowKeys.includes(k));
     
     if (stackedKey) {
-      const isSub = stackedKey === 'subagents';
-      const isGit = stackedKey === 'git';
-      const stackedIdx = isSub ? subIdx : (isGit ? gitIdx : artIdx);
-      const chunks = isSub ? chunkedSubagents : (isGit ? chunkedGit : chunkedArtifacts);
-      
-      const emptyTitle = isSub ? '👥 Subagents (0)' : (isGit ? '🌱 Branches (0)' : '📄 Artifacts (0)');
-      
+      const stackedIdx = rowKeys.indexOf(stackedKey);
+      let chunks: string[][] = [];
+      let emptyTitle = '';
       let populatedTitle = '';
-      if (isSub) populatedTitle = '👥 Subagents:';
-      else if (isGit) populatedTitle = '🌱 Active Branches:';
-      else {
+      
+      if (stackedKey === 'subagents') {
+         chunks = chunkedSubagents;
+         emptyTitle = '👥 Subagents (0)';
+         populatedTitle = '👥 Subagents:';
+      } else if (stackedKey === 'git') {
+         chunks = chunkedGit;
+         emptyTitle = '🌱 Branches (0)';
+         populatedTitle = '🌱 Active Branches:';
+      } else if (stackedKey === 'artifacts') {
+         chunks = chunkedArtifacts;
+         emptyTitle = '📄 Artifacts (0)';
          const shortId = metrics.conversationId ? metrics.conversationId.substring(0, 8) : '';
          populatedTitle = `📄 Artifacts (open ~/.gemini/antigravity-cli/brain/${shortId}*):`;
+      } else if (stackedKey === 'looper') {
+         chunks = chunkedLooper;
+         emptyTitle = '🔄 Looper (0)';
+         populatedTitle = '🔄 Active Looper Missions:';
       }
       
       const beforeStack = rowKeys.slice(0, stackedIdx).map(k => blocks[k]).filter(Boolean);
