@@ -147,6 +147,78 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     let useCache = false;
 
     let previousCacheBranches: {name: string, branch: string}[] | null = null;
+
+    let activeWorkspaceRepos: string[] = [];
+    if (conversationId) {
+       const sessionContextFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, 'hud_context.json');
+       if (fs.existsSync(sessionContextFile)) {
+          try {
+            const targetDirs = JSON.parse(fs.readFileSync(sessionContextFile, 'utf8'));
+            if (Array.isArray(targetDirs)) {
+               for (const d of targetDirs) {
+                 const p = path.join(parsed.cwd, d);
+                 if (!activeWorkspaceRepos.includes(p)) activeWorkspaceRepos.push(p);
+               }
+            }
+          } catch(err) {}
+       }
+    }
+    
+    if (activeWorkspaceRepos.length === 0) {
+       const searchRoots = [
+          path.join(parsed.cwd, 'lab'),
+          path.join(parsed.cwd, 'worktrees')
+       ];
+       for (const root of searchRoots) {
+          if (fs.existsSync(root)) {
+             try {
+               const items = fs.readdirSync(root, { withFileTypes: true });
+               for (const item of items) {
+                  if (item.isDirectory() && !item.name.startsWith('.')) {
+                     const p = path.join(root, item.name);
+                     if (fs.existsSync(path.join(p, '.git')) || fs.existsSync(path.join(p, '.looper'))) {
+                        let isActive = false;
+                        try {
+                           const branch = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
+                           if (branch !== 'main' && branch !== 'master' && branch !== 'HEAD') {
+                              isActive = true;
+                           } else {
+                              const status = cp.execSync('git status --porcelain', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
+                              if (status.length > 0) isActive = true;
+                           }
+                        } catch(e) {}
+                        
+                        if (!isActive && fs.existsSync(path.join(p, '.looper', 'epics'))) {
+                           try {
+                              const epics = fs.readdirSync(path.join(p, '.looper', 'epics'), { withFileTypes: true });
+                              for (const ep of epics) {
+                                 if (ep.isDirectory() && !ep.name.startsWith('.')) {
+                                    const epicPath = path.join(p, '.looper', 'epics', ep.name);
+                                    const files = fs.readdirSync(epicPath);
+                                    for (const f of files) {
+                                       if (f.endsWith('_purpose.md')) {
+                                          const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
+                                          const statusMatch = content.match(/^status:\s*([A-Z_]+)/m);
+                                          if (statusMatch && statusMatch[1] === 'IN_PROGRESS') {
+                                             isActive = true;
+                                             break;
+                                          }
+                                       }
+                                    }
+                                 }
+                                 if (isActive) break;
+                              }
+                           } catch(e) {}
+                        }
+                        
+                        if (isActive) activeWorkspaceRepos.push(p);
+                     }
+                  }
+               }
+             } catch(err) {}
+          }
+       }
+    }
     try {
       if (fs.existsSync(gitCacheFile)) {
         const cacheRaw = fs.readFileSync(gitCacheFile, 'utf8');
@@ -174,29 +246,9 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
             gitBranches.push({ name: r, branch: b });
           }
         } catch (e) {
-          // If not inside a git repo, determine active subdirectories
-          const activeRepos: string[] = [];
-          
-          // 1. Session-based Explicit Targeting (AI-driven)
-          if (conversationId) {
-             const sessionContextFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, 'hud_context.json');
-             if (fs.existsSync(sessionContextFile)) {
-                try {
-                  const targetDirs = JSON.parse(fs.readFileSync(sessionContextFile, 'utf8'));
-                  if (Array.isArray(targetDirs)) {
-                     for (const d of targetDirs) {
-                       const p = path.join(targetDir, d);
-                       if (fs.existsSync(path.join(p, '.git'))) activeRepos.push(p);
-                     }
-                  }
-                } catch(err) {}
-             }
-          }
-
-
-
-          if (activeRepos.length > 0) {
-            for (const p of activeRepos) {
+          // If not inside a git repo, use the activeWorkspaceRepos
+          if (activeWorkspaceRepos.length > 0) {
+            for (const p of activeWorkspaceRepos) {
                try {
                  const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
                  const cDir = cp.execSync('git rev-parse --git-common-dir', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
@@ -247,19 +299,10 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           if (root) repoRoots.push(root);
         } catch(e) {}
         
-        if (conversationId) {
-             const sessionContextFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, 'hud_context.json');
-             if (fs.existsSync(sessionContextFile)) {
-                try {
-                  const targetDirs = JSON.parse(fs.readFileSync(sessionContextFile, 'utf8'));
-                  if (Array.isArray(targetDirs)) {
-                     for (const d of targetDirs) {
-                       const p = path.join(targetDir, d);
-                       if (!repoRoots.includes(p)) repoRoots.push(p);
-                     }
-                  }
-                } catch(err) {}
-             }
+        if (activeWorkspaceRepos.length > 0) {
+           for (const p of activeWorkspaceRepos) {
+              if (!repoRoots.includes(p)) repoRoots.push(p);
+           }
         }
         
         if (repoRoots.length === 0) repoRoots.push(targetDir);
