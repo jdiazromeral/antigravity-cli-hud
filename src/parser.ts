@@ -203,6 +203,15 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                                              isActive = true;
                                              break;
                                           }
+                                       } else if (f.endsWith('.json')) {
+                                          try {
+                                             const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
+                                             const state = JSON.parse(content);
+                                             if (state.status && state.status !== 'DONE') {
+                                                isActive = true;
+                                                break;
+                                             }
+                                          } catch(e) {}
                                        }
                                     }
                                  }
@@ -324,6 +333,15 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                       const missionId = f.replace('_purpose.md', '');
                       looperMissions.push({ repo: repoName, epic: ep.name, mission: missionId, status: statusMatch[1] });
                     }
+                  } else if (f.endsWith('.json')) {
+                    try {
+                      const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
+                      const state = JSON.parse(content);
+                      if (state.status && state.status !== 'DONE') {
+                        const missionId = state.mission_id || f.replace('.json', '');
+                        looperMissions.push({ repo: repoName, epic: ep.name, mission: missionId, status: state.status });
+                      }
+                    } catch(e) {}
                   }
                 }
               }
