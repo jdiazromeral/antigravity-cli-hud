@@ -241,12 +241,28 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     if (!useLooperCache) {
       try {
         let repoRoots: string[] = [];
+        let targetDir = parsed.cwd;
         try {
-          const root = cp.execSync('git rev-parse --show-toplevel', { cwd: parsed.cwd, stdio: 'pipe', timeout: 200 }).toString().trim();
+          const root = cp.execSync('git rev-parse --show-toplevel', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
           if (root) repoRoots.push(root);
         } catch(e) {}
         
-        if (repoRoots.length === 0) repoRoots.push(parsed.cwd);
+        if (conversationId) {
+             const sessionContextFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, 'hud_context.json');
+             if (fs.existsSync(sessionContextFile)) {
+                try {
+                  const targetDirs = JSON.parse(fs.readFileSync(sessionContextFile, 'utf8'));
+                  if (Array.isArray(targetDirs)) {
+                     for (const d of targetDirs) {
+                       const p = path.join(targetDir, d);
+                       if (!repoRoots.includes(p)) repoRoots.push(p);
+                     }
+                  }
+                } catch(err) {}
+             }
+        }
+        
+        if (repoRoots.length === 0) repoRoots.push(targetDir);
 
         for (const r of repoRoots) {
           const looperDir = path.join(r, '.looper', 'epics');
