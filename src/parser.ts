@@ -66,6 +66,7 @@ export interface ParsedMetrics {
   conversationId?: string;
   artifacts?: string[];
   looperMissions?: {repo: string, epic: string, mission: string, status: string}[];
+  looperEpics?: {repo: string, epic: string, total: number, done: number}[];
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -284,6 +285,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   }
 
   let looperMissions: {repo: string, epic: string, mission: string, status: string}[] = [];
+  let looperEpics: {repo: string, epic: string, total: number, done: number}[] = [];
   if (parsed.cwd) {
     const looperCacheFile = path.join(os.homedir(), '.gemini', 'hud_looper.cache');
     let useLooperCache = false;
@@ -293,8 +295,10 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         const cRaw = fs.readFileSync(looperCacheFile, 'utf8');
         const cData = JSON.parse(cRaw);
         prevLooperCache = cData.looperMissions || [];
+        const prevEpicsCache = cData.looperEpics || [];
         if (cData.cwd === parsed.cwd && (Date.now() - cData.timestamp) < 5000) {
           looperMissions = prevLooperCache || [];
+          looperEpics = prevEpicsCache || [];
           useLooperCache = true;
         }
       }
@@ -336,6 +340,17 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
             for (const ep of epics) {
               if (ep.isDirectory() && !ep.name.startsWith('.')) {
                 const epicPath = path.join(looperDir, ep.name);
+                const epicMdPath = path.join(epicPath, 'epic.md');
+                if (fs.existsSync(epicMdPath)) {
+                  try {
+                    const content = fs.readFileSync(epicMdPath, 'utf8');
+                    const totalMissions = (content.match(/^##\s+\[[A-Za-z0-9_-]+\]/gm) || []).length;
+                    if (totalMissions > 0) {
+                      const doneMissions = (content.match(/^-\s+\*\*Status\*\*:\s*DONE/gim) || []).length;
+                      looperEpics.push({ repo: repoName, epic: ep.name, total: totalMissions, done: doneMissions });
+                    }
+                  } catch(e) {}
+                }
                 const files = fs.readdirSync(epicPath);
                 for (const f of files) {
                   if (f.endsWith('_purpose.md')) {
@@ -368,6 +383,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         fs.writeFileSync(looperCacheFile, JSON.stringify({
           cwd: parsed.cwd,
           looperMissions,
+          looperEpics,
           timestamp: Date.now()
         }), { mode: 0o600 });
       } catch(e) {}
@@ -419,6 +435,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     artifactCount,
     conversationId,
     artifacts: artifactList,
-    looperMissions
+    looperMissions,
+    looperEpics
   };
 }

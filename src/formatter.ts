@@ -16,6 +16,7 @@ const colors = {
 // HUD LAYOUT CONFIGURATION
 // You can dynamically re-arrange the terminal layout here!
 // Available blocks: 'state', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents'
+// Note: To completely disable the Looper integration, simply remove 'looper' from the layout arrays below.
 // ============================================================================
 export const HUD_CONFIG = {
   // Whether to dynamically hide 'tasks' and 'subagents' blocks from the UI when their count is 0
@@ -138,11 +139,18 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const artStrs = (metrics.artifacts || []).map(a => `${colors.yellow}${a}${colors.reset}`);
   const chunkedArtifacts = calculateStackedChunks(artStrs, 5);
 
-  const looperStrs = (metrics.looperMissions || []).map(m => {
+  const looperStrs: string[] = [];
+  if (metrics.looperEpics) {
+    for (const e of metrics.looperEpics) {
+      const pColor = e.done === e.total ? colors.green : colors.yellow;
+      looperStrs.push(`🎯 ${colors.dim}${e.repo} -${colors.reset} Epic: ${colors.bold}${e.epic}${colors.reset} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
+    }
+  }
+  for (const m of (metrics.looperMissions || [])) {
     const statusColor = m.status === 'IN_PROGRESS' ? colors.cyan : (m.status === 'FAILED' || m.status === 'BLOCKED' ? colors.red : colors.green);
-    return `${colors.dim}${m.repo} -${colors.reset} ${colors.bold}${m.epic}/${m.mission}${colors.reset} [${statusColor}${m.status}${colors.reset}]`;
-  });
-  const chunkedLooper = calculateStackedChunks(looperStrs, 3);
+    looperStrs.push(`• ${colors.dim}${m.repo} -${colors.reset} ${colors.bold}${m.epic}/${m.mission}${colors.reset} [${statusColor}${m.status}${colors.reset}]`);
+  }
+  const chunkedLooper = calculateStackedChunks(looperStrs, 5);
 
   // 2. Responsive Router
   let activeLayout: string[][] = [];
@@ -172,7 +180,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     if (!metrics.artifacts || metrics.artifacts.length === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'artifacts'));
     }
-    if (!metrics.looperMissions || metrics.looperMissions.length === 0) {
+    if ((!metrics.looperMissions || metrics.looperMissions.length === 0) && (!metrics.looperEpics || metrics.looperEpics.length === 0)) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'looper'));
     }
     if (!metrics.gitBranches || metrics.gitBranches.length === 0) {
@@ -242,11 +250,11 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
            } else {
              rowContent = `${beforeStr}${populatedTitle}${afterStr}`;
              finalLines.push(rowContent);
-             rowContent = `${padding}${colors.dim}• ${stackItemStr}${colors.reset}`;
+             rowContent = `${padding}${colors.dim}${colors.reset}${stackItemStr}`;
              finalLines.push(rowContent);
            }
         } else {
-           rowContent = `${padding}${colors.dim}• ${stackItemStr}${colors.reset}`;
+           rowContent = `${padding}${colors.dim}${colors.reset}${stackItemStr}`;
            finalLines.push(rowContent);
         }
       }
