@@ -145,13 +145,15 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
     let useCache = false;
 
+    let previousCacheBranches: {name: string, branch: string}[] | null = null;
     try {
       if (fs.existsSync(gitCacheFile)) {
         const cacheRaw = fs.readFileSync(gitCacheFile, 'utf8');
         const cacheData = JSON.parse(cacheRaw);
-        // Use cache if it's less than 2 seconds old and cwd matches
-        if (cacheData.cwd === parsed.cwd && (Date.now() - cacheData.timestamp) < 2000) {
-          gitBranches = cacheData.gitBranches || [];
+        previousCacheBranches = cacheData.gitBranches || [];
+        // Use cache if it's less than 5 seconds old and cwd matches
+        if (cacheData.cwd === parsed.cwd && (Date.now() - cacheData.timestamp) < 5000) {
+          gitBranches = previousCacheBranches || [];
           useCache = true;
         }
       }
@@ -162,10 +164,10 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         let targetDir = parsed.cwd;
         // Check if current dir is a git repo
         try {
-          cp.execSync('git rev-parse --is-inside-work-tree', { cwd: targetDir, stdio: 'ignore', timeout: 50 });
+          cp.execSync('git rev-parse --is-inside-work-tree', { cwd: targetDir, stdio: 'ignore', timeout: 200 });
           // If it is, just use it
-          const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: targetDir, stdio: 'pipe', timeout: 50 }).toString().trim();
-          const gitCommonDir = cp.execSync('git rev-parse --git-common-dir', { cwd: targetDir, stdio: 'pipe', timeout: 50 }).toString().trim();
+          const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
+          const gitCommonDir = cp.execSync('git rev-parse --git-common-dir', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
           if (gitCommonDir) {
             const r = path.basename(path.dirname(path.resolve(targetDir, gitCommonDir)));
             gitBranches.push({ name: r, branch: b });
@@ -195,8 +197,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           if (activeRepos.length > 0) {
             for (const p of activeRepos) {
                try {
-                 const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 50 }).toString().trim();
-                 const cDir = cp.execSync('git rev-parse --git-common-dir', { cwd: p, stdio: 'pipe', timeout: 50 }).toString().trim();
+                 const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
+                 const cDir = cp.execSync('git rev-parse --git-common-dir', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
                  const r = path.basename(path.dirname(path.resolve(p, cDir)));
                  gitBranches.push({ name: r, branch: b });
                } catch(err) {}
@@ -204,7 +206,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           }
         }
       } catch (e) {
-        gitBranches = [];
+        gitBranches = previousCacheBranches || [];
       }
 
       // Write to cache safely
