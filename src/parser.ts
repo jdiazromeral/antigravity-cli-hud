@@ -307,6 +307,17 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           const root = cp.execSync('git rev-parse --show-toplevel', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
           if (root) repoRoots.push(root);
         } catch(e) {}
+
+        let currentDir = targetDir;
+        while (currentDir && currentDir !== '/') {
+           if (fs.existsSync(path.join(currentDir, '.looper'))) {
+              if (!repoRoots.includes(currentDir)) repoRoots.push(currentDir);
+              break;
+           }
+           const parent = path.dirname(currentDir);
+           if (parent === currentDir) break;
+           currentDir = parent;
+        }
         
         if (activeWorkspaceRepos.length > 0) {
            for (const p of activeWorkspaceRepos) {
