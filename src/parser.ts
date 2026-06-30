@@ -65,7 +65,7 @@ export interface ParsedMetrics {
   artifactCount: number;
   conversationId?: string;
   artifacts?: string[];
-  looperMissions?: {repo: string, epic: string, mission: string, status: string}[];
+  looperMissions?: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[];
   looperEpics?: {repo: string, epic: string, total: number, done: number}[];
 }
 
@@ -284,7 +284,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
-  let looperMissions: {repo: string, epic: string, mission: string, status: string}[] = [];
+  let looperMissions: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[] = [];
   let looperEpics: {repo: string, epic: string, total: number, done: number}[] = [];
   if (parsed.cwd) {
     const looperCacheFile = path.join(os.homedir(), '.gemini', 'hud_looper.cache');
@@ -360,7 +360,43 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                     const statusMatch = content.match(/^status:\s*([A-Z_]+)/m);
                     if (statusMatch && statusMatch[1] && statusMatch[1] !== 'DONE') {
                       const missionId = f.replace('_purpose.md', '');
-                      looperMissions.push({ repo: repoName, epic: ep.name, mission: missionId, status: statusMatch[1] });
+                      const status = statusMatch[1];
+                      
+                      const maxMatch = content.match(/^max_iterations:\s*(\d+)/m);
+                      const maxIterations = maxMatch ? parseInt(maxMatch[1], 10) : 8;
+                      
+                      let iteration = 0;
+                      let reason = undefined;
+                      
+                      const recordsPath = path.join(epicPath, 'records');
+                      if (fs.existsSync(recordsPath)) {
+                        try {
+                          const recordFiles = fs.readdirSync(recordsPath).filter((rf: string) => rf.startsWith(missionId + '_') && rf.endsWith('_record_file.md'));
+                          if (recordFiles.length > 0) {
+                            recordFiles.sort();
+                            const lastRecordFile = recordFiles[recordFiles.length - 1];
+                            const recordContent = fs.readFileSync(path.join(recordsPath, lastRecordFile), 'utf8');
+                            iteration = (recordContent.match(/^## Iteration/gm) || []).length;
+                            
+                            if (status === 'BLOCKED' || status === 'FAILED') {
+                               const verdictMatch = recordContent.match(/-\s+Verdict:\s*(.*)/i);
+                               const validatorMatch = recordContent.match(/-\s+Validator:\s*(.*)/i);
+                               if (verdictMatch && verdictMatch[1].toLowerCase().includes('blocked')) {
+                                 const r = verdictMatch[1].match(/blocked\((.*?)\)/i);
+                                 if (r && r[1]) reason = r[1].trim();
+                               } else if (validatorMatch && validatorMatch[1].toLowerCase().includes('fail')) {
+                                 let raw = validatorMatch[1].replace(/fail/i, '').trim();
+                                 if (raw.startsWith('(')) raw = raw.substring(1);
+                                 if (raw.endsWith(')')) raw = raw.substring(0, raw.length - 1);
+                                 reason = raw.trim();
+                               }
+                               if (reason && reason.length > 30) reason = reason.substring(0, 27) + '...';
+                            }
+                          }
+                        } catch(e) {}
+                      }
+                      
+                      looperMissions.push({ repo: repoName, epic: ep.name, mission: missionId, status, iteration, maxIterations, reason });
                     }
                   } else if (f.endsWith('.json')) {
                     try {
@@ -368,7 +404,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                       const state = JSON.parse(content);
                       if (state.status && state.status !== 'DONE') {
                         const missionId = state.mission_id || f.replace('.json', '');
-                        looperMissions.push({ repo: repoName, epic: ep.name, mission: missionId, status: state.status });
+                        looperMissions.push({ repo: repoName, epic: ep.name, mission: missionId, status: state.status, iteration: state.iteration, maxIterations: state.max_iterations });
                       }
                     } catch(e) {}
                   }
