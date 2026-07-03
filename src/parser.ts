@@ -98,10 +98,9 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const getQuotaObj = (key: string) => {
     const q = parsed.quota && parsed.quota[key as keyof typeof parsed.quota];
     if (!q) return { percent: 0, resetSeconds: 0 };
-    return {
-      percent: Math.round((1 - (q.remaining_fraction || 0)) * 100),
-      resetSeconds: q.reset_in_seconds || 0
-    };
+    const resetSeconds = q.reset_in_seconds || 0;
+    const percent = resetSeconds <= 0 ? 0 : Math.round((1 - (q.remaining_fraction || 0)) * 100);
+    return { percent, resetSeconds };
   };
 
   const sessName = parsed.session_id ? parsed.session_id.substring(0, 6) : 'Unknown';
