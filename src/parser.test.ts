@@ -119,5 +119,16 @@ describe('parseStream', () => {
     expect(result.skipPermissions).toBe(false);
     expect(result.gitBranches).toEqual([]);
     expect(result.artifactCount).toBe(0);
+    expect(result.exceeds200k).toBe(false);
+  });
+
+  it('should correctly parse exceeds_200k_tokens', async () => {
+    const payload = {
+      agent_state: 'Idle',
+      exceeds_200k_tokens: true
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.exceeds200k).toBe(true);
   });
 });

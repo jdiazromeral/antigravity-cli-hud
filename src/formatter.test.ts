@@ -66,6 +66,13 @@ describe('formatMetrics', () => {
     expect(out).toContain('Subagents:');
   });
 
+  it('turns ctx block red and adds degradation warning if exceeds200k is true', () => {
+    const warningMetrics = { ...baseMetrics, exceeds200k: true };
+    const out = formatMetrics(warningMetrics);
+    expect(out).toContain('Agent may start degrading');
+    expect(out).toContain('\x1b[31m'); // Red color
+  });
+
 
   describe('executionMode formatting', () => {
     it('formats request-review mode with yellow circle', () => {

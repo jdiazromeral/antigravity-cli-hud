@@ -77,7 +77,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   };
 
   const ctxColor = metrics.exceeds200k ? colors.red : getThresholdColor(metrics.contextUsage);
-  const exceedWarning = metrics.exceeds200k ? ` ${colors.red}${colors.bold}🚨 >200k!${colors.reset}` : '';
+  const exceedWarning = metrics.exceeds200k ? ` ${colors.red}${colors.bold}🚨 >200k! Agent may start degrading.${colors.reset}` : '';
   
   // Format quota values
   const formatTime = (sec: number) => {
