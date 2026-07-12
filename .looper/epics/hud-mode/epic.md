@@ -18,7 +18,7 @@ Upgrade the HUD to fully support Antigravity v1.1.1 features, optimizing perform
 - **Purpose**: Parse `transcript_path` from the v1.1.1 payload and add a new `'transcript'` block to `src/formatter.ts` that displays an indicator or a shortened path so the user knows exactly where to `tail -f` their agent's logs.
 - **Dependencies**: [M1]
 - **Validator**: `npm run test`
-- **Status**: IN_PROGRESS
+- **Status**: DONE (Skipped formal artifacts)
 
 ## [M4] Context Limit Warning
 - **Purpose**: Parse `exceeds_200k_tokens` from the payload. If true, dynamically alter the `ctx` (Context) formatting block to turn critical/red, warning the user that the agent may start degrading.
