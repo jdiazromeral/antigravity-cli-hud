@@ -26,6 +26,7 @@ export interface AntigravityPayload {
   session_id?: string;
   cwd?: string;
   artifacts?: any[];
+  vcs?: { branch?: string; dirty?: boolean };
 }
 
 import * as fs from 'fs';
@@ -146,8 +147,12 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   let activeWorkspaceRepos: string[] = [];
   
   if (parsed.cwd) {
-    const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
-    let useCache = false;
+    if (parsed.vcs && parsed.vcs.branch) {
+      const b = parsed.vcs.dirty ? `${parsed.vcs.branch}*` : parsed.vcs.branch;
+      gitBranches.push({ name: path.basename(parsed.cwd), branch: b });
+    } else {
+      const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
+      let useCache = false;
 
     let previousCacheBranches: {name: string, branch: string}[] | null = null;
 
@@ -281,6 +286,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           timestamp: Date.now()
         }), { mode: 0o600 });
       } catch (e) {}
+    }
     }
   }
 
