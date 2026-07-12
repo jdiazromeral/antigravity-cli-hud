@@ -102,6 +102,28 @@ describe('parseStream', () => {
     });
   });
 
+  it('should leverage vcs payload if present to avoid OS blocking', async () => {
+    const payload: AntigravityPayload = {
+      agent_state: 'Idle',
+      cwd: '/path/to/project',
+      vcs: { branch: 'feature-branch', dirty: true }
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.gitBranches).toEqual([{ name: 'project', branch: 'feature-branch*' }]);
+  });
+
+  it('should not append * if not dirty', async () => {
+    const payload: AntigravityPayload = {
+      agent_state: 'Idle',
+      cwd: '/path/to/project',
+      vcs: { branch: 'main', dirty: false }
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.gitBranches).toEqual([{ name: 'project', branch: 'main' }]);
+  });
+
   it('should handle invalid JSON gracefully by throwing an error', async () => {
     const stream = Readable.from(['{ invalid json']);
     await expect(parseStream(stream)).rejects.toThrow('Failed to parse JSON');
