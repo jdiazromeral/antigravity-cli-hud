@@ -12,7 +12,7 @@ Upgrade the HUD to fully support Antigravity v1.1.1 features, optimizing perform
 - **Purpose**: Leverage the new `vcs` payload from v1.1.1 telemetry to instantly extract branch/dirty state without OS blocking (cp.execSync), keeping the legacy caching as a fallback for older clients.
 - **Dependencies**: [M1]
 - **Validator**: `npm run test`
-- **Status**: IN_PROGRESS
+- **Status**: DONE (Skipped formal artifacts)
 
 ## [M3] Display Transcript Log
 - **Purpose**: Parse `transcript_path` from the v1.1.1 payload and add a new `'transcript'` block to `src/formatter.ts` that displays an indicator or a shortened path so the user knows exactly where to `tail -f` their agent's logs.
