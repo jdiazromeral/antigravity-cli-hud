@@ -10,3 +10,7 @@ When working on this project (`antigravity-cli-hud`), all automated agents and s
 3. **Validation**: The ultimate validator for any mission in this repository is `npm run test` (Vitest).
 
 4. **Formatting**: All output strings meant for the terminal HUD MUST be visually styled and utilize Nerd Font icons.
+
+5. **Mocking**: Never hardcode paths like os.homedir() in Vitest mocks. Dynamically insert the homedir into test cases to prevent cross-environment test fragility.
+
+6. **Interface Updates**: When updating core interfaces like ParsedMetrics, you must update the corresponding mock data payloads across the entire test suite to prevent cascading TypeScript errors.
