@@ -18,6 +18,7 @@ When the user invokes this skill:
    Explain to the user that they can customize the grid layout of their HUD.
    List the available blocks they can use:
    - `'state'`: (🟢 IDLE, 🔵 WORKING)
+   - `'mode'`: The CLI's active execution mode
    - `'model'`: The active AI model
    - `'sandbox'`: Security boundary
    - `'permissions'`: Danger mode flag

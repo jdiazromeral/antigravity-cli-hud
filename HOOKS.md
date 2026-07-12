@@ -71,9 +71,16 @@ The incoming `stdin` payload is a single, unformatted JSON object. Below is a co
   "task_count": 1,
   "plan_tier": "Google AI Pro",
   "email": "user@example.com",
-  "version": "1.0.8"
+  "version": "1.1.1",
+  "vcs": {
+    "branch": "main",
+    "dirty": false
+  },
+  "transcript_path": "/Users/path/to/.gemini/antigravity-cli/brain/transcript.jsonl"
 }
 ```
+
+*Note: The CLI execution mode (`request-review`, `accept-edits`, etc.) is NOT currently streamed in the telemetry payload. It must be read directly from the `~/.gemini/antigravity-cli/settings.json` file.*
 
 ## Parsing Strategies & Defensive Coding
 

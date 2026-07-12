@@ -32,6 +32,7 @@ Breakpoints define the terminal width (in columns/characters) at which a specifi
 ### 2. Available Blocks
 You can drag and drop these string keys into any layout array:
 - `'state'`: (🟢 IDLE, 🔵 WORKING, etc.)
+- `'mode'`: The active CLI execution mode (e.g., 🟡 request-review, 🟢 accept-edits)
 - `'model'`: The active AI model.
 - `'sandbox'`: The sandbox security indicator.
 - `'permissions'`: The Danger Mode indicator.
