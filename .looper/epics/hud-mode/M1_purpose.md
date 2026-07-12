@@ -2,7 +2,7 @@
 validator: "npm run test"
 max_iterations: 8
 branch: feature/hud-mode
-status: IN_PROGRESS
+status: DONE
 ---
 
 # Purpose

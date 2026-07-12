@@ -19,3 +19,11 @@ Tests  3 failed | 10 passed (13)
 - Verdict: BLOCKED(Missing run_command and edit_file tools in the agent environment to perform the required code changes and TDD)
 - Validator: FAIL (skipped, blocked on tools)
 - Steering for next: Use the fallback worker with write tools enabled.
+
+## Iteration 2
+- Worker did: Implemented `executionMode` parsing in `src/parser.ts`, added formatting and layout integration in `src/formatter.ts`, and updated TDD tests.
+- Worker learned: Updating the `ParsedMetrics` interface requires updating mock data in the entire test suite to prevent type errors.
+- Commits: 23f6b6b
+- Verdict: DONE
+- Validator: PASS
+- Reviewer: APPROVE
