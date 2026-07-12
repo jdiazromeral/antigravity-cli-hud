@@ -24,4 +24,4 @@ Upgrade the HUD to fully support Antigravity v1.1.1 features, optimizing perform
 - **Purpose**: Parse `exceeds_200k_tokens` from the payload. If true, dynamically alter the `ctx` (Context) formatting block to turn critical/red, warning the user that the agent may start degrading.
 - **Dependencies**: [M1]
 - **Validator**: `npm run test`
-- **Status**: IN_PROGRESS
+- **Status**: DONE (Skipped formal artifacts)
