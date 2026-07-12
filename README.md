@@ -70,6 +70,7 @@ The HUD dynamically parses the CLI's internal JSON telemetry stream. It receives
 Here are all the available blocks you can slot into your matrix:
 
 - **`state`**: The core Antigravity Agent state (🟢 IDLE, 🟡 WAITING, 🔵 WORKING).
+- **`mode`**: The active execution mode of the CLI (🟡 request-review, 🟢 accept-edits, 🔵 plan).
 - **`model`**: The underlying AI model currently driving the agent (e.g. Gemini 3.1 Pro).
 - **`sandbox`**: The file-system security boundary (🔒 Sandboxed or 🔓 Unsandboxed).
 - **`permissions`**: The Danger Mode indicator. Visually flags if the agent was granted recursive `AGY_SKIP_PERMISSIONS=1` access across the process tree.
@@ -77,6 +78,7 @@ Here are all the available blocks you can slot into your matrix:
 - **`looper`**: The Active Looper Missions block. Dynamically scans `.looper/epics/` in your active repositories to track autonomous task progress. Stacks line-by-line (`🔄 Active Looper Missions:`) and renders statuses with custom colors (e.g., `sample_faqs - auth-system/M1 [IN_PROGRESS]`). Automatically hides itself if no missions are active.
 - **`git`**: The Active Branches block. Dynamically stacks line-by-line (`🌱 Active Branches:`) to cleanly display multi-repo worktrees alongside their active branches.
 - **`artifacts`**: The Active Artifacts block. Dynamically stacks line-by-line (`📄 Artifacts:`) to list the `.md` files generated during the active AI session. Automatically hides itself if no artifacts exist.
+- **`transcript`**: A clickable shortcut link directly to your agent's active `transcript.jsonl` log file, making it easy to `tail -f` the brain logs.
 - **`ctx`**: Context window saturation limit. Shows percentage used and raw token count.
 - **`cache`**: Context window caching telemetry (`⚡ Cache: 70k`). Displays how many tokens were read from cache, allowing you to instantly visualize your cost savings. Automatically hides if 0.
 - **`5h` / `weekly`**: Rolling quota buckets. Shows percentage used and the countdown timer until the quota bucket resets.
