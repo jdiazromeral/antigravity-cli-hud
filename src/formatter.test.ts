@@ -23,7 +23,14 @@ describe('formatMetrics', () => {
     version: '1.0.8',
     email: 'test@example.com',
     planTier: 'Pro',
-    terminalWidth: 184
+    terminalWidth: 184,
+    skipPermissions: false,
+    gitBranches: [],
+    artifactCount: 0,
+    artifacts: [],
+    looperMissions: [],
+    looperEpics: [],
+    executionMode: 'request-review'
   };
 
   it('formats correctly with wide terminals', () => {
@@ -57,5 +64,32 @@ describe('formatMetrics', () => {
     expect(out).toContain('sub1');
     expect(out).toContain('sub2');
     expect(out).toContain('Subagents:');
+  });
+
+
+  describe('executionMode formatting', () => {
+    it('formats request-review mode with yellow circle', () => {
+      const metrics = { ...baseMetrics, executionMode: 'request-review' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🟡 request-review');
+    });
+
+    it('formats accept-edits mode with green circle', () => {
+      const metrics = { ...baseMetrics, executionMode: 'accept-edits' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🟢 accept-edits');
+    });
+
+    it('formats plan mode with blue circle', () => {
+      const metrics = { ...baseMetrics, executionMode: 'plan' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🔵 plan');
+    });
+
+    it('handles missing executionMode safely', () => {
+      const metrics = { ...baseMetrics } as any;
+      delete metrics.executionMode;
+      expect(() => formatMetrics(metrics)).not.toThrow();
+    });
   });
 });

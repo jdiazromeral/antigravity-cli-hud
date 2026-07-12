@@ -67,6 +67,7 @@ export interface ParsedMetrics {
   artifacts?: string[];
   looperMissions?: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[];
   looperEpics?: {repo: string, epic: string, total: number, done: number}[];
+  executionMode: string;
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -447,6 +448,20 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
+  let executionMode = 'request-review';
+  try {
+    const settingsFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'settings.json');
+    if (fs.existsSync(settingsFile)) {
+      const settingsContent = fs.readFileSync(settingsFile, 'utf8');
+      const settingsParsed = JSON.parse(settingsContent);
+      if (settingsParsed.mode) {
+        executionMode = settingsParsed.mode;
+      }
+    }
+  } catch (e) {
+    // Ignore errors and default to request-review
+  }
+
   return {
     agentState: (parsed.agent_state || 'UNKNOWN').toUpperCase(),
     contextUsage: Math.round(parsed.context_window?.used_percentage || 0),
@@ -474,6 +489,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     conversationId,
     artifacts: artifactList,
     looperMissions,
-    looperEpics
+    looperEpics,
+    executionMode
   };
 }

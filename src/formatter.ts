@@ -30,7 +30,7 @@ export const HUD_CONFIG = {
   // Matrix rows map block IDs to visual layout ordering
   layouts: {
     large: [
-      ['state', 'model', 'permissions'],
+      ['state', 'mode', 'model', 'permissions'],
       ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
       ['artifacts'],
@@ -38,7 +38,7 @@ export const HUD_CONFIG = {
       ['git']
     ],
     medium: [
-      ['state', 'model', 'permissions'],
+      ['state', 'mode', 'model', 'permissions'],
       ['workspace', 'sandbox'],
       ['ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
@@ -47,7 +47,7 @@ export const HUD_CONFIG = {
       ['git']
     ],
     small: [
-      ['state', 'model', 'permissions'],
+      ['state', 'mode', 'model', 'permissions'],
       ['sandbox'],
       ['workspace', 'ctx', 'cache'],
       ['5h', 'weekly'],
@@ -93,8 +93,16 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const q5Color = getThresholdColor(metrics.quota5h);
   const taskColor = metrics.taskCount > 0 ? colors.yellow : colors.gray;
 
+  const modeColors: Record<string, string> = {
+    'request-review': `${colors.yellow}🟡 request-review${colors.reset}`,
+    'accept-edits': `${colors.green}🟢 accept-edits${colors.reset}`,
+    'plan': `${colors.blue}🔵 plan${colors.reset}`
+  };
+  const modeStr = modeColors[metrics.executionMode] || `${colors.yellow}🟡 request-review${colors.reset}`;
+
   const blocks: Record<string, string> = {
     state: stateIndicator,
+    mode: modeStr,
     model: `🤖 ${colors.bold}${metrics.model}${colors.reset}`,
     sandbox: metrics.isSandboxed ? `${colors.gray}🔒 Sandboxed${colors.reset}` : `${colors.yellow}🔓 Unsandboxed${colors.reset}`,
     permissions: metrics.skipPermissions ? `${colors.red}☢️  Danger Mode${colors.reset}` : '',
