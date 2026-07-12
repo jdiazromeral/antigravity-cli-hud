@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { formatMetrics } from './formatter';
 import { ParsedMetrics } from './parser';
+import * as os from 'os';
 
 describe('formatMetrics', () => {
   const baseMetrics: ParsedMetrics = {
@@ -97,6 +98,22 @@ describe('formatMetrics', () => {
       const metrics = { ...baseMetrics } as any;
       delete metrics.executionMode;
       expect(() => formatMetrics(metrics)).not.toThrow();
+    });
+  });
+
+  
+  describe('transcript formatting', () => {
+    it('formats transcript path with tail -f hint when present', () => {
+      const metrics = { ...baseMetrics, transcriptPath: `${os.homedir()}/.gemini/antigravity-cli/transcript_123.txt` };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('📜 tail -f ~/.gemini/antigravity-cli/transcript_123.txt');
+    });
+
+    it('does not display transcript block when missing', () => {
+      const metrics = { ...baseMetrics };
+      delete metrics.transcriptPath;
+      const out = formatMetrics(metrics);
+      expect(out).not.toContain('📜 tail -f');
     });
   });
 });

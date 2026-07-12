@@ -34,7 +34,8 @@ describe('parseStream', () => {
       version: '1.0.8',
       email: 'user@example.com',
       plan_tier: 'Pro',
-      terminal_width: 105
+      terminal_width: 105,
+      transcript_path: '/path/to/my/transcript.txt'
     };
 
     const stream = Readable.from([JSON.stringify(payload)]);
@@ -68,7 +69,8 @@ describe('parseStream', () => {
       conversationId: '123',
       looperMissions: [],
       looperEpics: [],
-      executionMode: 'request-review'
+      executionMode: 'request-review',
+      transcriptPath: '/path/to/my/transcript.txt'
     });
   });
 

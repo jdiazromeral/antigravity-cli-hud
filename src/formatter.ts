@@ -1,4 +1,5 @@
 import { ParsedMetrics } from './parser.js';
+import * as os from 'os';
 
 const colors = {
   reset: '\x1b[0m',
@@ -15,7 +16,7 @@ const colors = {
 // ============================================================================
 // HUD LAYOUT CONFIGURATION
 // You can dynamically re-arrange the terminal layout here!
-// Available blocks: 'state', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents'
+// Available blocks: 'state', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'transcript'
 // Note: To completely disable the Looper integration, simply remove 'looper' from the layout arrays below.
 // ============================================================================
 export const HUD_CONFIG = {
@@ -35,7 +36,8 @@ export const HUD_CONFIG = {
       ['tasks', 'subagents'],
       ['artifacts'],
       ['looper'],
-      ['git']
+      ['git'],
+      ['transcript']
     ],
     medium: [
       ['state', 'mode', 'model', 'permissions'],
@@ -44,7 +46,8 @@ export const HUD_CONFIG = {
       ['tasks', 'subagents'],
       ['artifacts'],
       ['looper'],
-      ['git']
+      ['git'],
+      ['transcript']
     ],
     small: [
       ['state', 'mode', 'model', 'permissions'],
@@ -54,7 +57,8 @@ export const HUD_CONFIG = {
       ['tasks', 'subagents'],
       ['artifacts'],
       ['looper'],
-      ['git']
+      ['git'],
+      ['transcript']
     ]
   }
 };
@@ -116,7 +120,8 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
     version: `📦 v${metrics.version}`,
     email: `📧 ${colors.dim}${metrics.email}${colors.reset}`,
-    plan: `💎 ${metrics.planTier}`
+    plan: `💎 ${metrics.planTier}`,
+    transcript: metrics.transcriptPath ? `📜 tail -f ${metrics.transcriptPath.replace(os.homedir(), '~')}` : ''
   };
 
   // Generalized pre-calculator for stacked blocks
@@ -204,6 +209,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     }
     if (metrics.cacheTokens === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'cache'));
+    }
+    if (!metrics.transcriptPath) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'transcript'));
     }
   }
 

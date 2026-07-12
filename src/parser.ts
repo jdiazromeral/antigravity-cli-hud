@@ -27,6 +27,7 @@ export interface AntigravityPayload {
   cwd?: string;
   artifacts?: any[];
   vcs?: { branch?: string; dirty?: boolean };
+  transcript_path?: string;
 }
 
 import * as fs from 'fs';
@@ -69,6 +70,7 @@ export interface ParsedMetrics {
   looperMissions?: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[];
   looperEpics?: {repo: string, epic: string, total: number, done: number}[];
   executionMode: string;
+  transcriptPath?: string;
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -496,6 +498,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     artifacts: artifactList,
     looperMissions,
     looperEpics,
-    executionMode
+    executionMode,
+    transcriptPath: parsed.transcript_path
   };
 }
