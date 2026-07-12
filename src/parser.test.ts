@@ -1,6 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Readable } from 'stream';
+import * as fs from 'fs';
 import { parseStream, AntigravityPayload } from './parser.js';
+
+vi.mock('os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('os')>();
+  return {
+    ...actual,
+    homedir: () => '/tmp/mock-homedir',
+  };
+});
 
 describe('parseStream', () => {
   it('should parse valid JSON payload and extract metrics', async () => {
@@ -56,7 +65,40 @@ describe('parseStream', () => {
       gitBranches: [],
       artifactCount: 0,
       artifacts: [],
-      conversationId: '123'
+      conversationId: '123',
+      looperMissions: [],
+      looperEpics: [],
+      executionMode: 'request-review'
+    });
+  });
+
+  describe('executionMode parsing', () => {
+    beforeEach(() => {
+      fs.mkdirSync('/tmp/mock-homedir/.gemini/antigravity-cli', { recursive: true });
+    });
+
+    afterEach(() => {
+      fs.rmSync('/tmp/mock-homedir', { recursive: true, force: true });
+    });
+
+    it('should parse executionMode from settings.json', async () => {
+      fs.writeFileSync('/tmp/mock-homedir/.gemini/antigravity-cli/settings.json', JSON.stringify({ mode: 'accept-edits' }));
+      
+      const payload = { agent_state: 'Idle' };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.executionMode).toBe('accept-edits');
+    });
+
+    it('should default to request-review if mode is missing in settings.json', async () => {
+      fs.writeFileSync('/tmp/mock-homedir/.gemini/antigravity-cli/settings.json', JSON.stringify({}));
+      
+      const payload = { agent_state: 'Idle' };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.executionMode).toBe('request-review');
     });
   });
 
