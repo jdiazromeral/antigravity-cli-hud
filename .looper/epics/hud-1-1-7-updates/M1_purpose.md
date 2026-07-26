@@ -2,7 +2,7 @@
 validator: "npm run test"
 max_iterations: 8
 branch: feature/hud-effort-block
-status: IN_PROGRESS
+status: DONE
 deliverable: draft-pr
 worker_model: inherit
 ---
