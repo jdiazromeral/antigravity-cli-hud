@@ -13,7 +13,7 @@ export interface AntigravityPayload {
     "gemini-5h"?: { remaining_fraction: number };
     "3p-weekly"?: { remaining_fraction: number };
   };
-  subagents?: Array<{ name: string; role: string; status: string }>;
+  subagents?: Array<{ name: string; role: string; status: string; depth?: number }>;
   task_count?: number;
   sandbox?: { enabled: boolean };
   model?: { display_name: string };
@@ -42,6 +42,7 @@ export interface SubagentInfo {
   name: string;
   role: string;
   status: string;
+  depth?: number;
 }
 
 export interface ParsedMetrics {
@@ -492,7 +493,12 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     quota5h: q5hObj.percent,
     quota5hResetSeconds: q5hObj.resetSeconds,
     quotaType: isGemini ? 'Gemini' : '3rd-Party',
-    subagents: (parsed.subagents || []).filter((s: any) => s.status !== 'completed'),
+    subagents: (parsed.subagents || []).filter((s: any) => s.status !== 'completed').map((s: any) => ({
+      name: s.name,
+      role: s.role,
+      status: s.status,
+      depth: typeof s.depth === 'number' ? s.depth : 0
+    })),
     taskCount: parsed.task_count || 0,
     sessionName: sessName,
     model: modelName,

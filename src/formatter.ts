@@ -153,7 +153,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     const c = s.status === 'completed' ? colors.green : (s.status === 'error' ? colors.red : colors.yellow);
     let shortRole = s.role;
     if (shortRole.length > 25) shortRole = shortRole.substring(0, 22) + '...';
-    return `${s.name} [${c}${s.status}${colors.reset}] (${shortRole})`;
+    const depth = s.depth || 0;
+    const prefix = depth > 0 ? '  '.repeat(depth) + '↳ ' : '';
+    return `${prefix}${s.name} [${c}${s.status}${colors.reset}] (${shortRole})`;
   });
   const chunkedSubagents = calculateStackedChunks(subStrs, 3);
 
