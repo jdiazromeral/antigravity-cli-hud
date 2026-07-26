@@ -493,7 +493,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     quota5h: q5hObj.percent,
     quota5hResetSeconds: q5hObj.resetSeconds,
     quotaType: isGemini ? 'Gemini' : '3rd-Party',
-    subagents: (parsed.subagents || []).filter((s: any) => s.status !== 'completed').map((s: any) => ({
+    subagents: (parsed.subagents || []).filter((s) => s.status !== 'completed').map((s) => ({
       name: s.name,
       role: s.role,
       status: s.status,
