@@ -19,6 +19,7 @@ When the user invokes this skill:
    List the available blocks they can use:
    - `'state'`: (🟢 IDLE, 🔵 WORKING)
    - `'mode'`: The CLI's active execution mode
+   - `'effort'`: The AI's active effort tier
    - `'model'`: The active AI model
    - `'sandbox'`: Security boundary
    - `'permissions'`: Danger mode flag

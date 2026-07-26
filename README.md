@@ -71,7 +71,8 @@ Here are all the available blocks you can slot into your matrix:
 
 - **`state`**: The core Antigravity Agent state (🟢 IDLE, 🟡 WAITING, 🔵 WORKING).
 - **`mode`**: The active execution mode of the CLI (🟡 request-review, 🟢 accept-edits, 🔵 plan).
-- **`model`**: The underlying AI model currently driving the agent (e.g. Gemini 3.1 Pro).
+- **`effort`**: The effort tier of the model (e.g. 󰾆 High, Low) introduced in v1.1.5.
+- **`model`**: The underlying AI model currently driving the agent (e.g. Gemini 3.1 Pro). If a custom `agent` name is streamed, it natively overrides the state label.
 - **`sandbox`**: The file-system security boundary (🔒 Sandboxed or 🔓 Unsandboxed).
 - **`permissions`**: The Danger Mode indicator. Visually flags if the agent was granted recursive `AGY_SKIP_PERMISSIONS=1` access across the process tree.
 - **`workspace`**: The true repository name. **Smart Detection:** If your CLI is running from a non-git parent folder, the HUD automatically scans `lab/` and `worktrees/` to surface repositories that are "active" (e.g., have uncommitted changes, are on a feature branch, or have active Looper missions). It also natively tracks AI session context via `hud_context.json` to ensure any explicitly targeted directories are always visible!
@@ -83,7 +84,7 @@ Here are all the available blocks you can slot into your matrix:
 - **`cache`**: Context window caching telemetry (`⚡ Cache: 70k`). Displays how many tokens were read from cache, allowing you to instantly visualize your cost savings. Automatically hides if 0.
 - **`5h` / `weekly`**: Rolling quota buckets. Shows percentage used and the countdown timer until the quota bucket resets.
 - **`tasks`**: Active asynchronous background processes (shell commands, cron jobs, active timers, or background scripts) spawned by the CLI.
-- **`subagents`**: Active parallel AI subagents. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
+- **`subagents`**: Active parallel AI subagents. Grandchild subagents (depth > 0) are visually nested in a tree hierarchy using `↳` characters. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
 - **`version`**: The installed version of the Antigravity CLI.
 - **`email`**: The authenticated user's email address.
 - **`plan`**: The active billing tier of the user account.
