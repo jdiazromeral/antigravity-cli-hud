@@ -58,8 +58,8 @@ describe('formatMetrics', () => {
       ...baseMetrics,
       terminalWidth: 120, // Enough for 2 chunks
       subagents: [
-        { name: 'sub1', role: 'Tester', status: 'completed' },
-        { name: 'sub2', role: 'Runner', status: 'working' }
+        { name: 'sub1', role: 'Tester', status: 'completed', depth: 0 },
+        { name: 'sub2', role: 'Runner', status: 'working', depth: 0 }
       ]
     };
     const out = formatMetrics(metricsWithSubs);

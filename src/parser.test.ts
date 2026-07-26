@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { parseStream, AntigravityPayload } from './parser.js';
 
-const mockHome = path.join(os.tmpdir(), `mock-homedir-${Math.random().toString(36).substring(2)}`);
+const mockHome = path.join(os.tmpdir(), `tmp-dir-${Math.random().toString(36).substring(2)}`);
 
 vi.mock('os', async (importOriginal) => {
   const actual = await importOriginal<typeof import('os')>();
