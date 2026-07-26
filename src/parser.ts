@@ -28,6 +28,9 @@ export interface AntigravityPayload {
   artifacts?: any[];
   vcs?: { branch?: string; dirty?: boolean };
   transcript_path?: string;
+  effort?: string;
+  mode?: string;
+  agent?: string;
 }
 
 import * as fs from 'fs';
@@ -71,6 +74,8 @@ export interface ParsedMetrics {
   looperEpics?: {repo: string, epic: string, total: number, done: number}[];
   executionMode: string;
   transcriptPath?: string;
+  effort: string;
+  agentName: string;
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -456,19 +461,25 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
-  let executionMode = 'request-review';
-  try {
-    const settingsFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'settings.json');
-    if (fs.existsSync(settingsFile)) {
-      const settingsContent = fs.readFileSync(settingsFile, 'utf8');
-      const settingsParsed = JSON.parse(settingsContent);
-      if (settingsParsed.mode) {
-        executionMode = settingsParsed.mode;
+  let executionMode = parsed.mode;
+  if (!executionMode) {
+    executionMode = 'request-review';
+    try {
+      const settingsFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'settings.json');
+      if (fs.existsSync(settingsFile)) {
+        const settingsContent = fs.readFileSync(settingsFile, 'utf8');
+        const settingsParsed = JSON.parse(settingsContent);
+        if (settingsParsed.mode) {
+          executionMode = settingsParsed.mode;
+        }
       }
+    } catch (e) {
+      // Ignore errors and default to request-review
     }
-  } catch (e) {
-    // Ignore errors and default to request-review
   }
+
+  const effort = parsed.effort || 'normal';
+  const agentName = parsed.agent || 'Antigravity';
 
   return {
     agentState: (parsed.agent_state || 'UNKNOWN').toUpperCase(),
@@ -499,6 +510,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     looperMissions,
     looperEpics,
     executionMode,
-    transcriptPath: parsed.transcript_path
+    transcriptPath: parsed.transcript_path,
+    effort,
+    agentName
   };
 }

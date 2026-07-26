@@ -29,9 +29,10 @@ describe('formatMetrics', () => {
     gitBranches: [],
     artifactCount: 0,
     artifacts: [],
-    looperMissions: [],
     looperEpics: [],
-    executionMode: 'request-review'
+    executionMode: 'request-review',
+    effort: 'normal',
+    agentName: 'Antigravity'
   };
 
   it('formats correctly with wide terminals', () => {
@@ -114,6 +115,15 @@ describe('formatMetrics', () => {
       delete metrics.transcriptPath;
       const out = formatMetrics(metrics);
       expect(out).not.toContain('📜 tail -f');
+    });
+  });
+
+  describe('effort formatting', () => {
+    it('formats effort with Nerd Font icons and colors', () => {
+      const metrics = { ...baseMetrics, effort: 'high' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('Effort');
+      expect(out).toContain('high');
     });
   });
 });

@@ -31,7 +31,7 @@ export const HUD_CONFIG = {
   // Matrix rows map block IDs to visual layout ordering
   layouts: {
     large: [
-      ['state', 'mode', 'model', 'permissions'],
+      ['state', 'mode', 'effort', 'model', 'permissions'],
       ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
       ['artifacts'],
@@ -40,7 +40,7 @@ export const HUD_CONFIG = {
       ['transcript']
     ],
     medium: [
-      ['state', 'mode', 'model', 'permissions'],
+      ['state', 'mode', 'effort', 'model', 'permissions'],
       ['workspace', 'sandbox'],
       ['ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
@@ -50,7 +50,7 @@ export const HUD_CONFIG = {
       ['transcript']
     ],
     small: [
-      ['state', 'mode', 'model', 'permissions'],
+      ['state', 'mode', 'effort', 'model', 'permissions'],
       ['sandbox'],
       ['workspace', 'ctx', 'cache'],
       ['5h', 'weekly'],
@@ -68,10 +68,11 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
 
   // 1. Calculate Blocks Independently
   const paddedState = metrics.agentState.padEnd(7, ' ');
-  let stateIndicator = `🤖 ${paddedState}`;
-  if (metrics.agentState === 'IDLE') stateIndicator = `${colors.green}🟢 ${paddedState}${colors.reset}`;
-  else if (metrics.agentState === 'WAITING') stateIndicator = `${colors.yellow}🟡 ${paddedState}${colors.reset}`;
-  else stateIndicator = `${colors.cyan}🔵 ${paddedState}${colors.reset}`;
+  const agentLabel = metrics.agentName ? `[${metrics.agentName}] ` : '';
+  let stateIndicator = `🤖 ${agentLabel}${paddedState}`;
+  if (metrics.agentState === 'IDLE') stateIndicator = `${colors.green}🟢 ${agentLabel}${paddedState}${colors.reset}`;
+  else if (metrics.agentState === 'WAITING') stateIndicator = `${colors.yellow}🟡 ${agentLabel}${paddedState}${colors.reset}`;
+  else stateIndicator = `${colors.cyan}🔵 ${agentLabel}${paddedState}${colors.reset}`;
 
   // 3-tier traffic light threshold color logic for percentages
   const getThresholdColor = (percent: number) => {
@@ -104,9 +105,19 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   };
   const modeStr = modeColors[metrics.executionMode] || `${colors.yellow}🟡 request-review${colors.reset}`;
 
+  const effortColors: Record<string, string> = {
+    'low': `${colors.green}󰾆 low${colors.reset}`,
+    'normal': `${colors.yellow}󰾆 normal${colors.reset}`,
+    'high': `${colors.red}󰾆 high${colors.reset}`,
+    'epic': `${colors.red}${colors.bold}󰾆 epic${colors.reset}`
+  };
+  const eff = (metrics.effort || 'normal').toLowerCase();
+  const effortStr = `Effort: ${effortColors[eff] || effortColors['normal']}`;
+
   const blocks: Record<string, string> = {
     state: stateIndicator,
     mode: modeStr,
+    effort: effortStr,
     model: `🤖 ${colors.bold}${metrics.model}${colors.reset}`,
     sandbox: metrics.isSandboxed ? `${colors.gray}🔒 Sandboxed${colors.reset}` : `${colors.yellow}🔓 Unsandboxed${colors.reset}`,
     permissions: metrics.skipPermissions ? `${colors.red}☢️  Danger Mode${colors.reset}` : '',

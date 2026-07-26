@@ -35,7 +35,10 @@ describe('parseStream', () => {
       email: 'user@example.com',
       plan_tier: 'Pro',
       terminal_width: 105,
-      transcript_path: '/path/to/my/transcript.txt'
+      transcript_path: '/path/to/my/transcript.txt',
+      effort: 'high',
+      mode: 'plan',
+      agent: 'MyCustomAgent'
     };
 
     const stream = Readable.from([JSON.stringify(payload)]);
@@ -69,8 +72,10 @@ describe('parseStream', () => {
       conversationId: '123',
       looperMissions: [],
       looperEpics: [],
-      executionMode: 'request-review',
-      transcriptPath: '/path/to/my/transcript.txt'
+      executionMode: 'plan',
+      transcriptPath: '/path/to/my/transcript.txt',
+      effort: 'high',
+      agentName: 'MyCustomAgent'
     });
   });
 
@@ -101,6 +106,15 @@ describe('parseStream', () => {
       const result = await parseStream(stream);
 
       expect(result.executionMode).toBe('request-review');
+    });
+    it('should use mode from payload if present, bypassing settings.json', async () => {
+      fs.writeFileSync('/tmp/mock-homedir/.gemini/antigravity-cli/settings.json', JSON.stringify({ mode: 'accept-edits' }));
+      
+      const payload = { agent_state: 'Idle', mode: 'plan' };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.executionMode).toBe('plan');
     });
   });
 
@@ -144,6 +158,9 @@ describe('parseStream', () => {
     expect(result.gitBranches).toEqual([]);
     expect(result.artifactCount).toBe(0);
     expect(result.exceeds200k).toBe(false);
+    expect(result.effort).toBe('normal');
+    expect(result.agentName).toBe('Antigravity');
+    expect(result.executionMode).toBe('request-review');
   });
 
   it('should correctly parse exceeds_200k_tokens', async () => {
