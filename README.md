@@ -63,6 +63,11 @@ To run the test suite:
 npm run test
 ```
 
+To generate a fully-populated mock HUD UI in your terminal (useful for taking screenshots):
+```bash
+npm run demo
+```
+
 ## Understanding Telemetry Blocks
 
 The HUD dynamically parses the CLI's internal JSON telemetry stream. It receives continuous heartbeat pulses and instant triggers on any state change, meaning every metric updates with zero latency. 
