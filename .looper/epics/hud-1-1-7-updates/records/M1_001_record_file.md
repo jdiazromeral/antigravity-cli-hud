@@ -4,3 +4,12 @@
 
 ## Preflight
 - Validator: `npm run test` → PASS
+
+## Iteration 1
+- Worker did: Updated `AntigravityPayload` to explicitly type `effort`, `mode`, and `agent`. Modified parser to extract them directly from the stream, overriding disk reads for execution mode, and integrated an `effort` matrix block with traffic-light styling and a Nerd Font icon (`󰾆`) into `formatter.ts`. Added full TDD coverage in `vitest`.
+- Worker learned: The `executionMode` disk fallback is still necessary because earlier CLI versions (or specific states) might omit it from the payload; the payload takes precedence but doesn't strictly replace the file read in all cases yet.
+- Commits: 314e890
+- Verdict: DONE
+- Validator: PASS
+- Reviewer: REWORK(Method rule (TDD): Commit trail contains a single commit (314e890), lacking evidence of a failing test written before implementation. | Method rule (Mock paths): parser.test.ts hardcodes '/tmp/mock-homedir/.gemini/...' instead of dynamically using os.homedir().)
+- Steering for next: You claimed DONE, but the reviewer found two Method rule violations: 1) You bundled your tests and implementation into a single commit instead of committing the failing tests first per TDD. 2) You hardcoded '/tmp/mock-homedir...' instead of dynamically interpolating `os.homedir()`. Please fix the mock paths in `parser.test.ts` using `os.homedir()` (e.g., via `path.join`). Since the feature code is already written, just fix the mock paths and commit the fix to satisfy the second rule.
