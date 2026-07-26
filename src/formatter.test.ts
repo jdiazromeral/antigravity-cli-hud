@@ -68,6 +68,22 @@ describe('formatMetrics', () => {
     expect(out).toContain('Subagents:');
   });
 
+  it('formats nested subagents with indentation based on depth', () => {
+    const metricsWithSubs = {
+      ...baseMetrics,
+      terminalWidth: 120,
+      subagents: [
+        { name: 'parent', role: 'Manager', status: 'working', depth: 0 },
+        { name: 'child', role: 'Worker', status: 'working', depth: 1 },
+        { name: 'grandchild', role: 'Helper', status: 'working', depth: 2 }
+      ]
+    };
+    const out = formatMetrics(metricsWithSubs);
+    expect(out).toContain('parent');
+    expect(out).toContain('  ↳ child');
+    expect(out).toContain('    ↳ grandchild');
+  });
+
   it('turns ctx block red and adds degradation warning if exceeds200k is true', () => {
     const warningMetrics = { ...baseMetrics, exceeds200k: true };
     const out = formatMetrics(warningMetrics);

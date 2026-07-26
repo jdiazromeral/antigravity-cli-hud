@@ -5,11 +5,13 @@ import * as path from 'path';
 import * as os from 'os';
 import { parseStream, AntigravityPayload } from './parser.js';
 
+const mockHome = path.join(os.tmpdir(), `mock-homedir-${Math.random().toString(36).substring(2)}`);
+
 vi.mock('os', async (importOriginal) => {
   const actual = await importOriginal<typeof import('os')>();
   return {
     ...actual,
-    homedir: () => '/tmp/mock-homedir',
+    homedir: () => mockHome,
   };
 });
 
@@ -79,6 +81,22 @@ describe('parseStream', () => {
       effort: 'high',
       agentName: 'MyCustomAgent'
     });
+  });
+
+  it('should parse subagents depth correctly', async () => {
+    const payload = {
+      agent_state: 'Working',
+      subagents: [
+        { name: 'parent', role: 'Manager', status: 'working', depth: 0 },
+        { name: 'child', role: 'Worker', status: 'working', depth: 1 }
+      ]
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.subagents).toEqual([
+      { name: 'parent', role: 'Manager', status: 'working', depth: 0 },
+      { name: 'child', role: 'Worker', status: 'working', depth: 1 }
+    ]);
   });
 
   describe('executionMode parsing', () => {
