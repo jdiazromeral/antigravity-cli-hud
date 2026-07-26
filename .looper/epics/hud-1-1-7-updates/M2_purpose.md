@@ -2,7 +2,7 @@
 validator: "npm run test"
 max_iterations: 5
 branch: feature/hud-nested-agents
-status: IN_PROGRESS
+status: DONE
 deliverable: draft-pr
 worker_model: inherit
 ---
