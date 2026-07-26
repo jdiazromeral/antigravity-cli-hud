@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Readable } from 'stream';
 import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { parseStream, AntigravityPayload } from './parser.js';
 
 vi.mock('os', async (importOriginal) => {
@@ -80,16 +82,19 @@ describe('parseStream', () => {
   });
 
   describe('executionMode parsing', () => {
+    const settingsDir = path.join(os.homedir(), '.gemini', 'antigravity-cli');
+    const settingsPath = path.join(settingsDir, 'settings.json');
+
     beforeEach(() => {
-      fs.mkdirSync('/tmp/mock-homedir/.gemini/antigravity-cli', { recursive: true });
+      fs.mkdirSync(settingsDir, { recursive: true });
     });
 
     afterEach(() => {
-      fs.rmSync('/tmp/mock-homedir', { recursive: true, force: true });
+      fs.rmSync(os.homedir(), { recursive: true, force: true });
     });
 
     it('should parse executionMode from settings.json', async () => {
-      fs.writeFileSync('/tmp/mock-homedir/.gemini/antigravity-cli/settings.json', JSON.stringify({ mode: 'accept-edits' }));
+      fs.writeFileSync(settingsPath, JSON.stringify({ mode: 'accept-edits' }));
       
       const payload = { agent_state: 'Idle' };
       const stream = Readable.from([JSON.stringify(payload)]);
@@ -99,7 +104,7 @@ describe('parseStream', () => {
     });
 
     it('should default to request-review if mode is missing in settings.json', async () => {
-      fs.writeFileSync('/tmp/mock-homedir/.gemini/antigravity-cli/settings.json', JSON.stringify({}));
+      fs.writeFileSync(settingsPath, JSON.stringify({}));
       
       const payload = { agent_state: 'Idle' };
       const stream = Readable.from([JSON.stringify(payload)]);
@@ -108,7 +113,7 @@ describe('parseStream', () => {
       expect(result.executionMode).toBe('request-review');
     });
     it('should use mode from payload if present, bypassing settings.json', async () => {
-      fs.writeFileSync('/tmp/mock-homedir/.gemini/antigravity-cli/settings.json', JSON.stringify({ mode: 'accept-edits' }));
+      fs.writeFileSync(settingsPath, JSON.stringify({ mode: 'accept-edits' }));
       
       const payload = { agent_state: 'Idle', mode: 'plan' };
       const stream = Readable.from([JSON.stringify(payload)]);
