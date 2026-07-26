@@ -31,7 +31,7 @@ export const HUD_CONFIG = {
   // Matrix rows map block IDs to visual layout ordering
   layouts: {
     large: [
-      ['state', 'mode', 'effort', 'model', 'permissions'],
+      ['state', 'mode', 'model', 'effort', 'permissions'],
       ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
       ['artifacts'],
@@ -40,7 +40,7 @@ export const HUD_CONFIG = {
       ['transcript']
     ],
     medium: [
-      ['state', 'mode', 'effort', 'model', 'permissions'],
+      ['state', 'mode', 'model', 'effort', 'permissions'],
       ['workspace', 'sandbox'],
       ['ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents'],
@@ -50,7 +50,7 @@ export const HUD_CONFIG = {
       ['transcript']
     ],
     small: [
-      ['state', 'mode', 'effort', 'model', 'permissions'],
+      ['state', 'mode', 'model', 'effort', 'permissions'],
       ['sandbox'],
       ['workspace', 'ctx', 'cache'],
       ['5h', 'weekly'],
