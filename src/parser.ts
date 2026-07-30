@@ -178,71 +178,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           } catch(err) {}
        }
     }
-    
-    if (activeWorkspaceRepos.length === 0) {
-       const searchRoots = [
-          path.join(parsed.cwd, 'lab'),
-          path.join(parsed.cwd, 'worktrees')
-       ];
-       for (const root of searchRoots) {
-          if (fs.existsSync(root)) {
-             try {
-               const items = fs.readdirSync(root, { withFileTypes: true });
-               for (const item of items) {
-                  if (item.isDirectory() && !item.name.startsWith('.')) {
-                     const p = path.join(root, item.name);
-                     if (fs.existsSync(path.join(p, '.git')) || fs.existsSync(path.join(p, '.looper'))) {
-                        let isActive = false;
-                        try {
-                           const branch = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
-                           if (branch !== 'main' && branch !== 'master' && branch !== 'HEAD') {
-                              isActive = true;
-                           } else {
-                              const status = cp.execSync('git status --porcelain', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
-                              if (status.length > 0) isActive = true;
-                           }
-                        } catch(e) {}
-                        
-                        if (!isActive && fs.existsSync(path.join(p, '.looper', 'epics'))) {
-                           try {
-                              const epics = fs.readdirSync(path.join(p, '.looper', 'epics'), { withFileTypes: true });
-                              for (const ep of epics) {
-                                 if (ep.isDirectory() && !ep.name.startsWith('.')) {
-                                    const epicPath = path.join(p, '.looper', 'epics', ep.name);
-                                    const files = fs.readdirSync(epicPath);
-                                    for (const f of files) {
-                                       if (f.endsWith('_purpose.md')) {
-                                          const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
-                                          const statusMatch = content.match(/^status:\s*([A-Z_]+)/m);
-                                          if (statusMatch && statusMatch[1] !== 'DONE') {
-                                             isActive = true;
-                                             break;
-                                          }
-                                       } else if (f.endsWith('.json')) {
-                                          try {
-                                             const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
-                                             const state = JSON.parse(content);
-                                             if (state.status && state.status !== 'DONE') {
-                                                isActive = true;
-                                                break;
-                                             }
-                                          } catch(e) {}
-                                       }
-                                    }
-                                 }
-                                 if (isActive) break;
-                              }
-                           } catch(e) {}
-                        }
-                        
-                        if (isActive) activeWorkspaceRepos.push(p);
-                     }
-                  }
-               }
-             } catch(err) {}
-          }
-       }
-    }
+
     try {
       if (fs.existsSync(gitCacheFile)) {
         const cacheRaw = fs.readFileSync(gitCacheFile, 'utf8');
