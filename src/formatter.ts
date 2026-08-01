@@ -306,15 +306,15 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     }
   }
 
-  // 4. Bracket Injector
+  // 4. Accent Bar & Vertical Guide Injector
+  const accentColor = metrics.agentState === 'IDLE' ? colors.green : (metrics.agentState === 'WAITING' ? colors.yellow : colors.cyan);
+
   for (let i = 0; i < finalLines.length; i++) {
-    const isFirst = i === 0;
-    const isLast = i === finalLines.length - 1;
-    let bracket = '├─';
-    if (isFirst) bracket = '┌─';
-    if (isLast) bracket = '└─';
-    
-    finalLines[i] = `${bracket} ${finalLines[i]}`;
+    if (i === 0) {
+      finalLines[0] = `${accentColor}▌${colors.reset} ${finalLines[0]}`;
+    } else {
+      finalLines[i] = `${colors.dim}│${colors.reset} ${finalLines[i]}`;
+    }
   }
 
   return finalLines.join('\n');
