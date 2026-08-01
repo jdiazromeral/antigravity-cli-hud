@@ -37,7 +37,8 @@ export const HUD_CONFIG = {
   layouts: {
     large: [
       ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
-      ['workspace', 'sandbox', 'steps', 'ctx', 'cache', '5h', 'weekly'],
+      ['workspace', 'sandbox', 'ctx', 'cache'],
+      ['steps', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
@@ -46,8 +47,8 @@ export const HUD_CONFIG = {
     ],
     medium: [
       ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
-      ['workspace', 'sandbox'],
-      ['steps', 'ctx', 'cache', '5h', 'weekly'],
+      ['workspace', 'sandbox', 'ctx', 'cache'],
+      ['steps', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
@@ -57,8 +58,8 @@ export const HUD_CONFIG = {
     small: [
       ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox'],
-      ['steps', 'ctx'],
-      ['cache', '5h', 'weekly'],
+      ['ctx', 'cache'],
+      ['steps', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
