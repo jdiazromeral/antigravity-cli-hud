@@ -86,9 +86,6 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     if (percent >= 60) return colors.yellow;
     return colors.green;
   };
-
-  const ctxColor = metrics.exceeds200k ? colors.red : getThresholdColor(metrics.contextUsage);
-  const exceedWarning = metrics.exceeds200k ? ` ${colors.red}${colors.bold}🚨 >200k! Agent may start degrading.${colors.reset}` : '';
   
   const formatTokenCount = (tokens: number): string => {
     if (!tokens || tokens <= 0) return '0';
@@ -123,7 +120,6 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     return `${color}${'▰'.repeat(filledCount)}${colors.reset}${colors.gray}${'▱'.repeat(emptyCount)}${colors.reset}`;
   };
 
-  const ctxBar = renderMicroBar(metrics.contextUsage, ctxColor, 5);
   const q5Bar = renderMicroBar(metrics.quota5h, q5Color, 5);
   const qWBar = renderMicroBar(metrics.quotaWeekly, qWColor, 5);
 
@@ -164,7 +160,21 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     ? envMaxTokens
     : (metrics.maxContextTokens > 0 ? metrics.maxContextTokens : (configMaxTokens || metrics.contextWindowSize || 1048576));
 
-  const usedTokensStr = formatTokenCount(metrics.totalInputTokens);
+  const envSoftTokens = process.env.AGY_SOFT_CONTEXT_TOKENS ? parseInt(process.env.AGY_SOFT_CONTEXT_TOKENS, 10) : undefined;
+  const softLimitTokens = (envSoftTokens && !isNaN(envSoftTokens)) ? envSoftTokens : 200_000;
+
+  let usedTokens = metrics.totalInputTokens;
+  if (!usedTokens && metrics.contextUsage > 0 && limitTokens > 0) {
+    usedTokens = Math.round((metrics.contextUsage / 100) * limitTokens);
+  }
+
+  const softPct = Math.round((usedTokens / softLimitTokens) * 100);
+  const ctxColor = (metrics.exceeds200k || softPct >= 85) ? colors.red : (softPct >= 60 ? colors.yellow : colors.green);
+  const exceedWarning = metrics.exceeds200k ? ` ${colors.red}${colors.bold}🚨 >200k! Agent may start degrading.${colors.reset}` : '';
+  const ctxBar = renderMicroBar(softPct, ctxColor, 5);
+
+  const usedTokensStr = formatTokenCount(usedTokens);
+  const softLimitTokensStr = formatTokenCount(softLimitTokens);
   const limitTokensStr = formatTokenCount(limitTokens);
 
   const blocks: Record<string, string> = {
@@ -179,7 +189,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     steps: stepStr,
     git: metrics.gitBranch ? `🌱 ${colors.cyan}${metrics.gitBranch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
-    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${metrics.contextUsage}%${colors.reset} (${usedTokensStr}/${limitTokensStr})${exceedWarning}`,
+    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${softPct}%${colors.reset} (${usedTokensStr}/${softLimitTokensStr} soft • ${limitTokensStr} max)${exceedWarning}`,
     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,

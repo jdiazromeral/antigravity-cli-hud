@@ -110,6 +110,27 @@ describe('formatMetrics', () => {
     expect(out).toContain('\x1b[31m'); // Red color
   });
 
+  it('formats ctx with soft limit and max physical limit in fraction', () => {
+    process.env.AGY_MAX_CONTEXT_TOKENS = '1048576';
+    const ctxMetrics = { ...baseMetrics, totalInputTokens: 100000 };
+    const out = formatMetrics(ctxMetrics);
+    // 100k out of 200k soft limit = 50%
+    expect(out).toContain('50%');
+    expect(out).toContain('100k/200k soft • 1M max');
+    delete process.env.AGY_MAX_CONTEXT_TOKENS;
+  });
+
+  it('supports custom soft limit via AGY_SOFT_CONTEXT_TOKENS env var', () => {
+    process.env.AGY_MAX_CONTEXT_TOKENS = '1048576';
+    process.env.AGY_SOFT_CONTEXT_TOKENS = '100000';
+    const ctxMetrics = { ...baseMetrics, totalInputTokens: 50000 };
+    const out = formatMetrics(ctxMetrics);
+    expect(out).toContain('50%');
+    expect(out).toContain('50k/100k soft • 1M max');
+    delete process.env.AGY_MAX_CONTEXT_TOKENS;
+    delete process.env.AGY_SOFT_CONTEXT_TOKENS;
+  });
+
 
   describe('executionMode formatting', () => {
     it('formats request-review mode with yellow circle', () => {
