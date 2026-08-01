@@ -24,8 +24,7 @@ export const HUD_CONFIG = {
   autoHideEmptyBlocks: true,
   // Budget ceiling defaults
   budget: {
-    maxSteps: 20,
-    maxContextTokens: 75000
+    maxSteps: 20
   },
   // Breakpoints in column widths
   breakpoints: {

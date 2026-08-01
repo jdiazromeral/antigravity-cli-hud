@@ -36,7 +36,7 @@ describe('formatMetrics', () => {
     activeSkills: [],
     stepCount: 0,
     maxSteps: 20,
-    maxContextTokens: 75000,
+    maxContextTokens: 0,
     contextWindowSize: 1048576
   };
 
