@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.9] - 2026-08-01
 
 ### Added
+- **3-Tier Hybrid Ceiling Resolution Order:** Implemented ceiling resolution priority for context window and step budgets: Environment Variables (`AGY_MAX_CONTEXT_TOKENS`, `AGY_MAX_STEPS`) > `/hud-config` settings (`HUD_CONFIG.budget`) > Physical Telemetry (`context_window_size`).
 - **Session Step Budget Block (`steps`):** Visual 5-character step progress bar (`👟 Steps: ▰▰▰▰▱ 14/20`) tracking session step ceilings.
 - **Bundled Token Evaluation Hook:** Included `scripts/token_eval_hook.py` executable script for session token ledger tracking and 20-step / 75k token budget ceiling enforcement.
 - **Multi-Skill Telemetry Block (`skill`):** Real-time tracking of single (`🧠 Skill: looper`) or multiple (`🧠 Skills: looper & tdd & mapper`) active skills aggregated across main agent tool usage, subagent roles, and looper missions. Auto-culls when no skills are active.
