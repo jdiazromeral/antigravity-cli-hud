@@ -462,11 +462,19 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   }
   const activeSkills = Array.from(skillsSet);
   let stepCount = parsed.step_count ?? parsed.step_index ?? 0;
-  if (parsed.transcript_path && fs.existsSync(parsed.transcript_path) && stepCount === 0) {
+  let resolvedTranscriptPath = parsed.transcript_path;
+  if (!resolvedTranscriptPath && conversationId) {
+    const candidate = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, '.system_generated', 'logs', 'transcript.jsonl');
+    if (fs.existsSync(candidate)) {
+      resolvedTranscriptPath = candidate;
+    }
+  }
+
+  if (resolvedTranscriptPath && fs.existsSync(resolvedTranscriptPath) && stepCount === 0) {
     try {
-      const stats = fs.statSync(parsed.transcript_path);
+      const stats = fs.statSync(resolvedTranscriptPath);
       if (stats.size > 0) {
-        const buffer = fs.readFileSync(parsed.transcript_path);
+        const buffer = fs.readFileSync(resolvedTranscriptPath);
         let lines = 0;
         for (let i = 0; i < buffer.length; i++) {
           if (buffer[i] === 10) lines++;
@@ -526,7 +534,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     maxSteps,
     maxContextTokens,
     executionMode,
-    transcriptPath: parsed.transcript_path,
+    transcriptPath: resolvedTranscriptPath,
     effort,
     agentName
   };
