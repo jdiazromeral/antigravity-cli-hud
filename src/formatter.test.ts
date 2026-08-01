@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { formatMetrics } from './formatter';
 import { ParsedMetrics } from './parser';
+import * as os from 'os';
 
 describe('formatMetrics', () => {
   const baseMetrics: ParsedMetrics = {
@@ -23,8 +24,35 @@ describe('formatMetrics', () => {
     version: '1.0.8',
     email: 'test@example.com',
     planTier: 'Pro',
-    terminalWidth: 184
+    terminalWidth: 184,
+    skipPermissions: false,
+    gitBranches: [],
+    artifactCount: 0,
+    artifacts: [],
+    looperEpics: [],
+    executionMode: 'request-review',
+    effort: 'normal',
+    agentName: 'Antigravity',
+    activeSkills: [],
+    stepCount: 0,
+    maxSteps: 20,
+    maxContextTokens: 75000,
+    contextWindowSize: 1048576
   };
+
+  it('formats single and multiple active skills correctly', () => {
+    const singleSkillMetrics = { ...baseMetrics, activeSkills: ['looper'] };
+    const outSingle = formatMetrics(singleSkillMetrics);
+    expect(outSingle).toContain('🧠 Skill:');
+    expect(outSingle).toContain('looper');
+
+    const multiSkillMetrics = { ...baseMetrics, activeSkills: ['looper', 'tdd', 'mapper'] };
+    const outMulti = formatMetrics(multiSkillMetrics);
+    expect(outMulti).toContain('🧠 Skills:');
+    expect(outMulti).toContain('looper');
+    expect(outMulti).toContain('tdd');
+    expect(outMulti).toContain('mapper');
+  });
 
   it('formats correctly with wide terminals', () => {
     const out = formatMetrics(baseMetrics);
@@ -49,13 +77,88 @@ describe('formatMetrics', () => {
       ...baseMetrics,
       terminalWidth: 120, // Enough for 2 chunks
       subagents: [
-        { name: 'sub1', role: 'Tester', status: 'completed' },
-        { name: 'sub2', role: 'Runner', status: 'working' }
+        { name: 'sub1', role: 'Tester', status: 'completed', depth: 0 },
+        { name: 'sub2', role: 'Runner', status: 'working', depth: 0 }
       ]
     };
     const out = formatMetrics(metricsWithSubs);
     expect(out).toContain('sub1');
     expect(out).toContain('sub2');
     expect(out).toContain('Subagents:');
+  });
+
+  it('formats nested subagents with indentation based on depth', () => {
+    const metricsWithSubs = {
+      ...baseMetrics,
+      terminalWidth: 120,
+      subagents: [
+        { name: 'parent', role: 'Manager', status: 'working', depth: 0 },
+        { name: 'child', role: 'Worker', status: 'working', depth: 1 },
+        { name: 'grandchild', role: 'Helper', status: 'working', depth: 2 }
+      ]
+    };
+    const out = formatMetrics(metricsWithSubs);
+    expect(out).toContain('parent');
+    expect(out).toContain('  ↳ child');
+    expect(out).toContain('    ↳ grandchild');
+  });
+
+  it('turns ctx block red and adds degradation warning if exceeds200k is true', () => {
+    const warningMetrics = { ...baseMetrics, exceeds200k: true };
+    const out = formatMetrics(warningMetrics);
+    expect(out).toContain('Agent may start degrading');
+    expect(out).toContain('\x1b[31m'); // Red color
+  });
+
+
+  describe('executionMode formatting', () => {
+    it('formats request-review mode with yellow circle', () => {
+      const metrics = { ...baseMetrics, executionMode: 'request-review' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🟡 request-review');
+    });
+
+    it('formats accept-edits mode with green circle', () => {
+      const metrics = { ...baseMetrics, executionMode: 'accept-edits' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🟢 accept-edits');
+    });
+
+    it('formats plan mode with blue circle', () => {
+      const metrics = { ...baseMetrics, executionMode: 'plan' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🔵 plan');
+    });
+
+    it('handles missing executionMode safely', () => {
+      const metrics = { ...baseMetrics } as any;
+      delete metrics.executionMode;
+      expect(() => formatMetrics(metrics)).not.toThrow();
+    });
+  });
+
+  
+  describe('transcript formatting', () => {
+    it('formats transcript path with tail -f hint when present', () => {
+      const metrics = { ...baseMetrics, transcriptPath: `${os.homedir()}/.gemini/antigravity-cli/transcript_123.txt` };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('📜 tail -f ~/.gemini/antigravity-cli/transcript_123.txt');
+    });
+
+    it('does not display transcript block when missing', () => {
+      const metrics = { ...baseMetrics };
+      delete metrics.transcriptPath;
+      const out = formatMetrics(metrics);
+      expect(out).not.toContain('📜 tail -f');
+    });
+  });
+
+  describe('effort formatting', () => {
+    it('formats effort with Nerd Font icons and colors', () => {
+      const metrics = { ...baseMetrics, effort: 'high' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('Effort');
+      expect(out).toContain('high');
+    });
   });
 });

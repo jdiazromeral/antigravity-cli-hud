@@ -1,4 +1,5 @@
 import { ParsedMetrics } from './parser.js';
+import * as os from 'os';
 
 const colors = {
   reset: '\x1b[0m',
@@ -15,12 +16,17 @@ const colors = {
 // ============================================================================
 // HUD LAYOUT CONFIGURATION
 // You can dynamically re-arrange the terminal layout here!
-// Available blocks: 'state', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents'
+// Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'tool', 'transcript'
 // Note: To completely disable the Looper integration, simply remove 'looper' from the layout arrays below.
 // ============================================================================
 export const HUD_CONFIG = {
   // Whether to dynamically hide 'tasks' and 'subagents' blocks from the UI when their count is 0
   autoHideEmptyBlocks: true,
+  // Budget ceiling defaults
+  budget: {
+    maxSteps: 20,
+    maxContextTokens: 75000
+  },
   // Breakpoints in column widths
   breakpoints: {
     large: 135,
@@ -30,31 +36,35 @@ export const HUD_CONFIG = {
   // Matrix rows map block IDs to visual layout ordering
   layouts: {
     large: [
-      ['state', 'model', 'permissions'],
-      ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
-      ['tasks', 'subagents'],
+      ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
+      ['workspace', 'sandbox', 'cache', 'ctx'],
+      ['steps', '5h', 'weekly'],
+      ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
-      ['git']
+      ['git'],
+      ['transcript']
     ],
     medium: [
-      ['state', 'model', 'permissions'],
-      ['workspace', 'sandbox'],
-      ['ctx', 'cache', '5h', 'weekly'],
-      ['tasks', 'subagents'],
+      ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
+      ['workspace', 'sandbox', 'cache', 'ctx'],
+      ['steps', '5h', 'weekly'],
+      ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
-      ['git']
+      ['git'],
+      ['transcript']
     ],
     small: [
-      ['state', 'model', 'permissions'],
-      ['sandbox'],
-      ['workspace', 'ctx', 'cache'],
-      ['5h', 'weekly'],
-      ['tasks', 'subagents'],
+      ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
+      ['workspace', 'sandbox'],
+      ['cache', 'ctx'],
+      ['steps', '5h', 'weekly'],
+      ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
-      ['git']
+      ['git'],
+      ['transcript']
     ]
   }
 };
@@ -64,10 +74,11 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
 
   // 1. Calculate Blocks Independently
   const paddedState = metrics.agentState.padEnd(7, ' ');
-  let stateIndicator = `🤖 ${paddedState}`;
-  if (metrics.agentState === 'IDLE') stateIndicator = `${colors.green}🟢 ${paddedState}${colors.reset}`;
-  else if (metrics.agentState === 'WAITING') stateIndicator = `${colors.yellow}🟡 ${paddedState}${colors.reset}`;
-  else stateIndicator = `${colors.cyan}🔵 ${paddedState}${colors.reset}`;
+  const agentLabel = metrics.agentName ? `[${metrics.agentName}] ` : '';
+  let stateIndicator = `🤖 ${agentLabel}${paddedState}`;
+  if (metrics.agentState === 'IDLE') stateIndicator = `${colors.green}🟢 ${agentLabel}${paddedState}${colors.reset}`;
+  else if (metrics.agentState === 'WAITING') stateIndicator = `${colors.yellow}🟡 ${agentLabel}${paddedState}${colors.reset}`;
+  else stateIndicator = `${colors.cyan}🔵 ${agentLabel}${paddedState}${colors.reset}`;
 
   // 3-tier traffic light threshold color logic for percentages
   const getThresholdColor = (percent: number) => {
@@ -77,8 +88,20 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   };
 
   const ctxColor = metrics.exceeds200k ? colors.red : getThresholdColor(metrics.contextUsage);
-  const exceedWarning = metrics.exceeds200k ? ` ${colors.red}${colors.bold}🚨 >200k!${colors.reset}` : '';
+  const exceedWarning = metrics.exceeds200k ? ` ${colors.red}${colors.bold}🚨 >200k! Agent may start degrading.${colors.reset}` : '';
   
+  const formatTokenCount = (tokens: number): string => {
+    if (!tokens || tokens <= 0) return '0';
+    if (tokens >= 1_000_000) {
+      const val = (tokens / 1_000_000).toFixed(1).replace('.0', '');
+      return `${val}M`;
+    }
+    if (tokens >= 1_000) {
+      return `${Math.round(tokens / 1000)}k`;
+    }
+    return `${tokens}`;
+  };
+
   // Format quota values
   const formatTime = (sec: number) => {
     if (sec <= 0) return '00:00';
@@ -93,22 +116,79 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const q5Color = getThresholdColor(metrics.quota5h);
   const taskColor = metrics.taskCount > 0 ? colors.yellow : colors.gray;
 
+  const renderMicroBar = (percent: number, color: string, width: number = 5) => {
+    const clamped = Math.max(0, Math.min(100, percent));
+    const filledCount = Math.round((clamped / 100) * width);
+    const emptyCount = width - filledCount;
+    return `${color}${'▰'.repeat(filledCount)}${colors.reset}${colors.gray}${'▱'.repeat(emptyCount)}${colors.reset}`;
+  };
+
+  const ctxBar = renderMicroBar(metrics.contextUsage, ctxColor, 5);
+  const q5Bar = renderMicroBar(metrics.quota5h, q5Color, 5);
+  const qWBar = renderMicroBar(metrics.quotaWeekly, qWColor, 5);
+
+  const modeColors: Record<string, string> = {
+    'request-review': `${colors.yellow}🟡 request-review${colors.reset}`,
+    'accept-edits': `${colors.green}🟢 accept-edits${colors.reset}`,
+    'plan': `${colors.blue}🔵 plan${colors.reset}`
+  };
+  const modeStr = modeColors[metrics.executionMode] || `${colors.yellow}🟡 request-review${colors.reset}`;
+
+  const effortColors: Record<string, string> = {
+    'low': `${colors.green}󰾆 low${colors.reset}`,
+    'normal': `${colors.yellow}󰾆 normal${colors.reset}`,
+    'high': `${colors.red}󰾆 high${colors.reset}`,
+    'epic': `${colors.red}${colors.bold}󰾆 epic${colors.reset}`
+  };
+  const eff = (metrics.effort || 'normal').toLowerCase();
+  const effortStr = `Effort: ${effortColors[eff] || effortColors['normal']}`;
+
+  let skillBlockStr = '';
+  if (metrics.activeSkills && metrics.activeSkills.length > 0) {
+    const label = metrics.activeSkills.length > 1 ? '🧠 Skills:' : '🧠 Skill:';
+    const names = metrics.activeSkills.map(s => `${colors.cyan}${s}${colors.reset}`).join(' & ');
+    skillBlockStr = `${label} ${names}`;
+  }
+
+  const envMaxSteps = process.env.AGY_MAX_STEPS ? parseInt(process.env.AGY_MAX_STEPS, 10) : undefined;
+  const maxSteps = (envMaxSteps && !isNaN(envMaxSteps)) ? envMaxSteps : (metrics.maxSteps || HUD_CONFIG.budget?.maxSteps || 20);
+  const stepCount = metrics.stepCount || 0;
+  const stepPct = Math.round((stepCount / maxSteps) * 100);
+  const stepColor = getThresholdColor(stepPct);
+  const stepBar = renderMicroBar(stepPct, stepColor, 5);
+  const stepStr = `👟 Steps: ${stepBar} ${stepColor}${stepCount}/${maxSteps}${colors.reset}`;
+
+  const envMaxTokens = process.env.AGY_MAX_CONTEXT_TOKENS ? parseInt(process.env.AGY_MAX_CONTEXT_TOKENS, 10) : undefined;
+  const configMaxTokens = HUD_CONFIG.budget?.maxContextTokens;
+  const limitTokens = (envMaxTokens && !isNaN(envMaxTokens))
+    ? envMaxTokens
+    : (metrics.maxContextTokens > 0 ? metrics.maxContextTokens : (configMaxTokens || metrics.contextWindowSize || 1048576));
+
+  const usedTokensStr = formatTokenCount(metrics.totalInputTokens);
+  const limitTokensStr = formatTokenCount(limitTokens);
+
   const blocks: Record<string, string> = {
     state: stateIndicator,
+    mode: modeStr,
+    effort: effortStr,
+    skill: skillBlockStr,
     model: `🤖 ${colors.bold}${metrics.model}${colors.reset}`,
     sandbox: metrics.isSandboxed ? `${colors.gray}🔒 Sandboxed${colors.reset}` : `${colors.yellow}🔓 Unsandboxed${colors.reset}`,
-    permissions: metrics.skipPermissions ? `${colors.red}☢️  Danger Mode${colors.reset}` : '',
+    permissions: metrics.skipPermissions ? `${colors.red}☢️ Danger Mode${colors.reset}` : '',
     workspace: `📂 ${colors.blue}${metrics.workspace}${colors.reset}`,
+    steps: stepStr,
     git: metrics.gitBranch ? `🌱 ${colors.cyan}${metrics.gitBranch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
-    ctx: `🎧 Ctx: ${ctxColor}${metrics.contextUsage}%${colors.reset} (${Math.round(metrics.totalInputTokens/1000)}k)${exceedWarning}`,
-    cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${Math.round(metrics.cacheTokens/1000)}k${colors.reset}` : '',
-    '5h': `🕒 5h: ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
-    weekly: `🕒 Weekly: ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
+    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${metrics.contextUsage}%${colors.reset} (${usedTokensStr}/${limitTokensStr})${exceedWarning}`,
+    cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
+    '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
+    weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
+    tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
     version: `📦 v${metrics.version}`,
     email: `📧 ${colors.dim}${metrics.email}${colors.reset}`,
-    plan: `💎 ${metrics.planTier}`
+    plan: `💎 ${metrics.planTier}`,
+    transcript: metrics.transcriptPath ? `📜 tail -f ${metrics.transcriptPath.replace(os.homedir(), '~')}` : ''
   };
 
   // Generalized pre-calculator for stacked blocks
@@ -129,7 +209,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     const c = s.status === 'completed' ? colors.green : (s.status === 'error' ? colors.red : colors.yellow);
     let shortRole = s.role;
     if (shortRole.length > 25) shortRole = shortRole.substring(0, 22) + '...';
-    return `${s.name} [${c}${s.status}${colors.reset}] (${shortRole})`;
+    const depth = s.depth || 0;
+    const prefix = depth > 0 ? '  '.repeat(depth) + '↳ ' : '';
+    const idStr = s.conversationId ? ` ${colors.dim}[id:${s.conversationId.substring(0, 6)}]${colors.reset}` : '';
+    return `${prefix}${s.name}${idStr} [${c}${s.status}${colors.reset}] (${shortRole})`;
   });
   const chunkedSubagents = calculateStackedChunks(subStrs, 3);
 
@@ -143,7 +226,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   if (metrics.looperEpics) {
     for (const e of metrics.looperEpics) {
       const pColor = e.done === e.total ? colors.green : colors.yellow;
-      looperStrs.push(`🎯 ${colors.dim}${e.repo} -${colors.reset} Epic: ${colors.bold}${e.epic}${colors.reset} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
+      const epicPct = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
+      const epicBar = renderMicroBar(epicPct, pColor, 5);
+      looperStrs.push(`🎯 ${colors.dim}${e.repo} -${colors.reset} Epic: ${colors.bold}${e.epic}${colors.reset} ${epicBar} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
     }
   }
   for (const m of (metrics.looperMissions || [])) {
@@ -185,6 +270,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     if (metrics.subagents.length === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'subagents'));
     }
+    if (!metrics.activeTool) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'tool'));
+    }
     if (!metrics.artifacts || metrics.artifacts.length === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'artifacts'));
     }
@@ -196,6 +284,12 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     }
     if (metrics.cacheTokens === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'cache'));
+    }
+    if (!metrics.activeSkills || metrics.activeSkills.length === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'skill'));
+    }
+    if (!metrics.transcriptPath) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'transcript'));
     }
   }
 
@@ -272,15 +366,15 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     }
   }
 
-  // 4. Bracket Injector
+  // 4. Accent Bar & Vertical Guide Injector
+  const accentColor = metrics.agentState === 'IDLE' ? colors.green : (metrics.agentState === 'WAITING' ? colors.yellow : colors.cyan);
+
   for (let i = 0; i < finalLines.length; i++) {
-    const isFirst = i === 0;
-    const isLast = i === finalLines.length - 1;
-    let bracket = '├─';
-    if (isFirst) bracket = '┌─';
-    if (isLast) bracket = '└─';
-    
-    finalLines[i] = `${bracket} ${finalLines[i]}`;
+    if (i === 0) {
+      finalLines[0] = `${accentColor}▌${colors.reset} ${finalLines[0]}`;
+    } else {
+      finalLines[i] = `${colors.dim}│${colors.reset} ${finalLines[i]}`;
+    }
   }
 
   return finalLines.join('\n');

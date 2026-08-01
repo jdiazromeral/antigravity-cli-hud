@@ -4,6 +4,33 @@
 
 A production-grade, highly responsive terminal HUD for the Antigravity CLI. It dynamically monitors your agent state, token context, quota buckets, and active subagents in real-time.
 
+```text
+▌ 🔵 [TARS] WORKING  |  🔵 plan  |  🤖 Gemini 3.6 Flash  |  Effort: 󰾆 high  |  🧠 Skills: looper & tdd & mapper
+│ 📂 acme-corp/work  |  🔓 Unsandboxed  |  ⚡ Cache: 120k  |  🎧 Ctx: ▰▰▰▰▱ 72% (54k/75k)
+│ 👟 Steps: ▰▰▰▰▱ 14/20  |  🕒 5h: ▰▰▱▱▱ 45% (01:00)  |  🕒 Weekly: ▰▰▰▰▱ 85% (2d 0h)
+│ ⚙️  Active Tasks: 3  |  👥 Subagents:  |  🛠️  run_command (git status)
+│                             orchestrator [id:abc123] [working] (Epic Runner)
+│                               ↳ worker-1 [id:def678] [working] (Feature Dev)
+│                                 ↳ researcher [id:ghi112] [completed] (Context Finder)
+│                             ...and 1 more hidden
+│ 📄 Artifacts (open ~/.gemini/antigravity-cli/brain/ad266f1f*):
+│     architecture_review.md
+│     database_schema.md
+│ 🔄 Active Looper Missions:
+│     🎯 acme-corp/work - Epic: auth-v2 ▰▰▰▱▱ [3/5 DONE]
+│     • sample_faqs - setup/M1_setup [IN_PROGRESS Iteration 2/5]
+│     • auth-system - auth/epic_runner [DONE]
+│ 🌱 Active Branches:
+│     acme-corp/work (feature/hud-nested-agents)
+│     acme-corp/service-b (main)
+│ 📜 tail -f ~/.gemini/antigravity-cli/brain/ad266f1f-75f3-44dd-b073-c93a1bedc277/.system_generated/logs/transcript.jsonl
+```
+
+To run this demo in your terminal:
+```bash
+node scripts/demo.js
+```
+
 ## Architecture & Features
 
 This plugin was engineered with strict defensive paradigms and advanced layout algorithms to guarantee zero-crash execution and a flawless visual experience:
@@ -70,18 +97,21 @@ The HUD dynamically parses the CLI's internal JSON telemetry stream. It receives
 Here are all the available blocks you can slot into your matrix:
 
 - **`state`**: The core Antigravity Agent state (🟢 IDLE, 🟡 WAITING, 🔵 WORKING).
-- **`model`**: The underlying AI model currently driving the agent (e.g. Gemini 3.1 Pro).
+- **`mode`**: The active execution mode of the CLI (🟡 request-review, 🟢 accept-edits, 🔵 plan).
+- **`effort`**: The effort tier of the model (e.g. 󰾆 High, Low) introduced in v1.1.5.
+- **`model`**: The underlying AI model currently driving the agent (e.g. Gemini 3.1 Pro). If a custom `agent` name is streamed, it natively overrides the state label.
 - **`sandbox`**: The file-system security boundary (🔒 Sandboxed or 🔓 Unsandboxed).
 - **`permissions`**: The Danger Mode indicator. Visually flags if the agent was granted recursive `AGY_SKIP_PERMISSIONS=1` access across the process tree.
 - **`workspace`**: The true repository name. **Smart Detection:** If your CLI is running from a non-git parent folder, the HUD automatically scans `lab/` and `worktrees/` to surface repositories that are "active" (e.g., have uncommitted changes, are on a feature branch, or have active Looper missions). It also natively tracks AI session context via `hud_context.json` to ensure any explicitly targeted directories are always visible!
 - **`looper`**: The Active Looper Missions block. Dynamically scans `.looper/epics/` in your active repositories to track autonomous task progress. Stacks line-by-line (`🔄 Active Looper Missions:`) and renders statuses with custom colors (e.g., `sample_faqs - auth-system/M1 [IN_PROGRESS]`). Automatically hides itself if no missions are active.
 - **`git`**: The Active Branches block. Dynamically stacks line-by-line (`🌱 Active Branches:`) to cleanly display multi-repo worktrees alongside their active branches.
 - **`artifacts`**: The Active Artifacts block. Dynamically stacks line-by-line (`📄 Artifacts:`) to list the `.md` files generated during the active AI session. Automatically hides itself if no artifacts exist.
+- **`transcript`**: A clickable shortcut link directly to your agent's active `transcript.jsonl` log file, making it easy to `tail -f` the brain logs.
 - **`ctx`**: Context window saturation limit. Shows percentage used and raw token count.
 - **`cache`**: Context window caching telemetry (`⚡ Cache: 70k`). Displays how many tokens were read from cache, allowing you to instantly visualize your cost savings. Automatically hides if 0.
 - **`5h` / `weekly`**: Rolling quota buckets. Shows percentage used and the countdown timer until the quota bucket resets.
 - **`tasks`**: Active asynchronous background processes (shell commands, cron jobs, active timers, or background scripts) spawned by the CLI.
-- **`subagents`**: Active parallel AI subagents. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
+- **`subagents`**: Active parallel AI subagents. Grandchild subagents (depth > 0) are visually nested in a tree hierarchy using `↳` characters. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
 - **`version`**: The installed version of the Antigravity CLI.
 - **`email`**: The authenticated user's email address.
 - **`plan`**: The active billing tier of the user account.

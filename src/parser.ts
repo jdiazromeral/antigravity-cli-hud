@@ -13,7 +13,8 @@ export interface AntigravityPayload {
     "gemini-5h"?: { remaining_fraction: number };
     "3p-weekly"?: { remaining_fraction: number };
   };
-  subagents?: Array<{ name: string; role: string; status: string }>;
+  subagents?: Array<{ name: string; role: string; status: string; depth?: number; conversation_id?: string; log_uri?: string }>;
+  tool_info?: { name: string; summary?: string; status?: string };
   task_count?: number;
   sandbox?: { enabled: boolean };
   model?: { display_name: string };
@@ -26,6 +27,11 @@ export interface AntigravityPayload {
   session_id?: string;
   cwd?: string;
   artifacts?: any[];
+  vcs?: { branch?: string; dirty?: boolean };
+  transcript_path?: string;
+  effort?: string;
+  mode?: string;
+  agent?: string;
 }
 
 import * as fs from 'fs';
@@ -37,6 +43,15 @@ export interface SubagentInfo {
   name: string;
   role: string;
   status: string;
+  depth?: number;
+  conversationId?: string;
+  logUri?: string;
+}
+
+export interface ActiveToolInfo {
+  name: string;
+  summary?: string;
+  status?: string;
 }
 
 export interface ParsedMetrics {
@@ -51,6 +66,8 @@ export interface ParsedMetrics {
   quota5hResetSeconds: number;
   quotaType: string;
   subagents: SubagentInfo[];
+  activeTool?: ActiveToolInfo;
+  activeSkills: string[];
   taskCount: number;
   sessionName: string;
   model: string;
@@ -67,6 +84,14 @@ export interface ParsedMetrics {
   artifacts?: string[];
   looperMissions?: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[];
   looperEpics?: {repo: string, epic: string, total: number, done: number}[];
+  stepCount: number;
+  maxSteps: number;
+  maxContextTokens: number;
+  contextWindowSize?: number;
+  executionMode: string;
+  transcriptPath?: string;
+  effort: string;
+  agentName: string;
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -145,8 +170,12 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   let activeWorkspaceRepos: string[] = [];
   
   if (parsed.cwd) {
-    const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
-    let useCache = false;
+    if (parsed.vcs && parsed.vcs.branch) {
+      const b = parsed.vcs.dirty ? `${parsed.vcs.branch}*` : parsed.vcs.branch;
+      gitBranches.push({ name: path.basename(parsed.cwd), branch: b });
+    } else {
+      const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
+      let useCache = false;
 
     let previousCacheBranches: {name: string, branch: string}[] | null = null;
 
@@ -164,71 +193,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           } catch(err) {}
        }
     }
-    
-    if (activeWorkspaceRepos.length === 0) {
-       const searchRoots = [
-          path.join(parsed.cwd, 'lab'),
-          path.join(parsed.cwd, 'worktrees')
-       ];
-       for (const root of searchRoots) {
-          if (fs.existsSync(root)) {
-             try {
-               const items = fs.readdirSync(root, { withFileTypes: true });
-               for (const item of items) {
-                  if (item.isDirectory() && !item.name.startsWith('.')) {
-                     const p = path.join(root, item.name);
-                     if (fs.existsSync(path.join(p, '.git')) || fs.existsSync(path.join(p, '.looper'))) {
-                        let isActive = false;
-                        try {
-                           const branch = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
-                           if (branch !== 'main' && branch !== 'master' && branch !== 'HEAD') {
-                              isActive = true;
-                           } else {
-                              const status = cp.execSync('git status --porcelain', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
-                              if (status.length > 0) isActive = true;
-                           }
-                        } catch(e) {}
-                        
-                        if (!isActive && fs.existsSync(path.join(p, '.looper', 'epics'))) {
-                           try {
-                              const epics = fs.readdirSync(path.join(p, '.looper', 'epics'), { withFileTypes: true });
-                              for (const ep of epics) {
-                                 if (ep.isDirectory() && !ep.name.startsWith('.')) {
-                                    const epicPath = path.join(p, '.looper', 'epics', ep.name);
-                                    const files = fs.readdirSync(epicPath);
-                                    for (const f of files) {
-                                       if (f.endsWith('_purpose.md')) {
-                                          const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
-                                          const statusMatch = content.match(/^status:\s*([A-Z_]+)/m);
-                                          if (statusMatch && statusMatch[1] !== 'DONE') {
-                                             isActive = true;
-                                             break;
-                                          }
-                                       } else if (f.endsWith('.json')) {
-                                          try {
-                                             const content = fs.readFileSync(path.join(epicPath, f), 'utf8');
-                                             const state = JSON.parse(content);
-                                             if (state.status && state.status !== 'DONE') {
-                                                isActive = true;
-                                                break;
-                                             }
-                                          } catch(e) {}
-                                       }
-                                    }
-                                 }
-                                 if (isActive) break;
-                              }
-                           } catch(e) {}
-                        }
-                        
-                        if (isActive) activeWorkspaceRepos.push(p);
-                     }
-                  }
-               }
-             } catch(err) {}
-          }
-       }
-    }
+
     try {
       if (fs.existsSync(gitCacheFile)) {
         const cacheRaw = fs.readFileSync(gitCacheFile, 'utf8');
@@ -280,6 +245,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           timestamp: Date.now()
         }), { mode: 0o600 });
       } catch (e) {}
+    }
     }
   }
 
@@ -447,6 +413,103 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
+  let executionMode = parsed.mode;
+  if (!executionMode) {
+    executionMode = 'request-review';
+    try {
+      const settingsFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'settings.json');
+      if (fs.existsSync(settingsFile)) {
+        const settingsContent = fs.readFileSync(settingsFile, 'utf8');
+        const settingsParsed = JSON.parse(settingsContent);
+        if (settingsParsed.mode) {
+          executionMode = settingsParsed.mode;
+        }
+      }
+    } catch (e) {
+      // Ignore errors and default to request-review
+    }
+  }
+
+  const effort = parsed.effort || 'normal';
+  const agentName = parsed.agent || 'Antigravity';
+
+  const skillsSet = new Set<string>();
+  if (parsed.tool_info && parsed.tool_info.summary) {
+    const skillMatch = parsed.tool_info.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
+    if (skillMatch && skillMatch[1]) {
+      skillsSet.add(skillMatch[1]);
+    }
+  }
+  if (parsed.subagents) {
+    for (const sub of parsed.subagents) {
+      if (sub.status === 'completed') continue;
+      const roleLower = (sub.role || '').toLowerCase();
+      const nameLower = (sub.name || '').toLowerCase();
+      
+      if (roleLower.includes('tdd') || nameLower.includes('tdd')) skillsSet.add('tdd');
+      if (roleLower.includes('cartographer') || roleLower.includes('mapper') || nameLower.includes('mapper')) skillsSet.add('mapper');
+      if (roleLower.includes('looper') || roleLower.includes('mission worker') || nameLower.includes('looper')) skillsSet.add('looper');
+      if (roleLower.includes('retro') || nameLower.includes('retro')) skillsSet.add('retro');
+      if (roleLower.includes('epic planner') || roleLower.includes('planner')) skillsSet.add('epic-planner');
+      if (roleLower.includes('epic runner') || roleLower.includes('runner')) skillsSet.add('epic-runner');
+      if (roleLower.includes('hud-config') || roleLower.includes('hud config')) skillsSet.add('hud-config');
+      
+      const roleMatch = sub.role.match(/skill:\s*([a-zA-Z0-9_-]+)/i);
+      if (roleMatch && roleMatch[1]) skillsSet.add(roleMatch[1]);
+    }
+  }
+  if (looperMissions.length > 0 || looperEpics.length > 0) {
+    skillsSet.add('looper');
+  }
+  const activeSkills = Array.from(skillsSet);
+  let stepCount = parsed.step_count ?? parsed.step_index ?? 0;
+  let resolvedTranscriptPath = parsed.transcript_path;
+  if (resolvedTranscriptPath) {
+    if (!fs.existsSync(resolvedTranscriptPath)) {
+      const normalized = resolvedTranscriptPath.replace('/.gemini/antigravity/', '/.gemini/antigravity-cli/');
+      if (fs.existsSync(normalized)) {
+        resolvedTranscriptPath = normalized;
+      }
+    }
+  }
+
+  if (!resolvedTranscriptPath && conversationId) {
+    const candidate1 = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, '.system_generated', 'logs', 'transcript.jsonl');
+    const candidate2 = path.join(os.homedir(), '.gemini', 'antigravity', 'brain', conversationId, '.system_generated', 'logs', 'transcript.jsonl');
+    if (fs.existsSync(candidate1)) {
+      resolvedTranscriptPath = candidate1;
+    } else if (fs.existsSync(candidate2)) {
+      resolvedTranscriptPath = candidate2;
+    }
+  }
+
+  if (resolvedTranscriptPath && fs.existsSync(resolvedTranscriptPath)) {
+    try {
+      const content = fs.readFileSync(resolvedTranscriptPath, 'utf8');
+      const lines = content.split('\n');
+      let userTurns = 0;
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (line.includes('"USER_INPUT"') || line.includes('"USER_EXPLICIT"')) {
+          userTurns++;
+        }
+      }
+      if (userTurns > 0) {
+        stepCount = userTurns;
+      } else if (stepCount === 0) {
+        stepCount = lines.filter(l => l.trim().length > 0).length;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  const envMaxSteps = process.env.AGY_MAX_STEPS ? parseInt(process.env.AGY_MAX_STEPS, 10) : undefined;
+  const envMaxCtx = process.env.AGY_MAX_CONTEXT_TOKENS ? parseInt(process.env.AGY_MAX_CONTEXT_TOKENS, 10) : undefined;
+
+  const maxSteps = (envMaxSteps && !isNaN(envMaxSteps)) ? envMaxSteps : (parsed.max_steps || 20);
+  const maxContextTokens = (envMaxCtx && !isNaN(envMaxCtx)) ? envMaxCtx : (parsed.max_context_tokens || 0);
+
   return {
     agentState: (parsed.agent_state || 'UNKNOWN').toUpperCase(),
     contextUsage: Math.round(parsed.context_window?.used_percentage || 0),
@@ -458,7 +521,20 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     quota5h: q5hObj.percent,
     quota5hResetSeconds: q5hObj.resetSeconds,
     quotaType: isGemini ? 'Gemini' : '3rd-Party',
-    subagents: (parsed.subagents || []).filter((s: any) => s.status !== 'completed'),
+    subagents: (parsed.subagents || []).filter((s) => s.status !== 'completed').map((s) => ({
+      name: s.name,
+      role: s.role,
+      status: s.status,
+      depth: typeof s.depth === 'number' ? s.depth : 0,
+      conversationId: s.conversation_id,
+      logUri: s.log_uri
+    })),
+    activeTool: parsed.tool_info && parsed.tool_info.name ? {
+      name: parsed.tool_info.name,
+      summary: parsed.tool_info.summary,
+      status: parsed.tool_info.status
+    } : undefined,
+    activeSkills,
     taskCount: parsed.task_count || 0,
     sessionName: sessName,
     model: modelName,
@@ -474,6 +550,14 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     conversationId,
     artifacts: artifactList,
     looperMissions,
-    looperEpics
+    looperEpics,
+    stepCount,
+    maxSteps,
+    maxContextTokens,
+    contextWindowSize: parsed.context_window?.context_window_size || parsed.max_context_tokens || 1048576,
+    executionMode,
+    transcriptPath: resolvedTranscriptPath,
+    effort,
+    agentName
   };
 }
