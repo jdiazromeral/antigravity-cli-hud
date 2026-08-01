@@ -32,8 +32,23 @@ describe('formatMetrics', () => {
     looperEpics: [],
     executionMode: 'request-review',
     effort: 'normal',
-    agentName: 'Antigravity'
+    agentName: 'Antigravity',
+    activeSkills: []
   };
+
+  it('formats single and multiple active skills correctly', () => {
+    const singleSkillMetrics = { ...baseMetrics, activeSkills: ['looper'] };
+    const outSingle = formatMetrics(singleSkillMetrics);
+    expect(outSingle).toContain('🧠 Skill:');
+    expect(outSingle).toContain('looper');
+
+    const multiSkillMetrics = { ...baseMetrics, activeSkills: ['looper', 'tdd', 'mapper'] };
+    const outMulti = formatMetrics(multiSkillMetrics);
+    expect(outMulti).toContain('🧠 Skills:');
+    expect(outMulti).toContain('looper');
+    expect(outMulti).toContain('tdd');
+    expect(outMulti).toContain('mapper');
+  });
 
   it('formats correctly with wide terminals', () => {
     const out = formatMetrics(baseMetrics);

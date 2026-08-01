@@ -67,6 +67,7 @@ export interface ParsedMetrics {
   quotaType: string;
   subagents: SubagentInfo[];
   activeTool?: ActiveToolInfo;
+  activeSkills: string[];
   taskCount: number;
   sessionName: string;
   model: string;
@@ -428,6 +429,36 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const effort = parsed.effort || 'normal';
   const agentName = parsed.agent || 'Antigravity';
 
+  const skillsSet = new Set<string>();
+  if (parsed.tool_info && parsed.tool_info.summary) {
+    const skillMatch = parsed.tool_info.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
+    if (skillMatch && skillMatch[1]) {
+      skillsSet.add(skillMatch[1]);
+    }
+  }
+  if (parsed.subagents) {
+    for (const sub of parsed.subagents) {
+      if (sub.status === 'completed') continue;
+      const roleLower = (sub.role || '').toLowerCase();
+      const nameLower = (sub.name || '').toLowerCase();
+      
+      if (roleLower.includes('tdd') || nameLower.includes('tdd')) skillsSet.add('tdd');
+      if (roleLower.includes('cartographer') || roleLower.includes('mapper') || nameLower.includes('mapper')) skillsSet.add('mapper');
+      if (roleLower.includes('looper') || roleLower.includes('mission worker') || nameLower.includes('looper')) skillsSet.add('looper');
+      if (roleLower.includes('retro') || nameLower.includes('retro')) skillsSet.add('retro');
+      if (roleLower.includes('epic planner') || roleLower.includes('planner')) skillsSet.add('epic-planner');
+      if (roleLower.includes('epic runner') || roleLower.includes('runner')) skillsSet.add('epic-runner');
+      if (roleLower.includes('hud-config') || roleLower.includes('hud config')) skillsSet.add('hud-config');
+      
+      const roleMatch = sub.role.match(/skill:\s*([a-zA-Z0-9_-]+)/i);
+      if (roleMatch && roleMatch[1]) skillsSet.add(roleMatch[1]);
+    }
+  }
+  if (looperMissions.length > 0 || looperEpics.length > 0) {
+    skillsSet.add('looper');
+  }
+  const activeSkills = Array.from(skillsSet);
+
   return {
     agentState: (parsed.agent_state || 'UNKNOWN').toUpperCase(),
     contextUsage: Math.round(parsed.context_window?.used_percentage || 0),
@@ -452,6 +483,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       summary: parsed.tool_info.summary,
       status: parsed.tool_info.status
     } : undefined,
+    activeSkills,
     taskCount: parsed.task_count || 0,
     sessionName: sessName,
     model: modelName,

@@ -31,7 +31,7 @@ export const HUD_CONFIG = {
   // Matrix rows map block IDs to visual layout ordering
   layouts: {
     large: [
-      ['state', 'mode', 'model', 'effort', 'permissions'],
+      ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
@@ -40,7 +40,7 @@ export const HUD_CONFIG = {
       ['transcript']
     ],
     medium: [
-      ['state', 'mode', 'model', 'effort', 'permissions'],
+      ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox'],
       ['ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
@@ -50,9 +50,9 @@ export const HUD_CONFIG = {
       ['transcript']
     ],
     small: [
-      ['state', 'mode', 'model', 'effort', 'permissions'],
-      ['sandbox'],
-      ['workspace', 'ctx', 'cache'],
+      ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
+      ['workspace', 'sandbox'],
+      ['ctx', 'cache'],
       ['5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
@@ -125,10 +125,18 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const eff = (metrics.effort || 'normal').toLowerCase();
   const effortStr = `Effort: ${effortColors[eff] || effortColors['normal']}`;
 
+  let skillBlockStr = '';
+  if (metrics.activeSkills && metrics.activeSkills.length > 0) {
+    const label = metrics.activeSkills.length > 1 ? '🧠 Skills:' : '🧠 Skill:';
+    const names = metrics.activeSkills.map(s => `${colors.cyan}${s}${colors.reset}`).join(' & ');
+    skillBlockStr = `${label} ${names}`;
+  }
+
   const blocks: Record<string, string> = {
     state: stateIndicator,
     mode: modeStr,
     effort: effortStr,
+    skill: skillBlockStr,
     model: `🤖 ${colors.bold}${metrics.model}${colors.reset}`,
     sandbox: metrics.isSandboxed ? `${colors.gray}🔒 Sandboxed${colors.reset}` : `${colors.yellow}🔓 Unsandboxed${colors.reset}`,
     permissions: metrics.skipPermissions ? `${colors.red}☢️  Danger Mode${colors.reset}` : '',
@@ -240,6 +248,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     }
     if (metrics.cacheTokens === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'cache'));
+    }
+    if (!metrics.activeSkills || metrics.activeSkills.length === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'skill'));
     }
     if (!metrics.transcriptPath) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'transcript'));
