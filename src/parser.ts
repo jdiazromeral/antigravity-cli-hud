@@ -84,6 +84,9 @@ export interface ParsedMetrics {
   artifacts?: string[];
   looperMissions?: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[];
   looperEpics?: {repo: string, epic: string, total: number, done: number}[];
+  stepCount: number;
+  maxSteps: number;
+  maxContextTokens: number;
   executionMode: string;
   transcriptPath?: string;
   effort: string;
@@ -458,6 +461,25 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     skillsSet.add('looper');
   }
   const activeSkills = Array.from(skillsSet);
+  let stepCount = parsed.step_count ?? parsed.step_index ?? 0;
+  if (parsed.transcript_path && fs.existsSync(parsed.transcript_path) && stepCount === 0) {
+    try {
+      const stats = fs.statSync(parsed.transcript_path);
+      if (stats.size > 0) {
+        const buffer = fs.readFileSync(parsed.transcript_path);
+        let lines = 0;
+        for (let i = 0; i < buffer.length; i++) {
+          if (buffer[i] === 10) lines++;
+        }
+        stepCount = lines;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  const maxSteps = parsed.max_steps || 20;
+  const maxContextTokens = parsed.max_context_tokens || 75000;
 
   return {
     agentState: (parsed.agent_state || 'UNKNOWN').toUpperCase(),
@@ -500,6 +522,9 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     artifacts: artifactList,
     looperMissions,
     looperEpics,
+    stepCount,
+    maxSteps,
+    maxContextTokens,
     executionMode,
     transcriptPath: parsed.transcript_path,
     effort,
