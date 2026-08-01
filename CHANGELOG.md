@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Real-Time Step Count Resolution:** Resolved active `transcript.jsonl` log file path via `conversation_id` (`~/.gemini/antigravity-cli/brain/<conversationId>/.system_generated/logs/transcript.jsonl`) when `transcript_path` is omitted in heartbeat telemetry, ensuring live step count updates.
 
 ### Changed
+- **Cache Before Context:** Positioned `cache` token read block before `ctx` saturation block across all statusline layouts.
 - **Dedicated Quotas & Steps Row:** Organized `steps`, `5h`, and `weekly` quota blocks onto a dedicated line directly below workspace and context saturation.
 - **Modern Accent Bar UI:** Replaced repetitive `┌─`, `├─`, `└─` comb brackets with a state-colored accent bar (`▌`) and clean guide line (`│`).
 - **Strict Session Memory Scoping:** Removed greedy auto-scan of `lab/` and `worktrees/` when `hud_context.json` is missing or empty. Git branches are now strictly scoped to `hud_context.json` or direct `cwd` git repos.
