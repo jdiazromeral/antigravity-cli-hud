@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.9] - 2026-08-01
 
 ### Added
+- **Micro Progress Bars:** Integrated 5-character micro progress bars (`▰▰▱▱▱`) with Traffic Light color coding for `Ctx`, `5h`, `Weekly` quotas, and Looper Epics.
 - **Active Tool Telemetry Block (`tool`):** Displays real-time tool execution status (e.g. `🛠️ run_command (git status)`), powered by `agy` 1.1.8/1.1.9 `tool_info` telemetry stream. Auto-culls when no tool is active.
 - **Subagent Conversation ID Display:** Subagent entries now surface truncated conversation IDs (`[id:sub-88]`), parsed from enriched `subagents` telemetry.
 
