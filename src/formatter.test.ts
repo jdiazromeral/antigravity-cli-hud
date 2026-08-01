@@ -131,6 +131,17 @@ describe('formatMetrics', () => {
     delete process.env.AGY_SOFT_CONTEXT_TOKENS;
   });
 
+  it('formats ctx cleanly when limitTokens is smaller than soft limit (75k < 200k)', () => {
+    process.env.AGY_MAX_CONTEXT_TOKENS = '75000';
+    const ctxMetrics = { ...baseMetrics, totalInputTokens: 37500 };
+    const out = formatMetrics(ctxMetrics);
+    // 37.5k out of 75k max = 50%
+    expect(out).toContain('50%');
+    expect(out).toContain('38k/75k max');
+    expect(out).not.toContain('soft');
+    delete process.env.AGY_MAX_CONTEXT_TOKENS;
+  });
+
 
   describe('executionMode formatting', () => {
     it('formats request-review mode with yellow circle', () => {

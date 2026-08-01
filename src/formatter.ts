@@ -168,7 +168,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     usedTokens = Math.round((metrics.contextUsage / 100) * limitTokens);
   }
 
-  const softPct = Math.round((usedTokens / softLimitTokens) * 100);
+  const isSmallLimit = limitTokens < softLimitTokens;
+  const effectiveSoftLimit = isSmallLimit ? limitTokens : softLimitTokens;
+
+  const softPct = Math.round((usedTokens / effectiveSoftLimit) * 100);
   const ctxColor = (metrics.exceeds200k || softPct >= 85) ? colors.red : (softPct >= 60 ? colors.yellow : colors.green);
   const exceedWarning = metrics.exceeds200k ? ` ${colors.red}${colors.bold}🚨 >200k! Agent may start degrading.${colors.reset}` : '';
   const ctxBar = renderMicroBar(softPct, ctxColor, 5);
@@ -176,6 +179,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const usedTokensStr = formatTokenCount(usedTokens);
   const softLimitTokensStr = formatTokenCount(softLimitTokens);
   const limitTokensStr = formatTokenCount(limitTokens);
+
+  const ratioStr = isSmallLimit
+    ? `${usedTokensStr}/${limitTokensStr} max`
+    : `${usedTokensStr}/${softLimitTokensStr} soft • ${limitTokensStr} max`;
 
   const blocks: Record<string, string> = {
     state: stateIndicator,
@@ -189,7 +196,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     steps: stepStr,
     git: metrics.gitBranch ? `🌱 ${colors.cyan}${metrics.gitBranch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
-    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${softPct}%${colors.reset} (${usedTokensStr}/${softLimitTokensStr} soft • ${limitTokensStr} max)${exceedWarning}`,
+    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${softPct}%${colors.reset} (${ratioStr})${exceedWarning}`,
     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
