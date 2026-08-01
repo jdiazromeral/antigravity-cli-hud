@@ -45,7 +45,8 @@ You can drag and drop these string keys into any layout array:
 - `'tasks'`: The active background task count.
 - `'git'`: The list of Active Git Branches. (Stacked block, MUST be the last item on a row or its own row).
 - `'subagents'`: The list of active subagents and their roles. (Stacked block, MUST be the last item on a row or its own row).
-- `'version'`: The active Antigravity CLI version (e.g. 📦 v1.0.8).
+- `'tool'`: The active tool execution block (e.g. 🛠️ run_command (git status)). Automatically hidden when no tool is active.
+- `'version'`: The active Antigravity CLI version (e.g. 📦 v1.1.9).
 - `'email'`: Your authenticated Google account email.
 - `'plan'`: Your active billing tier (e.g. 💎 Google AI Pro).
 

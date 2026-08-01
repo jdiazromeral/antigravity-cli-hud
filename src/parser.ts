@@ -13,7 +13,8 @@ export interface AntigravityPayload {
     "gemini-5h"?: { remaining_fraction: number };
     "3p-weekly"?: { remaining_fraction: number };
   };
-  subagents?: Array<{ name: string; role: string; status: string; depth?: number }>;
+  subagents?: Array<{ name: string; role: string; status: string; depth?: number; conversation_id?: string; log_uri?: string }>;
+  tool_info?: { name: string; summary?: string; status?: string };
   task_count?: number;
   sandbox?: { enabled: boolean };
   model?: { display_name: string };
@@ -43,6 +44,14 @@ export interface SubagentInfo {
   role: string;
   status: string;
   depth?: number;
+  conversationId?: string;
+  logUri?: string;
+}
+
+export interface ActiveToolInfo {
+  name: string;
+  summary?: string;
+  status?: string;
 }
 
 export interface ParsedMetrics {
@@ -57,6 +66,7 @@ export interface ParsedMetrics {
   quota5hResetSeconds: number;
   quotaType: string;
   subagents: SubagentInfo[];
+  activeTool?: ActiveToolInfo;
   taskCount: number;
   sessionName: string;
   model: string;
@@ -433,8 +443,15 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       name: s.name,
       role: s.role,
       status: s.status,
-      depth: typeof s.depth === 'number' ? s.depth : 0
+      depth: typeof s.depth === 'number' ? s.depth : 0,
+      conversationId: s.conversation_id,
+      logUri: s.log_uri
     })),
+    activeTool: parsed.tool_info && parsed.tool_info.name ? {
+      name: parsed.tool_info.name,
+      summary: parsed.tool_info.summary,
+      status: parsed.tool_info.status
+    } : undefined,
     taskCount: parsed.task_count || 0,
     sessionName: sessName,
     model: modelName,

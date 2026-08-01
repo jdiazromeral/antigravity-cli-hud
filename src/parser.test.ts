@@ -87,16 +87,30 @@ describe('parseStream', () => {
     const payload = {
       agent_state: 'Working',
       subagents: [
-        { name: 'parent', role: 'Manager', status: 'working', depth: 0 },
+        { name: 'parent', role: 'Manager', status: 'working', depth: 0, conversation_id: 'sub-123456', log_uri: '/path/to/log.txt' },
         { name: 'child', role: 'Worker', status: 'working', depth: 1 }
       ]
     };
     const stream = Readable.from([JSON.stringify(payload)]);
     const result = await parseStream(stream);
     expect(result.subagents).toEqual([
-      { name: 'parent', role: 'Manager', status: 'working', depth: 0 },
-      { name: 'child', role: 'Worker', status: 'working', depth: 1 }
+      { name: 'parent', role: 'Manager', status: 'working', depth: 0, conversationId: 'sub-123456', logUri: '/path/to/log.txt' },
+      { name: 'child', role: 'Worker', status: 'working', depth: 1, conversationId: undefined, logUri: undefined }
     ]);
+  });
+
+  it('should parse tool_info correctly when present', async () => {
+    const payload = {
+      agent_state: 'Working',
+      tool_info: { name: 'run_command', summary: 'git status', status: 'running' }
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.activeTool).toEqual({
+      name: 'run_command',
+      summary: 'git status',
+      status: 'running'
+    });
   });
 
   describe('executionMode parsing', () => {

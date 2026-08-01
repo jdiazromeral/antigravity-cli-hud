@@ -16,7 +16,7 @@ const colors = {
 // ============================================================================
 // HUD LAYOUT CONFIGURATION
 // You can dynamically re-arrange the terminal layout here!
-// Available blocks: 'state', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'transcript'
+// Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'tool', 'transcript'
 // Note: To completely disable the Looper integration, simply remove 'looper' from the layout arrays below.
 // ============================================================================
 export const HUD_CONFIG = {
@@ -33,7 +33,7 @@ export const HUD_CONFIG = {
     large: [
       ['state', 'mode', 'model', 'effort', 'permissions'],
       ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
-      ['tasks', 'subagents'],
+      ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
       ['git'],
@@ -43,7 +43,7 @@ export const HUD_CONFIG = {
       ['state', 'mode', 'model', 'effort', 'permissions'],
       ['workspace', 'sandbox'],
       ['ctx', 'cache', '5h', 'weekly'],
-      ['tasks', 'subagents'],
+      ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
       ['git'],
@@ -54,7 +54,7 @@ export const HUD_CONFIG = {
       ['sandbox'],
       ['workspace', 'ctx', 'cache'],
       ['5h', 'weekly'],
-      ['tasks', 'subagents'],
+      ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
       ['git'],
@@ -129,6 +129,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     '5h': `🕒 5h: ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
+    tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
     version: `📦 v${metrics.version}`,
     email: `📧 ${colors.dim}${metrics.email}${colors.reset}`,
     plan: `💎 ${metrics.planTier}`,
@@ -155,7 +156,8 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     if (shortRole.length > 25) shortRole = shortRole.substring(0, 22) + '...';
     const depth = s.depth || 0;
     const prefix = depth > 0 ? '  '.repeat(depth) + '↳ ' : '';
-    return `${prefix}${s.name} [${c}${s.status}${colors.reset}] (${shortRole})`;
+    const idStr = s.conversationId ? ` ${colors.dim}[id:${s.conversationId.substring(0, 6)}]${colors.reset}` : '';
+    return `${prefix}${s.name}${idStr} [${c}${s.status}${colors.reset}] (${shortRole})`;
   });
   const chunkedSubagents = calculateStackedChunks(subStrs, 3);
 
@@ -210,6 +212,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     }
     if (metrics.subagents.length === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'subagents'));
+    }
+    if (!metrics.activeTool) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'tool'));
     }
     if (!metrics.artifacts || metrics.artifacts.length === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'artifacts'));
