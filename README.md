@@ -73,6 +73,7 @@ npm run demo
 For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
 
 ### Latest Updates (v1.1.9)
+- **Modern Accent Bar UI:** Replaced comb brackets with a state-colored vertical bar (`▌`) and clean guide line (`│`).
 - **Active Tool Execution Block (`tool`):** Renders active tool execution status in real-time (`🛠️ run_command (git status)`).
 - **Subagent Conversation Tracking:** Displays truncated subagent conversation IDs (`[id:sub-88]`).
 - **Strict Session Scoping:** Prevents auto-scanning unrelated branches when outside active session context (`hud_context.json`).
