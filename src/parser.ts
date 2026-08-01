@@ -463,10 +463,22 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const activeSkills = Array.from(skillsSet);
   let stepCount = parsed.step_count ?? parsed.step_index ?? 0;
   let resolvedTranscriptPath = parsed.transcript_path;
+  if (resolvedTranscriptPath) {
+    if (!fs.existsSync(resolvedTranscriptPath)) {
+      const normalized = resolvedTranscriptPath.replace('/.gemini/antigravity/', '/.gemini/antigravity-cli/');
+      if (fs.existsSync(normalized)) {
+        resolvedTranscriptPath = normalized;
+      }
+    }
+  }
+
   if (!resolvedTranscriptPath && conversationId) {
-    const candidate = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, '.system_generated', 'logs', 'transcript.jsonl');
-    if (fs.existsSync(candidate)) {
-      resolvedTranscriptPath = candidate;
+    const candidate1 = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, '.system_generated', 'logs', 'transcript.jsonl');
+    const candidate2 = path.join(os.homedir(), '.gemini', 'antigravity', 'brain', conversationId, '.system_generated', 'logs', 'transcript.jsonl');
+    if (fs.existsSync(candidate1)) {
+      resolvedTranscriptPath = candidate1;
+    } else if (fs.existsSync(candidate2)) {
+      resolvedTranscriptPath = candidate2;
     }
   }
 
