@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.9] - 2026-08-01
 
 ### Added
+- **Session Step Budget Block (`steps`):** Visual 5-character step progress bar (`👟 Steps: ▰▰▰▰▱ 14/20`) tracking session step ceilings.
+- **Bundled Token Evaluation Hook:** Included `scripts/token_eval_hook.py` executable script for session token ledger tracking and 20-step / 75k token budget ceiling enforcement.
 - **Multi-Skill Telemetry Block (`skill`):** Real-time tracking of single (`🧠 Skill: looper`) or multiple (`🧠 Skills: looper & tdd & mapper`) active skills aggregated across main agent tool usage, subagent roles, and looper missions. Auto-culls when no skills are active.
 - **Micro Progress Bars:** Integrated 5-character micro progress bars (`▰▰▱▱▱`) with Traffic Light color coding for `Ctx`, `5h`, `Weekly` quotas, and Looper Epics.
 - **Active Tool Telemetry Block (`tool`):** Displays real-time tool execution status (e.g. `🛠️ run_command (git status)`), powered by `agy` 1.1.8/1.1.9 `tool_info` telemetry stream. Auto-culls when no tool is active.
