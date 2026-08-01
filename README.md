@@ -4,6 +4,33 @@
 
 A production-grade, highly responsive terminal HUD for the Antigravity CLI. It dynamically monitors your agent state, token context, quota buckets, and active subagents in real-time.
 
+```text
+▌ 🔵 [TARS] WORKING  |  🔵 plan  |  🤖 Gemini 3.6 Flash  |  Effort: 󰾆 high  |  🧠 Skills: looper & tdd & mapper
+│ 📂 acme-corp/work  |  🔓 Unsandboxed  |  ⚡ Cache: 120k  |  🎧 Ctx: ▰▰▰▰▱ 72% (54k/75k)
+│ 👟 Steps: ▰▰▰▰▱ 14/20  |  🕒 5h: ▰▰▱▱▱ 45% (01:00)  |  🕒 Weekly: ▰▰▰▰▱ 85% (2d 0h)
+│ ⚙️  Active Tasks: 3  |  👥 Subagents:  |  🛠️  run_command (git status)
+│                             orchestrator [id:abc123] [working] (Epic Runner)
+│                               ↳ worker-1 [id:def678] [working] (Feature Dev)
+│                                 ↳ researcher [id:ghi112] [completed] (Context Finder)
+│                             ...and 1 more hidden
+│ 📄 Artifacts (open ~/.gemini/antigravity-cli/brain/ad266f1f*):
+│     architecture_review.md
+│     database_schema.md
+│ 🔄 Active Looper Missions:
+│     🎯 acme-corp/work - Epic: auth-v2 ▰▰▰▱▱ [3/5 DONE]
+│     • sample_faqs - setup/M1_setup [IN_PROGRESS Iteration 2/5]
+│     • auth-system - auth/epic_runner [DONE]
+│ 🌱 Active Branches:
+│     acme-corp/work (feature/hud-nested-agents)
+│     acme-corp/service-b (main)
+│ 📜 tail -f ~/.gemini/antigravity-cli/brain/ad266f1f-75f3-44dd-b073-c93a1bedc277/.system_generated/logs/transcript.jsonl
+```
+
+To run this demo in your terminal:
+```bash
+node scripts/demo.js
+```
+
 ## Architecture & Features
 
 This plugin was engineered with strict defensive paradigms and advanced layout algorithms to guarantee zero-crash execution and a flawless visual experience:
@@ -105,7 +132,7 @@ Here are all the available blocks you can slot into your matrix:
 - **`cache`**: Context window caching telemetry (`⚡ Cache: 70k`). Displays how many tokens were read from cache, allowing you to instantly visualize your cost savings. Automatically hides if 0.
 - **`5h` / `weekly`**: Rolling quota buckets. Shows percentage used and the countdown timer until the quota bucket resets.
 - **`tasks`**: Active asynchronous background processes (shell commands, cron jobs, active timers, or background scripts) spawned by the CLI.
-- **`subagents`**: Active parallel AI subagents. Surfacing subagent IDs (`[id:sub-88]`). Grandchild subagents (depth > 0) are visually nested in a tree hierarchy using `↳` characters. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
+- **`subagents`**: Active parallel AI subagents. Surfacing subagent IDs (`[id:abc123]`). Grandchild subagents (depth > 0) are visually nested in a tree hierarchy using `↳` characters. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
 - **`version`**: The installed version of the Antigravity CLI.
 - **`email`**: The authenticated user's email address.
 - **`plan`**: The active billing tier of the user account.
