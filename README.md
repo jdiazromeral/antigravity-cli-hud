@@ -130,6 +130,34 @@ export const HUD_CONFIG = {
 };
 ```
 
+## ⚙️ Configuration & Environment Variables
+
+The HUD supports a 3-tier hybrid priority resolution engine for context window and step budget ceilings:
+
+```
+Priority 1: Environment Variables (AGY_MAX_CONTEXT_TOKENS / AGY_MAX_STEPS)
+    ↓ (If undefined)
+Priority 2: HUD Config & Skill Wizard (HUD_CONFIG.budget / /hud-config)
+    ↓ (If undefined)
+Priority 3: Physical Telemetry (context_window_size / 1M)
+```
+
+### Environment Variables
+
+| Variable | Description | Default | Example |
+| :--- | :--- | :--- | :--- |
+| `AGY_MAX_CONTEXT_TOKENS` | Custom context window ceiling for soft budget tracking. | `75000` | `export AGY_MAX_CONTEXT_TOKENS=1000000` |
+| `AGY_MAX_STEPS` | Custom session step ceiling for turn budget tracking. | `20` | `export AGY_MAX_STEPS=30` |
+| `AGY_SKIP_PERMISSIONS` | Toggles Danger Mode indicator in HUD statusline (`☢️ Danger Mode`). | `false` | `export AGY_SKIP_PERMISSIONS=true` |
+
+### Bundled Token Ledger & Evaluation Hook
+
+Included in `scripts/token_eval_hook.py` is a security-hardened token evaluation hook:
+* **Zero Content Disclosure:** Evaluates prompt turn steps and character lengths without storing raw text or code.
+* **Strict Permissions (`0600`):** Enforces user-only read/write permissions on ledger log files.
+* **Path Containment:** Verifies `transcriptPath` is rooted inside `~/.gemini/antigravity-cli/brain/`.
+* **Token Ledger:** Appends session token metrics to `~/.gemini/antigravity-cli/token_ledger.jsonl`.
+
 ## Documentation
 
 - **[LAYOUT_ENGINE.md](LAYOUT_ENGINE.md)**: Technical spec for the HUD Matrix JSON engine.
