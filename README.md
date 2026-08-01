@@ -73,6 +73,8 @@ npm run demo
 For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
 
 ### Latest Updates (v1.1.9)
+- **Session Step Budget Block (`steps`):** Real-time tracking of session step ceilings (`👟 Steps: ▰▰▰▰▱ 14/20`).
+- **Bundled Token Evaluation Hook:** Included `scripts/token_eval_hook.py` executable script for token ledger logging and budget enforcement.
 - **Multi-Skill Telemetry Block (`skill`):** Real-time tracking of single (`🧠 Skill: looper`) or multiple (`🧠 Skills: looper & tdd & mapper`) active skills.
 - **Micro Progress Bars:** Dynamic 5-character progress bars (`▰▰▱▱▱`) for `Ctx`, `5h`, `Weekly` quotas, and Looper Epics.
 - **Modern Accent Bar UI:** Replaced comb brackets with a state-colored vertical bar (`▌`) and clean guide line (`│`).
