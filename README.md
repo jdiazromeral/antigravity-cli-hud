@@ -68,6 +68,16 @@ To generate a fully-populated mock HUD UI in your terminal (useful for taking sc
 npm run demo
 ```
 
+## 🚀 What's New
+
+For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
+
+### Latest Updates (v1.1.9)
+- **Active Tool Execution Block (`tool`):** Renders active tool execution status in real-time (`🛠️ run_command (git status)`).
+- **Subagent Conversation Tracking:** Displays truncated subagent conversation IDs (`[id:sub-88]`).
+- **Strict Session Scoping:** Prevents auto-scanning unrelated branches when outside active session context (`hud_context.json`).
+- **Contextual Terminal Window Titles:** Explicit `repo:branch` tab title formatting.
+
 ## Understanding Telemetry Blocks
 
 The HUD dynamically parses the CLI's internal JSON telemetry stream. It receives continuous heartbeat pulses and instant triggers on any state change, meaning every metric updates with zero latency. 
@@ -80,16 +90,17 @@ Here are all the available blocks you can slot into your matrix:
 - **`model`**: The underlying AI model currently driving the agent (e.g. Gemini 3.1 Pro). If a custom `agent` name is streamed, it natively overrides the state label.
 - **`sandbox`**: The file-system security boundary (🔒 Sandboxed or 🔓 Unsandboxed).
 - **`permissions`**: The Danger Mode indicator. Visually flags if the agent was granted recursive `AGY_SKIP_PERMISSIONS=1` access across the process tree.
-- **`workspace`**: The true repository name. **Smart Detection:** If your CLI is running from a non-git parent folder, the HUD automatically scans `lab/` and `worktrees/` to surface repositories that are "active" (e.g., have uncommitted changes, are on a feature branch, or have active Looper missions). It also natively tracks AI session context via `hud_context.json` to ensure any explicitly targeted directories are always visible!
+- **`workspace`**: The true repository name. Natively tracks AI session context via `hud_context.json` to ensure explicitly targeted directories are visible without polluting the view with unrelated subfolders!
 - **`looper`**: The Active Looper Missions block. Dynamically scans `.looper/epics/` in your active repositories to track autonomous task progress. Stacks line-by-line (`🔄 Active Looper Missions:`) and renders statuses with custom colors (e.g., `sample_faqs - auth-system/M1 [IN_PROGRESS]`). Automatically hides itself if no missions are active.
 - **`git`**: The Active Branches block. Dynamically stacks line-by-line (`🌱 Active Branches:`) to cleanly display multi-repo worktrees alongside their active branches.
 - **`artifacts`**: The Active Artifacts block. Dynamically stacks line-by-line (`📄 Artifacts:`) to list the `.md` files generated during the active AI session. Automatically hides itself if no artifacts exist.
 - **`transcript`**: A clickable shortcut link directly to your agent's active `transcript.jsonl` log file, making it easy to `tail -f` the brain logs.
+- **`tool`**: Active Tool Execution block (e.g. `🛠️ run_command (git status)`). Displays real-time tool calls streamed in telemetry; automatically culled when no tool is running.
 - **`ctx`**: Context window saturation limit. Shows percentage used and raw token count.
 - **`cache`**: Context window caching telemetry (`⚡ Cache: 70k`). Displays how many tokens were read from cache, allowing you to instantly visualize your cost savings. Automatically hides if 0.
 - **`5h` / `weekly`**: Rolling quota buckets. Shows percentage used and the countdown timer until the quota bucket resets.
 - **`tasks`**: Active asynchronous background processes (shell commands, cron jobs, active timers, or background scripts) spawned by the CLI.
-- **`subagents`**: Active parallel AI subagents. Grandchild subagents (depth > 0) are visually nested in a tree hierarchy using `↳` characters. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
+- **`subagents`**: Active parallel AI subagents. Surfacing subagent IDs (`[id:sub-88]`). Grandchild subagents (depth > 0) are visually nested in a tree hierarchy using `↳` characters. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
 - **`version`**: The installed version of the Antigravity CLI.
 - **`email`**: The authenticated user's email address.
 - **`plan`**: The active billing tier of the user account.
