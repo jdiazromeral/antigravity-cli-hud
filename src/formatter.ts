@@ -158,7 +158,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const configMaxTokens = HUD_CONFIG.budget?.maxContextTokens;
   const limitTokens = (envMaxTokens && !isNaN(envMaxTokens))
     ? envMaxTokens
-    : (metrics.maxContextTokens > 0 ? metrics.maxContextTokens : (configMaxTokens || metrics.contextWindowSize || 1048576));
+    : (metrics.maxContextTokens > 0 ? metrics.maxContextTokens : (metrics.contextWindowSize || configMaxTokens || 1048576));
 
   const envSoftTokens = process.env.AGY_SOFT_CONTEXT_TOKENS ? parseInt(process.env.AGY_SOFT_CONTEXT_TOKENS, 10) : undefined;
   const softLimitTokens = (envSoftTokens && !isNaN(envSoftTokens)) ? envSoftTokens : 200_000;
