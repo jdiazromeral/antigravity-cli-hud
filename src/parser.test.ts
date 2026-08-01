@@ -81,7 +81,7 @@ describe('parseStream', () => {
       looperEpics: [],
       stepCount: 0,
       maxSteps: 20,
-      maxContextTokens: 75000,
+      maxContextTokens: 0,
       executionMode: 'plan',
       transcriptPath: '/path/to/my/transcript.txt',
       effort: 'high',
@@ -232,5 +232,20 @@ describe('parseStream', () => {
 
     expect(result.activeSkills).toContain('looper');
     expect(result.activeSkills).toContain('tdd');
+  });
+
+  it('should respect AGY_MAX_CONTEXT_TOKENS and AGY_MAX_STEPS env vars when defined', async () => {
+    process.env.AGY_MAX_CONTEXT_TOKENS = '75000';
+    process.env.AGY_MAX_STEPS = '30';
+
+    const payload = { agent_state: 'Working' };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+
+    expect(result.maxContextTokens).toBe(75000);
+    expect(result.maxSteps).toBe(30);
+
+    delete process.env.AGY_MAX_CONTEXT_TOKENS;
+    delete process.env.AGY_MAX_STEPS;
   });
 });
