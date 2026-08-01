@@ -159,21 +159,20 @@ export const HUD_CONFIG = {
 
 ## ⚙️ Configuration & Environment Variables
 
-The HUD supports a 3-tier hybrid priority resolution engine for context window and step budget ceilings:
+The HUD supports a priority resolution engine for context window and step budget ceilings:
 
 ```
-Priority 1: Environment Variables (AGY_MAX_CONTEXT_TOKENS / AGY_MAX_STEPS)
+Priority 1: Environment Variables (AGY_MAX_CONTEXT_TOKENS / AGY_SOFT_CONTEXT_TOKENS / AGY_MAX_STEPS)
     ↓ (If undefined)
-Priority 2: HUD Config & Skill Wizard (HUD_CONFIG.budget / /hud-config)
-    ↓ (If undefined)
-Priority 3: Physical Telemetry (context_window_size / 1M)
+Priority 2: Physical Model Telemetry & Defaults (context_window_size / 1M max, 200k soft limit)
 ```
 
 ### Environment Variables
 
 | Variable | Description | Default | Example |
 | :--- | :--- | :--- | :--- |
-| `AGY_MAX_CONTEXT_TOKENS` | Custom context window ceiling for soft budget tracking. | `75000` | `export AGY_MAX_CONTEXT_TOKENS=1000000` |
+| `AGY_MAX_CONTEXT_TOKENS` | Custom context window physical capacity ceiling limit. | `1048576` (1M) | `export AGY_MAX_CONTEXT_TOKENS=1000000` |
+| `AGY_SOFT_CONTEXT_TOKENS` | Custom soft degradation context limit (scales 5-segment microbar). | `200000` (200k) | `export AGY_SOFT_CONTEXT_TOKENS=150000` |
 | `AGY_MAX_STEPS` | Custom session step ceiling for turn budget tracking. | `20` | `export AGY_MAX_STEPS=30` |
 | `AGY_SKIP_PERMISSIONS` | Toggles Danger Mode indicator in HUD statusline (`☢️ Danger Mode`). | `false` | `export AGY_SKIP_PERMISSIONS=true` |
 

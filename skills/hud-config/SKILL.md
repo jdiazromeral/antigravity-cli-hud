@@ -25,7 +25,7 @@ When the user invokes this skill:
    - `'permissions'`: Danger mode indicator (☢️ Danger Mode when recursive root permissions granted)
    - `'workspace'`: True repository name (e.g., `📂 work`)
    - `'steps'`: Session step budget progress bar (e.g., `👟 Steps: ▰▰▰▰▱ 14/20`)
-   - `'ctx'`: Context window saturation & 75k token ceiling indicator (e.g., `🎧 Ctx: ▰▰▰▱▱ 60% (45k/75k)`)
+   - `'ctx'`: Context window saturation & soft degradation limit indicator (e.g., `🎧 Ctx: ▰▰▱▱▱ 45% (90k/200k soft • 1M max)`)
    - `'cache'`: Context window prompt cache read tokens (e.g., `⚡ Cache: 70k`)
    - `'5h'`: 5-hour rolling quota saturation & reset countdown timer
    - `'weekly'`: Weekly rolling quota saturation & reset countdown timer
@@ -50,7 +50,7 @@ When the user invokes this skill:
    Ask if they want to enable `autoHideEmptyBlocks` (Boolean, defaults to true) to collapse empty blocks (`tasks`, `subagents`, `tool`, `artifacts`, `git`, `looper`, `skill`, `cache`).
 
    **Budget Ceilings**:
-   Ask if they want to customize `budget` limits (`maxSteps` defaults to 20, `maxContextTokens` defaults to 75,000).
+   Ask if they want to customize `budget` limits (`maxSteps` defaults to 20). Context soft degradation limit defaults to 200,000 tokens (or `AGY_SOFT_CONTEXT_TOKENS`) and model physical max capacity defaults to `context_window_size` / 1,048,576 tokens (or `AGY_MAX_CONTEXT_TOKENS`).
 
 4. **Apply and Recompile**:
    Once agreed on the updated configuration:
