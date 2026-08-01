@@ -33,7 +33,10 @@ describe('formatMetrics', () => {
     executionMode: 'request-review',
     effort: 'normal',
     agentName: 'Antigravity',
-    activeSkills: []
+    activeSkills: [],
+    stepCount: 0,
+    maxSteps: 20,
+    maxContextTokens: 75000
   };
 
   it('formats single and multiple active skills correctly', () => {

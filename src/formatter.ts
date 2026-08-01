@@ -22,6 +22,11 @@ const colors = {
 export const HUD_CONFIG = {
   // Whether to dynamically hide 'tasks' and 'subagents' blocks from the UI when their count is 0
   autoHideEmptyBlocks: true,
+  // Budget ceiling defaults
+  budget: {
+    maxSteps: 20,
+    maxContextTokens: 75000
+  },
   // Breakpoints in column widths
   breakpoints: {
     large: 135,
@@ -32,7 +37,7 @@ export const HUD_CONFIG = {
   layouts: {
     large: [
       ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
-      ['workspace', 'sandbox', 'ctx', 'cache', '5h', 'weekly'],
+      ['workspace', 'sandbox', 'steps', 'ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
@@ -42,7 +47,7 @@ export const HUD_CONFIG = {
     medium: [
       ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox'],
-      ['ctx', 'cache', '5h', 'weekly'],
+      ['steps', 'ctx', 'cache', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
@@ -52,8 +57,8 @@ export const HUD_CONFIG = {
     small: [
       ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox'],
-      ['ctx', 'cache'],
-      ['5h', 'weekly'],
+      ['steps', 'ctx'],
+      ['cache', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
@@ -132,6 +137,17 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     skillBlockStr = `${label} ${names}`;
   }
 
+  const maxSteps = metrics.maxSteps || HUD_CONFIG.budget?.maxSteps || 20;
+  const stepCount = metrics.stepCount || 0;
+  const stepPct = Math.round((stepCount / maxSteps) * 100);
+  const stepColor = getThresholdColor(stepPct);
+  const stepBar = renderMicroBar(stepPct, stepColor, 5);
+  const stepStr = `👟 Steps: ${stepBar} ${stepColor}${stepCount}/${maxSteps}${colors.reset}`;
+
+  const maxCtxTokens = metrics.maxContextTokens || HUD_CONFIG.budget?.maxContextTokens || 75000;
+  const displayTokens = Math.round(metrics.totalInputTokens / 1000);
+  const maxDisplayTokens = Math.round(maxCtxTokens / 1000);
+
   const blocks: Record<string, string> = {
     state: stateIndicator,
     mode: modeStr,
@@ -139,11 +155,12 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     skill: skillBlockStr,
     model: `🤖 ${colors.bold}${metrics.model}${colors.reset}`,
     sandbox: metrics.isSandboxed ? `${colors.gray}🔒 Sandboxed${colors.reset}` : `${colors.yellow}🔓 Unsandboxed${colors.reset}`,
-    permissions: metrics.skipPermissions ? `${colors.red}☢️  Danger Mode${colors.reset}` : '',
+    permissions: metrics.skipPermissions ? `${colors.red}☢️ Danger Mode${colors.reset}` : '',
     workspace: `📂 ${colors.blue}${metrics.workspace}${colors.reset}`,
+    steps: stepStr,
     git: metrics.gitBranch ? `🌱 ${colors.cyan}${metrics.gitBranch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
-    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${metrics.contextUsage}%${colors.reset} (${Math.round(metrics.totalInputTokens/1000)}k)${exceedWarning}`,
+    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${metrics.contextUsage}%${colors.reset} (${displayTokens}k/${maxDisplayTokens}k)${exceedWarning}`,
     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${Math.round(metrics.cacheTokens/1000)}k${colors.reset}` : '',
     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
