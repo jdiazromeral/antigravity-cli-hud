@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Subagent Conversation ID Display:** Subagent entries now surface truncated conversation IDs (`[id:sub-88]`), parsed from enriched `subagents` telemetry.
 
 ### Changed
+- **Modern Accent Bar UI:** Replaced repetitive `┌─`, `├─`, `└─` comb brackets with a state-colored accent bar (`▌`) and clean guide line (`│`).
 - **Strict Session Memory Scoping:** Removed greedy auto-scan of `lab/` and `worktrees/` when `hud_context.json` is missing or empty. Git branches are now strictly scoped to `hud_context.json` or direct `cwd` git repos.
 - **Contextual Terminal Window Titles:** Window titles now explicitly include repository name prefixes (`repo:branch`) when multiple repos or root workspace paths are active.
 
