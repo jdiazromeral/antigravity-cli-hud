@@ -470,16 +470,21 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
-  if (resolvedTranscriptPath && fs.existsSync(resolvedTranscriptPath) && stepCount === 0) {
+  if (resolvedTranscriptPath && fs.existsSync(resolvedTranscriptPath)) {
     try {
-      const stats = fs.statSync(resolvedTranscriptPath);
-      if (stats.size > 0) {
-        const buffer = fs.readFileSync(resolvedTranscriptPath);
-        let lines = 0;
-        for (let i = 0; i < buffer.length; i++) {
-          if (buffer[i] === 10) lines++;
+      const content = fs.readFileSync(resolvedTranscriptPath, 'utf8');
+      const lines = content.split('\n');
+      let userTurns = 0;
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (line.includes('"USER_INPUT"') || line.includes('"USER_EXPLICIT"')) {
+          userTurns++;
         }
-        stepCount = lines;
+      }
+      if (userTurns > 0) {
+        stepCount = userTurns;
+      } else if (stepCount === 0) {
+        stepCount = lines.filter(l => l.trim().length > 0).length;
       }
     } catch (e) {
       // ignore
