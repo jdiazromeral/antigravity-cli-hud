@@ -320,7 +320,7 @@ function formatMetrics(metrics, width = 80) {
 // scripts/demo.ts
 var mockMetrics = {
   agentState: "WORKING",
-  agentName: "TARS",
+  agentName: "Antigravity",
   executionMode: "plan",
   effort: "high",
   activeSkills: ["looper", "tdd", "mapper"],

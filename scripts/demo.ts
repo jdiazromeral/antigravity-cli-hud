@@ -2,7 +2,7 @@ import { formatMetrics, ParsedMetrics } from '../src/formatter.js';
 
 const mockMetrics: ParsedMetrics = {
   agentState: 'WORKING',
-  agentName: 'TARS',
+  agentName: 'Antigravity',
   executionMode: 'plan',
   effort: 'high',
   activeSkills: ['looper', 'tdd', 'mapper'],
