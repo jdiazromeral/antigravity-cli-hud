@@ -5,6 +5,11 @@ Bundled with Antigravity HUD Plugin
 
 Reads stdin JSON payload from Antigravity, evaluates token metrics from transcript,
 and logs metrics or injects warnings if thresholds are exceeded.
+
+SECURITY & PRIVACY HARDENING:
+- Zero Content Disclosure: Only length metrics (character counts) are calculated. No raw text, prompt content, code, or thinking output is stored or output.
+- Strict File Permissions: Ledger log file is created with 0600 (user-only read/write) permissions.
+- Path Containment: Verifies transcriptPath is contained within ~/.gemini/antigravity-cli/brain/ to prevent path traversal reading.
 """
 
 import sys
@@ -12,11 +17,20 @@ import json
 import os
 from datetime import datetime
 
-# Default Budget Thresholds
-WARN_CONTEXT_TOKENS = 75_000  # Warn model when prompt context > 75k tokens
-WARN_STEP_COUNT = 20          # Warn when step count > 20 steps
+WARN_CONTEXT_TOKENS = 75_000
+WARN_STEP_COUNT = 20
 
-LEDGER_PATH = os.path.expanduser("~/.gemini/antigravity-cli/token_ledger.jsonl")
+BASE_DIR = os.path.expanduser("~/.gemini/antigravity-cli")
+LEDGER_PATH = os.path.join(BASE_DIR, "token_ledger.jsonl")
+
+def is_safe_path(path):
+    """Ensure path is within the allowed brain directory."""
+    try:
+        real_path = os.path.realpath(path)
+        brain_dir = os.path.realpath(os.path.join(BASE_DIR, "brain"))
+        return real_path.startswith(brain_dir)
+    except Exception:
+        return False
 
 def main():
     try:
@@ -33,11 +47,10 @@ def main():
     conv_id = payload.get("conversationId", "unknown")
     event_type = sys.argv[1] if len(sys.argv) > 1 else "PreInvocation"
 
-    if not transcript_path or not os.path.exists(transcript_path):
+    if not transcript_path or not os.path.exists(transcript_path) or not is_safe_path(transcript_path):
         print(json.dumps({}))
         return
 
-    # Calculate current session metrics
     step_count = 0
     total_chars = 0
     thinking_chars = 0
@@ -57,7 +70,6 @@ def main():
     est_tokens = total_chars // 4
     est_thinking_tokens = thinking_chars // 4
 
-    # 1. PreInvocation: Inject warnings if threshold exceeded
     if event_type == "PreInvocation":
         inject_steps = []
         if est_tokens > WARN_CONTEXT_TOKENS or step_count > WARN_STEP_COUNT:
@@ -72,7 +84,6 @@ def main():
         print(json.dumps(output))
         return
 
-    # 2. Stop: Append to persistent token ledger
     if event_type == "Stop":
         record = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -82,8 +93,11 @@ def main():
             "est_thinking_tokens": est_thinking_tokens,
             "termination_reason": payload.get("terminationReason", "")
         }
-        os.makedirs(os.path.dirname(LEDGER_PATH), exist_ok=True)
-        with open(LEDGER_PATH, "a") as f:
+        
+        # Enforce secure directory and file permissions (user-only 0700 / 0600)
+        os.makedirs(os.path.dirname(LEDGER_PATH), mode=0o700, exist_ok=True)
+        fd = os.open(LEDGER_PATH, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        with os.fdopen(fd, "a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
         
         print(json.dumps({}))
