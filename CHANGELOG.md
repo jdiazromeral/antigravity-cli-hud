@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Subagent Conversation ID Display:** Subagent entries now surface truncated conversation IDs (`[id:sub-88]`), parsed from enriched `subagents` telemetry.
 
 ### Fixed
+- **Physical Model Capacity Formatting:** `Ctx` block now parses physical model context window capacity (`context_window_size`) from telemetry (e.g. `128k/1M`) using `formatTokenCount` helper.
 - **Real-Time Step Count Resolution:** Resolved active `transcript.jsonl` log file path via `conversation_id` (`~/.gemini/antigravity-cli/brain/<conversationId>/.system_generated/logs/transcript.jsonl`) when `transcript_path` is omitted in heartbeat telemetry, ensuring live step count updates.
 
 ### Changed
