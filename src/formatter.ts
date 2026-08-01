@@ -90,6 +90,18 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const ctxColor = metrics.exceeds200k ? colors.red : getThresholdColor(metrics.contextUsage);
   const exceedWarning = metrics.exceeds200k ? ` ${colors.red}${colors.bold}🚨 >200k! Agent may start degrading.${colors.reset}` : '';
   
+  const formatTokenCount = (tokens: number): string => {
+    if (!tokens || tokens <= 0) return '0';
+    if (tokens >= 1_000_000) {
+      const val = (tokens / 1_000_000).toFixed(1).replace('.0', '');
+      return `${val}M`;
+    }
+    if (tokens >= 1_000) {
+      return `${Math.round(tokens / 1000)}k`;
+    }
+    return `${tokens}`;
+  };
+
   // Format quota values
   const formatTime = (sec: number) => {
     if (sec <= 0) return '00:00';
@@ -145,9 +157,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const stepBar = renderMicroBar(stepPct, stepColor, 5);
   const stepStr = `👟 Steps: ${stepBar} ${stepColor}${stepCount}/${maxSteps}${colors.reset}`;
 
-  const maxCtxTokens = metrics.maxContextTokens || HUD_CONFIG.budget?.maxContextTokens || 75000;
-  const displayTokens = Math.round(metrics.totalInputTokens / 1000);
-  const maxDisplayTokens = Math.round(maxCtxTokens / 1000);
+  const limitTokens = metrics.contextWindowSize || metrics.maxContextTokens || 1048576;
+  const usedTokensStr = formatTokenCount(metrics.totalInputTokens);
+  const limitTokensStr = formatTokenCount(limitTokens);
 
   const blocks: Record<string, string> = {
     state: stateIndicator,
@@ -161,8 +173,8 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     steps: stepStr,
     git: metrics.gitBranch ? `🌱 ${colors.cyan}${metrics.gitBranch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
-    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${metrics.contextUsage}%${colors.reset} (${displayTokens}k/${maxDisplayTokens}k)${exceedWarning}`,
-    cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${Math.round(metrics.cacheTokens/1000)}k${colors.reset}` : '',
+    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${metrics.contextUsage}%${colors.reset} (${usedTokensStr}/${limitTokensStr})${exceedWarning}`,
+    cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,

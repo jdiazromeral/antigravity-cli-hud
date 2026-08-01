@@ -36,7 +36,8 @@ describe('formatMetrics', () => {
     activeSkills: [],
     stepCount: 0,
     maxSteps: 20,
-    maxContextTokens: 75000
+    maxContextTokens: 75000,
+    contextWindowSize: 1048576
   };
 
   it('formats single and multiple active skills correctly', () => {
