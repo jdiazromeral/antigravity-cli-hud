@@ -150,14 +150,20 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     skillBlockStr = `${label} ${names}`;
   }
 
-  const maxSteps = metrics.maxSteps || HUD_CONFIG.budget?.maxSteps || 20;
+  const envMaxSteps = process.env.AGY_MAX_STEPS ? parseInt(process.env.AGY_MAX_STEPS, 10) : undefined;
+  const maxSteps = (envMaxSteps && !isNaN(envMaxSteps)) ? envMaxSteps : (metrics.maxSteps || HUD_CONFIG.budget?.maxSteps || 20);
   const stepCount = metrics.stepCount || 0;
   const stepPct = Math.round((stepCount / maxSteps) * 100);
   const stepColor = getThresholdColor(stepPct);
   const stepBar = renderMicroBar(stepPct, stepColor, 5);
   const stepStr = `👟 Steps: ${stepBar} ${stepColor}${stepCount}/${maxSteps}${colors.reset}`;
 
-  const limitTokens = metrics.contextWindowSize || metrics.maxContextTokens || 1048576;
+  const envMaxTokens = process.env.AGY_MAX_CONTEXT_TOKENS ? parseInt(process.env.AGY_MAX_CONTEXT_TOKENS, 10) : undefined;
+  const configMaxTokens = HUD_CONFIG.budget?.maxContextTokens;
+  const limitTokens = (envMaxTokens && !isNaN(envMaxTokens))
+    ? envMaxTokens
+    : (metrics.maxContextTokens > 0 ? metrics.maxContextTokens : (configMaxTokens || metrics.contextWindowSize || 1048576));
+
   const usedTokensStr = formatTokenCount(metrics.totalInputTokens);
   const limitTokensStr = formatTokenCount(limitTokens);
 

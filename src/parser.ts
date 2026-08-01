@@ -504,8 +504,11 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
-  const maxSteps = parsed.max_steps || 20;
-  const maxContextTokens = parsed.max_context_tokens || 75000;
+  const envMaxSteps = process.env.AGY_MAX_STEPS ? parseInt(process.env.AGY_MAX_STEPS, 10) : undefined;
+  const envMaxCtx = process.env.AGY_MAX_CONTEXT_TOKENS ? parseInt(process.env.AGY_MAX_CONTEXT_TOKENS, 10) : undefined;
+
+  const maxSteps = (envMaxSteps && !isNaN(envMaxSteps)) ? envMaxSteps : (parsed.max_steps || 20);
+  const maxContextTokens = (envMaxCtx && !isNaN(envMaxCtx)) ? envMaxCtx : (parsed.max_context_tokens || 0);
 
   return {
     agentState: (parsed.agent_state || 'UNKNOWN').toUpperCase(),
