@@ -98,6 +98,17 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const q5Color = getThresholdColor(metrics.quota5h);
   const taskColor = metrics.taskCount > 0 ? colors.yellow : colors.gray;
 
+  const renderMicroBar = (percent: number, color: string, width: number = 5) => {
+    const clamped = Math.max(0, Math.min(100, percent));
+    const filledCount = Math.round((clamped / 100) * width);
+    const emptyCount = width - filledCount;
+    return `${color}${'▰'.repeat(filledCount)}${colors.reset}${colors.gray}${'▱'.repeat(emptyCount)}${colors.reset}`;
+  };
+
+  const ctxBar = renderMicroBar(metrics.contextUsage, ctxColor, 5);
+  const q5Bar = renderMicroBar(metrics.quota5h, q5Color, 5);
+  const qWBar = renderMicroBar(metrics.quotaWeekly, qWColor, 5);
+
   const modeColors: Record<string, string> = {
     'request-review': `${colors.yellow}🟡 request-review${colors.reset}`,
     'accept-edits': `${colors.green}🟢 accept-edits${colors.reset}`,
@@ -124,10 +135,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     workspace: `📂 ${colors.blue}${metrics.workspace}${colors.reset}`,
     git: metrics.gitBranch ? `🌱 ${colors.cyan}${metrics.gitBranch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
-    ctx: `🎧 Ctx: ${ctxColor}${metrics.contextUsage}%${colors.reset} (${Math.round(metrics.totalInputTokens/1000)}k)${exceedWarning}`,
+    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${metrics.contextUsage}%${colors.reset} (${Math.round(metrics.totalInputTokens/1000)}k)${exceedWarning}`,
     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${Math.round(metrics.cacheTokens/1000)}k${colors.reset}` : '',
-    '5h': `🕒 5h: ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
-    weekly: `🕒 Weekly: ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
+    '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
+    weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
     tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
     version: `📦 v${metrics.version}`,
@@ -171,7 +182,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   if (metrics.looperEpics) {
     for (const e of metrics.looperEpics) {
       const pColor = e.done === e.total ? colors.green : colors.yellow;
-      looperStrs.push(`🎯 ${colors.dim}${e.repo} -${colors.reset} Epic: ${colors.bold}${e.epic}${colors.reset} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
+      const epicPct = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
+      const epicBar = renderMicroBar(epicPct, pColor, 5);
+      looperStrs.push(`🎯 ${colors.dim}${e.repo} -${colors.reset} Epic: ${colors.bold}${e.epic}${colors.reset} ${epicBar} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
     }
   }
   for (const m of (metrics.looperMissions || [])) {
