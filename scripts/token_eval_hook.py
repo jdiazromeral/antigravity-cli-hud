@@ -59,7 +59,8 @@ def main():
         for line in f:
             try:
                 data = json.loads(line)
-                step_count += 1
+                if data.get("type") in ("USER_INPUT", "USER_EXPLICIT"):
+                    step_count += 1
                 content = data.get("content", "") or ""
                 thinking = data.get("thinking", "") or ""
                 total_chars += len(content)
