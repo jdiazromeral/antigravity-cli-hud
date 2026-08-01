@@ -1,0 +1,1 @@
+**Performance Doctrine**: The parser module should always prioritize extracting data directly from the telemetry JSON payload (like the 'vcs' object) over executing synchronous OS shell operations (like child_process.execSync) to prevent blocking the Node event loop.

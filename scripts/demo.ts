@@ -61,4 +61,3 @@ const mockMetrics: ParsedMetrics = {
 
 const out = formatMetrics(mockMetrics, process.stdout.columns || 140);
 console.log(out);
-
