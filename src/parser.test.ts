@@ -53,6 +53,7 @@ describe('parseStream', () => {
       contextUsage: 45,
       totalInputTokens: 45000,
       cacheTokens: 12000,
+      contextWindowSize: 1048576,
       exceeds200k: false,
       quotaWeekly: 33, // Math.round((1 - 0.67) * 100)
       quotaWeeklyResetSeconds: 62917,

@@ -87,6 +87,7 @@ export interface ParsedMetrics {
   stepCount: number;
   maxSteps: number;
   maxContextTokens: number;
+  contextWindowSize?: number;
   executionMode: string;
   transcriptPath?: string;
   effort: string;
@@ -550,6 +551,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     stepCount,
     maxSteps,
     maxContextTokens,
+    contextWindowSize: parsed.context_window?.context_window_size || parsed.max_context_tokens || 1048576,
     executionMode,
     transcriptPath: resolvedTranscriptPath,
     effort,
