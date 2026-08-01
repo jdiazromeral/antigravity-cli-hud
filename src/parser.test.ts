@@ -60,6 +60,8 @@ describe('parseStream', () => {
       quota5hResetSeconds: 17758,
       quotaType: '3rd-Party',
       subagents: [],
+      activeTool: undefined,
+      activeSkills: [],
       taskCount: 2,
       sessionName: '123',
       model: 'Other Model',
@@ -208,5 +210,23 @@ describe('parseStream', () => {
     const stream = Readable.from([JSON.stringify(payload)]);
     const result = await parseStream(stream);
     expect(result.exceeds200k).toBe(true);
+  });
+
+  it('should detect active skills from tool_info, subagents, and looper', async () => {
+    const payload = {
+      agent_state: 'Working',
+      tool_info: {
+        name: 'view_file',
+        summary: '/Users/javidiaz/.gemini/config/plugins/looper/skills/looper/SKILL.md'
+      },
+      subagents: [
+        { name: 'worker1', role: 'TDD Red-Green Refactor', status: 'working' }
+      ]
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+
+    expect(result.activeSkills).toContain('looper');
+    expect(result.activeSkills).toContain('tdd');
   });
 });
