@@ -431,7 +431,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   }
 
   const effort = parsed.effort || 'normal';
-  const agentName = parsed.agent || 'Antigravity';
+  const defaultAgent = process.env.AGY_AGENT_NAME || process.env.AGENT_NAME || 'TARS';
+  const agentName = parsed.agent || defaultAgent;
 
   const skillsSet = new Set<string>();
   if (parsed.tool_info && parsed.tool_info.summary) {

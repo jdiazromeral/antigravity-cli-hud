@@ -202,7 +202,7 @@ describe('parseStream', () => {
     expect(result.artifactCount).toBe(0);
     expect(result.exceeds200k).toBe(false);
     expect(result.effort).toBe('normal');
-    expect(result.agentName).toBe('Antigravity');
+    expect(result.agentName).toBe('TARS');
     expect(result.executionMode).toBe('request-review');
   });
 
