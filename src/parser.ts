@@ -444,7 +444,12 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
-  const effort = typeof parsed.effort === 'string' ? parsed.effort : 'normal';
+  let effort = typeof parsed.effort === 'string' ? parsed.effort : 'normal';
+  const lModel = modelName.toLowerCase();
+  if (lModel.includes('(epic)')) effort = 'epic';
+  else if (lModel.includes('(high)')) effort = 'high';
+  else if (lModel.includes('(normal)')) effort = 'normal';
+  else if (lModel.includes('(low)')) effort = 'low';
   const defaultAgent = process.env.AGY_AGENT_NAME || process.env.AGENT_NAME || 'TARS';
   const agentName = typeof parsed.agent === 'string' ? parsed.agent : defaultAgent;
 
