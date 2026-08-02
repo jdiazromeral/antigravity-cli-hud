@@ -4,14 +4,16 @@ export interface AntigravityPayload {
   context_window?: {
     used_percentage: number;
     total_input_tokens: number;
+    context_window_size?: number;
     current_usage?: {
       cache_read_input_tokens: number;
     };
   };
   quota?: {
-    "gemini-weekly"?: { remaining_fraction: number };
-    "gemini-5h"?: { remaining_fraction: number };
-    "3p-weekly"?: { remaining_fraction: number };
+    "gemini-weekly"?: { remaining_fraction: number; reset_in_seconds?: number };
+    "gemini-5h"?: { remaining_fraction: number; reset_in_seconds?: number };
+    "3p-weekly"?: { remaining_fraction: number; reset_in_seconds?: number };
+    "3p-5h"?: { remaining_fraction: number; reset_in_seconds?: number };
   };
   subagents?: Array<{ name: string; role: string; status: string; depth?: number; conversation_id?: string; log_uri?: string }>;
   tool_info?: { name: string; summary?: string; status?: string };
@@ -26,12 +28,17 @@ export interface AntigravityPayload {
   terminal_width?: number;
   session_id?: string;
   cwd?: string;
-  artifacts?: any[];
+  artifact_count?: number;
+  artifacts?: unknown[];
   vcs?: { branch?: string; dirty?: boolean };
   transcript_path?: string;
   effort?: string;
   mode?: string;
   agent?: string;
+  step_count?: number;
+  step_index?: number;
+  max_steps?: number;
+  max_context_tokens?: number;
 }
 
 import * as fs from 'fs';
@@ -116,20 +123,23 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     throw new Error('Failed to parse JSON');
   }
 
-  if (!parsed || typeof parsed !== 'object') throw new Error('Missing required metrics in payload');
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Missing required metrics in payload');
 
-  const conversationId = parsed.conversation_id || parsed.session_id;
+  const conversationId = typeof parsed.conversation_id === 'string' ? parsed.conversation_id : (typeof parsed.session_id === 'string' ? parsed.session_id : undefined);
 
   const getQuotaObj = (key: string) => {
-    const q = parsed.quota && parsed.quota[key as keyof typeof parsed.quota];
-    if (!q) return { percent: 0, resetSeconds: 0 };
-    const resetSeconds = q.reset_in_seconds || 0;
-    const percent = resetSeconds <= 0 ? 0 : Math.round((1 - (q.remaining_fraction || 0)) * 100);
+    if (!parsed.quota || typeof parsed.quota !== 'object' || Array.isArray(parsed.quota)) return { percent: 0, resetSeconds: 0 };
+    const q = (parsed.quota as Record<string, any>)[key];
+    if (!q || typeof q !== 'object' || Array.isArray(q)) return { percent: 0, resetSeconds: 0 };
+    const resetSeconds = typeof q.reset_in_seconds === 'number' && q.reset_in_seconds > 0 ? q.reset_in_seconds : 0;
+    const remFrac = typeof q.remaining_fraction === 'number' ? q.remaining_fraction : 1;
+    const percent = resetSeconds <= 0 ? 0 : Math.max(0, Math.min(100, Math.round((1 - remFrac) * 100)));
     return { percent, resetSeconds };
   };
 
-  const sessName = parsed.session_id ? parsed.session_id.substring(0, 6) : 'Unknown';
-  let modelName = parsed.model?.display_name || 'Unknown Model';
+  const rawSessId = typeof parsed.session_id === 'string' ? parsed.session_id : (typeof parsed.conversation_id === 'string' ? parsed.conversation_id : '');
+  const sessName = rawSessId ? rawSessId.substring(0, 6) : 'Unknown';
+  let modelName = (parsed.model && typeof parsed.model === 'object' && !Array.isArray(parsed.model) && typeof parsed.model.display_name === 'string') ? parsed.model.display_name : 'Unknown Model';
   if (modelName.length > 25) modelName = modelName.substring(0, 22) + '...';
 
   const isGemini = modelName.toLowerCase().includes('gemini');
@@ -165,14 +175,17 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
+  const cwd = typeof parsed.cwd === 'string' ? parsed.cwd : undefined;
+  const vcsObj = (parsed.vcs && typeof parsed.vcs === 'object' && !Array.isArray(parsed.vcs)) ? parsed.vcs : undefined;
+
   let gitBranches: {name: string, branch: string}[] = [];
 
   let activeWorkspaceRepos: string[] = [];
   
-  if (parsed.cwd) {
-    if (parsed.vcs && parsed.vcs.branch) {
-      const b = parsed.vcs.dirty ? `${parsed.vcs.branch}*` : parsed.vcs.branch;
-      gitBranches.push({ name: path.basename(parsed.cwd), branch: b });
+  if (cwd) {
+    if (vcsObj && typeof vcsObj.branch === 'string') {
+      const b = vcsObj.dirty ? `${vcsObj.branch}*` : vcsObj.branch;
+      gitBranches.push({ name: path.basename(cwd), branch: b });
     } else {
       const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
       let useCache = false;
@@ -186,7 +199,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
             const targetDirs = JSON.parse(fs.readFileSync(sessionContextFile, 'utf8'));
             if (Array.isArray(targetDirs)) {
                for (const d of targetDirs) {
-                 const p = path.join(parsed.cwd, d);
+                 const p = path.join(cwd, d);
                  if (!activeWorkspaceRepos.includes(p)) activeWorkspaceRepos.push(p);
                }
             }
@@ -251,17 +264,18 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   let looperMissions: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[] = [];
   let looperEpics: {repo: string, epic: string, total: number, done: number}[] = [];
-  if (parsed.cwd) {
+  if (cwd) {
     const looperCacheFile = path.join(os.homedir(), '.gemini', 'hud_looper.cache');
     let useLooperCache = false;
     let prevLooperCache: any[] | null = null;
+    let prevEpicsCache: any[] | null = null;
     try {
       if (fs.existsSync(looperCacheFile)) {
         const cRaw = fs.readFileSync(looperCacheFile, 'utf8');
         const cData = JSON.parse(cRaw);
         prevLooperCache = cData.looperMissions || [];
-        const prevEpicsCache = cData.looperEpics || [];
-        if (cData.cwd === parsed.cwd && (Date.now() - cData.timestamp) < 5000) {
+        prevEpicsCache = cData.looperEpics || [];
+        if (cData.cwd === cwd && (Date.now() - cData.timestamp) < 5000) {
           looperMissions = prevLooperCache || [];
           looperEpics = prevEpicsCache || [];
           useLooperCache = true;
@@ -394,7 +408,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
   
-  let workspaceName = parsed.cwd ? path.basename(parsed.cwd) : 'Unknown Workspace';
+  let workspaceName = cwd ? path.basename(cwd) : 'Unknown Workspace';
 
   const artifactCount = typeof parsed.artifact_count === 'number' ? parsed.artifact_count : 0;
   
@@ -430,31 +444,42 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
-  const effort = parsed.effort || 'normal';
+  const effort = typeof parsed.effort === 'string' ? parsed.effort : 'normal';
   const defaultAgent = process.env.AGY_AGENT_NAME || process.env.AGENT_NAME || 'TARS';
-  const agentName = parsed.agent || defaultAgent;
+  const agentName = typeof parsed.agent === 'string' ? parsed.agent : defaultAgent;
+
+  const toolInfoObj = (parsed.tool_info && typeof parsed.tool_info === 'object' && !Array.isArray(parsed.tool_info) && typeof parsed.tool_info.name === 'string') ? parsed.tool_info : undefined;
+
+  const activeTool: ActiveToolInfo | undefined = toolInfoObj ? {
+    name: toolInfoObj.name,
+    summary: typeof toolInfoObj.summary === 'string' ? toolInfoObj.summary : undefined,
+    status: typeof toolInfoObj.status === 'string' ? toolInfoObj.status : undefined
+  } : undefined;
 
   const skillsSet = new Set<string>();
-  if (parsed.tool_info && parsed.tool_info.summary) {
-    const skillMatch = parsed.tool_info.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
+  if (toolInfoObj && typeof toolInfoObj.summary === 'string') {
+    const skillMatch = toolInfoObj.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
     if (skillMatch && skillMatch[1]) {
       skillsSet.add(skillMatch[1]);
     }
   }
-  if (parsed.subagents) {
-    for (const sub of parsed.subagents) {
-      if (sub.status === 'completed') continue;
-      const roleLower = (sub.role || '').toLowerCase();
-      const nameLower = (sub.name || '').toLowerCase();
-      
-      if (roleLower.includes('tdd') || nameLower.includes('tdd')) skillsSet.add('tdd');
-      if (roleLower.includes('cartographer') || roleLower.includes('mapper') || nameLower.includes('mapper')) skillsSet.add('mapper');
-      if (roleLower.includes('looper') || roleLower.includes('mission worker') || nameLower.includes('looper')) skillsSet.add('looper');
-      if (roleLower.includes('retro') || nameLower.includes('retro')) skillsSet.add('retro');
-      if (roleLower.includes('epic planner') || roleLower.includes('planner')) skillsSet.add('epic-planner');
-      if (roleLower.includes('epic runner') || roleLower.includes('runner')) skillsSet.add('epic-runner');
-      if (roleLower.includes('hud-config') || roleLower.includes('hud config')) skillsSet.add('hud-config');
-      
+
+  const rawSubagents = Array.isArray(parsed.subagents) ? parsed.subagents : [];
+  for (const sub of rawSubagents) {
+    if (!sub || typeof sub !== 'object' || Array.isArray(sub)) continue;
+    if (sub.status === 'completed') continue;
+    const roleLower = (typeof sub.role === 'string' ? sub.role : '').toLowerCase();
+    const nameLower = (typeof sub.name === 'string' ? sub.name : '').toLowerCase();
+    
+    if (roleLower.includes('tdd') || nameLower.includes('tdd')) skillsSet.add('tdd');
+    if (roleLower.includes('cartographer') || roleLower.includes('mapper') || nameLower.includes('mapper')) skillsSet.add('mapper');
+    if (roleLower.includes('looper') || roleLower.includes('mission worker') || nameLower.includes('looper')) skillsSet.add('looper');
+    if (roleLower.includes('retro') || nameLower.includes('retro')) skillsSet.add('retro');
+    if (roleLower.includes('epic planner') || roleLower.includes('planner')) skillsSet.add('epic-planner');
+    if (roleLower.includes('epic runner') || roleLower.includes('runner')) skillsSet.add('epic-runner');
+    if (roleLower.includes('hud-config') || roleLower.includes('hud config')) skillsSet.add('hud-config');
+    
+    if (typeof sub.role === 'string') {
       const roleMatch = sub.role.match(/skill:\s*([a-zA-Z0-9_-]+)/i);
       if (roleMatch && roleMatch[1]) skillsSet.add(roleMatch[1]);
     }
@@ -463,8 +488,23 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     skillsSet.add('looper');
   }
   const activeSkills = Array.from(skillsSet);
-  let stepCount = parsed.step_count ?? parsed.step_index ?? 0;
-  let resolvedTranscriptPath = parsed.transcript_path;
+
+  const parsedSubagents: SubagentInfo[] = [];
+  for (const s of rawSubagents) {
+    if (!s || typeof s !== 'object' || Array.isArray(s)) continue;
+    if (s.status === 'completed') continue;
+    parsedSubagents.push({
+      name: typeof s.name === 'string' ? s.name : 'Unknown Subagent',
+      role: typeof s.role === 'string' ? s.role : 'Worker',
+      status: typeof s.status === 'string' ? s.status : 'working',
+      depth: typeof s.depth === 'number' && s.depth >= 0 ? s.depth : 0,
+      conversationId: typeof s.conversation_id === 'string' ? s.conversation_id : undefined,
+      logUri: typeof s.log_uri === 'string' ? s.log_uri : undefined
+    });
+  }
+
+  let stepCount = typeof parsed.step_count === 'number' ? parsed.step_count : (typeof parsed.step_index === 'number' ? parsed.step_index : 0);
+  let resolvedTranscriptPath = typeof parsed.transcript_path === 'string' ? parsed.transcript_path : undefined;
   if (resolvedTranscriptPath) {
     if (!fs.existsSync(resolvedTranscriptPath)) {
       const normalized = resolvedTranscriptPath.replace('/.gemini/antigravity/', '/.gemini/antigravity-cli/');
@@ -508,42 +548,45 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const envMaxSteps = process.env.AGY_MAX_STEPS ? parseInt(process.env.AGY_MAX_STEPS, 10) : undefined;
   const envMaxCtx = process.env.AGY_MAX_CONTEXT_TOKENS ? parseInt(process.env.AGY_MAX_CONTEXT_TOKENS, 10) : undefined;
 
-  const maxSteps = (envMaxSteps && !isNaN(envMaxSteps)) ? envMaxSteps : (parsed.max_steps || 20);
-  const maxContextTokens = (envMaxCtx && !isNaN(envMaxCtx)) ? envMaxCtx : (parsed.max_context_tokens || 0);
+  const maxSteps = (envMaxSteps && !isNaN(envMaxSteps)) ? envMaxSteps : (typeof parsed.max_steps === 'number' ? parsed.max_steps : 20);
+  const maxContextTokens = (envMaxCtx && !isNaN(envMaxCtx)) ? envMaxCtx : (typeof parsed.max_context_tokens === 'number' ? parsed.max_context_tokens : 0);
+
+  const rawTotalTokens = parsed.context_window?.total_input_tokens;
+  const totalInputTokens = typeof rawTotalTokens === 'number' && rawTotalTokens > 0 ? rawTotalTokens : 0;
+
+  const rawUsedPct = parsed.context_window?.used_percentage;
+  const contextUsage = typeof rawUsedPct === 'number' && !isNaN(rawUsedPct) ? Math.max(0, Math.min(100, Math.round(rawUsedPct))) : 0;
+
+  const rawCacheTokens = parsed.context_window?.current_usage?.cache_read_input_tokens;
+  const cacheTokens = typeof rawCacheTokens === 'number' && rawCacheTokens > 0 ? rawCacheTokens : 0;
+
+  const rawCtxSize = parsed.context_window?.context_window_size;
+  const contextWindowSize = (typeof rawCtxSize === 'number' && rawCtxSize > 0) ? rawCtxSize : ((typeof parsed.max_context_tokens === 'number' && parsed.max_context_tokens > 0) ? parsed.max_context_tokens : 1048576);
+
+  const isSandboxed = !!(parsed.sandbox && typeof parsed.sandbox === 'object' && !Array.isArray(parsed.sandbox) && parsed.sandbox.enabled);
 
   return {
-    agentState: (parsed.agent_state || 'UNKNOWN').toUpperCase(),
-    contextUsage: Math.round(parsed.context_window?.used_percentage || 0),
-    totalInputTokens: parsed.context_window?.total_input_tokens || 0,
-    cacheTokens: parsed.context_window?.current_usage?.cache_read_input_tokens || 0,
+    agentState: (typeof parsed.agent_state === 'string' ? parsed.agent_state : 'UNKNOWN').toUpperCase(),
+    contextUsage,
+    totalInputTokens,
+    cacheTokens,
     exceeds200k: !!parsed.exceeds_200k_tokens,
     quotaWeekly: qWeeklyObj.percent,
     quotaWeeklyResetSeconds: qWeeklyObj.resetSeconds,
     quota5h: q5hObj.percent,
     quota5hResetSeconds: q5hObj.resetSeconds,
     quotaType: isGemini ? 'Gemini' : '3rd-Party',
-    subagents: (parsed.subagents || []).filter((s) => s.status !== 'completed').map((s) => ({
-      name: s.name,
-      role: s.role,
-      status: s.status,
-      depth: typeof s.depth === 'number' ? s.depth : 0,
-      conversationId: s.conversation_id,
-      logUri: s.log_uri
-    })),
-    activeTool: parsed.tool_info && parsed.tool_info.name ? {
-      name: parsed.tool_info.name,
-      summary: parsed.tool_info.summary,
-      status: parsed.tool_info.status
-    } : undefined,
+    subagents: parsedSubagents,
+    activeTool,
     activeSkills,
-    taskCount: parsed.task_count || 0,
+    taskCount: typeof parsed.task_count === 'number' && parsed.task_count > 0 ? parsed.task_count : 0,
     sessionName: sessName,
     model: modelName,
     workspace: workspaceName,
-    isSandboxed: !!parsed.sandbox?.enabled,
-    version: parsed.version || 'unknown',
-    email: parsed.email || 'unknown',
-    planTier: parsed.plan_tier || 'Unknown Tier',
+    isSandboxed,
+    version: typeof parsed.version === 'string' ? parsed.version : 'unknown',
+    email: typeof parsed.email === 'string' ? parsed.email : 'unknown',
+    planTier: typeof parsed.plan_tier === 'string' ? parsed.plan_tier : 'Unknown Tier',
     terminalWidth: termWidth,
     skipPermissions: process.env.AGY_SKIP_PERMISSIONS === 'true',
     gitBranches,
@@ -555,7 +598,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     stepCount,
     maxSteps,
     maxContextTokens,
-    contextWindowSize: parsed.context_window?.context_window_size || parsed.max_context_tokens || 1048576,
+    contextWindowSize,
     executionMode,
     transcriptPath: resolvedTranscriptPath,
     effort,
