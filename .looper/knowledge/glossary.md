@@ -1,16 +1,15 @@
-# Ubiquitous Language: Antigravity HUD
+# Ubiquitous Language & Terminology Glossary
 
-- **Antigravity CLI**: The main agentic framework executing tasks. See `HOOKS.md`.
-- **HUD (Heads Up Display)**: Our CLI plugin providing the real-time status line.
-- **Status-Line Payload**: The JSON data pushed via `stdin` by the Antigravity CLI to our hook. Handled in `src/parser.ts`.
-- **Agent State**: The current working status of the agent (e.g., "Idle", "Thinking").
-- **Conversation ID**: The unique identifier for the current agent session.
-- **Subagent**: Any concurrent agent processes spawned by the main Antigravity agent. Rendered via `src/subagents.ts`.
-- **Context Usage**: The fraction/tokens used by the agent in the current context window.
-- **Quota**: The user's rate limits and usage for the current AI model. Parsed in `src/quota.ts`.
-- **Matrix Engine**: Dynamic JSON-driven grid system for HUD layout based on terminal width. Configured in `src/formatter.ts`.
-- **Dynamic Culling**: Automatically hiding empty blocks (like 0 active tasks or subagents) to prevent clutter.
-- **Traffic Light Color Coding**: Dynamic 3-tier thresholding system for percentage-based telemetry blocks (Safe, Warning, Critical). See `src/quota.ts`.
-- **Hysteresis Filtering**: Mathematically absorbing micro-fluctuations in UI layout padding to prevent terminal bouncing.
+This file documents the shared domain terms used across `antigravity-cli-hud` missions and worker subagents.
 
-*(Note: These terms subsume the legacy definitions originally located at the project root `CONTEXT.md`.)*
+---
+
+## Terminology & Definitions
+
+- **Statusline / Telemetry Hook**: The CLI extension process executed by Antigravity CLI that reads `stdin` telemetry JSON streams and outputs terminal ANSI formatted lines.
+- **Soft Limit (`softLimitTokens`)**: The token threshold (defaults to 200,000 / 200k) at which LLM reasoning quality starts degrading. Controls microbar fill scaling.
+- **Physical Capacity (`limitTokens`)**: The maximum physical token capacity supported by the model architecture (e.g. 1,048,576 / 1M tokens for Gemini 3.6).
+- **Plugin Workspace Sync**: The process of building local workspace code in `lab/antigravity-cli-hud` and updating the active installed plugin at `~/.gemini/config/plugins/hud/`.
+- **Telemetry Fuzzing**: Testing the JSON parser against random, missing, or malformed JSON keys to guarantee zero runtime crashes.
+- **HUD Doctor**: The diagnostic utility that inspects `~/.gemini/antigravity-cli/settings.json` to verify statusline command bindings and file permissions (`0600`/`0700`).
+- **Subagent Tree Depth**: The visual nesting hierarchy level (`depth: 0`, `depth: 1`, `depth: 2`) representing parent-child subagent executions in the statusline.

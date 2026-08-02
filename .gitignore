@@ -1,3 +1,5 @@
 node_modules/
 dist/
-.looper/
+.looper/*
+!.looper/epics/
+!.looper/knowledge/
