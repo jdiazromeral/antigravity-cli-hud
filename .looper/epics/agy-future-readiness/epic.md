@@ -18,10 +18,10 @@ Future readiness, plugin sync automation, telemetry schema fuzzing, and diagnost
 - **Purpose**: Build a diagnostic healthcheck utility (src/doctor.ts & /hud-config doctor) to verify settings.json bindings, file permissions, and active plugin path alignment.
 - **Dependencies**: [M1]
 - **Validator**: `npx vitest run src/doctor.test.ts`
-- **Status**: PENDING
+- **Status**: DONE
 
 ## [M4] subagent-tree-visualizer-polish
 - **Purpose**: Enhance subagent tree hierarchy formatting in src/formatter.ts for deep nesting levels (> 2) and narrow terminals with responsive truncation.
 - **Dependencies**: [M2]
 - **Validator**: `npx vitest run src/formatter.test.ts`
-- **Status**: PENDING
+- **Status**: DONE
