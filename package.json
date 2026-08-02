@@ -7,7 +7,8 @@
     "test": "vitest run",
     "lint": "eslint .",
     "demo": "esbuild scripts/demo.ts --bundle --platform=node --format=esm --outfile=scripts/demo.js && node scripts/demo.js",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js && esbuild src/title.ts --bundle --platform=node --format=esm --outfile=dist/title.js"
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js && esbuild src/title.ts --bundle --platform=node --format=esm --outfile=dist/title.js",
+    "sync": "npm run build && node scripts/sync_installed_plugin.js"
   },
   "keywords": [],
   "author": "Javier Diaz",
