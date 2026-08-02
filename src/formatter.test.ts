@@ -103,6 +103,53 @@ describe('formatMetrics', () => {
     expect(out).toContain('    ↳ grandchild');
   });
 
+  it('formats deep subagent hierarchy nesting for depth 3 and 4', () => {
+    const metricsWithSubs = {
+      ...baseMetrics,
+      terminalWidth: 120,
+      subagents: [
+        { name: 'greatgrandchild', role: 'SubHelper', status: 'working', depth: 3 },
+        { name: 'leafagent', role: 'Leaf', status: 'completed', depth: 4 }
+      ]
+    };
+    const out = formatMetrics(metricsWithSubs);
+    expect(out).toContain('      ↳ greatgrandchild');
+    expect(out).toContain('        ↳ leafagent');
+  });
+
+  it('uses responsive compact status badges and role truncation on narrow terminal widths', () => {
+    const metricsWithSubs = {
+      ...baseMetrics,
+      terminalWidth: 60,
+      subagents: [
+        { name: 'agent1', role: 'VeryLongRoleNameThatExceedsLimit', status: 'completed', depth: 0 },
+        { name: 'agent2', role: 'Worker', status: 'working', depth: 1 },
+        { name: 'agent3', role: 'Reviewer', status: 'waiting_for_input', depth: 2 },
+        { name: 'agent4', role: 'Tester', status: 'error', depth: 0 }
+      ]
+    };
+    const out = formatMetrics(metricsWithSubs);
+    expect(out).toContain('done');
+    expect(out).toContain('run');
+    expect(out).toContain('wait');
+    // Note: agent4 is hidden in the 3-subagent stack preview (...and 1 more hidden)
+    // Check role truncation at 15 chars (12 chars + '...')
+    expect(out).toContain('(VeryLongRole...)');
+  });
+
+  it('formats compact error badge for subagents on narrow terminal', () => {
+    const metricsWithSubs = {
+      ...baseMetrics,
+      terminalWidth: 60,
+      subagents: [
+        { name: 'errAgent', role: 'Tester', status: 'error', depth: 0 }
+      ]
+    };
+    const out = formatMetrics(metricsWithSubs);
+    expect(out).toContain('err');
+  });
+
+
   it('turns ctx block red and adds degradation warning if exceeds200k is true', () => {
     const warningMetrics = { ...baseMetrics, exceeds200k: true };
     const out = formatMetrics(warningMetrics);

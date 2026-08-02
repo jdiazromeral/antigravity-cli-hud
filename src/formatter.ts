@@ -209,7 +209,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
 
   // Generalized pre-calculator for stacked blocks
   const calculateStackedChunks = (items: string[], maxVisible: number) => {
-    let chunks: string[][] = [];
+    const chunks: string[][] = [];
     if (items.length === 0) {
       chunks.push([]);
     } else {
@@ -221,14 +221,50 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     return chunks;
   };
 
+  const isNarrow = termWidth <= 75;
+
+  const formatSubagentStatus = (status: string, narrow: boolean): { label: string; color: string } => {
+    const s = (status || '').toLowerCase();
+    let color = colors.yellow;
+    if (s === 'completed' || s === 'done' || s === 'ok') {
+      color = colors.green;
+    } else if (s === 'error' || s === 'errored' || s === 'failed') {
+      color = colors.red;
+    }
+
+    if (!narrow) {
+      return { label: status, color };
+    }
+
+    let label = status;
+    if (s === 'completed' || s === 'done' || s === 'ok') {
+      label = 'done';
+    } else if (s === 'error' || s === 'errored' || s === 'failed') {
+      label = 'err';
+    } else if (s === 'working' || s === 'running' || s === 'in_progress') {
+      label = 'run';
+    } else if (s.startsWith('waiting')) {
+      label = 'wait';
+    } else if (s === 'cancelled' || s === 'canceling') {
+      label = 'cancel';
+    } else if (s.length > 6) {
+      label = s.substring(0, 5) + '.';
+    }
+
+    return { label, color };
+  };
+
   const subStrs = metrics.subagents.map(s => {
-    const c = s.status === 'completed' ? colors.green : (s.status === 'error' ? colors.red : colors.yellow);
-    let shortRole = s.role;
-    if (shortRole.length > 25) shortRole = shortRole.substring(0, 22) + '...';
-    const depth = s.depth || 0;
+    const { label: statusLabel, color: statusColor } = formatSubagentStatus(s.status, isNarrow);
+    let shortRole = s.role || '';
+    const maxRoleLen = isNarrow ? 15 : 25;
+    if (shortRole.length > maxRoleLen) {
+      shortRole = shortRole.substring(0, maxRoleLen - 3) + '...';
+    }
+    const depth = typeof s.depth === 'number' && s.depth > 0 ? s.depth : 0;
     const prefix = depth > 0 ? '  '.repeat(depth) + '↳ ' : '';
     const idStr = s.conversationId ? ` ${colors.dim}[id:${s.conversationId.substring(0, 6)}]${colors.reset}` : '';
-    return `${prefix}${s.name}${idStr} [${c}${s.status}${colors.reset}] (${shortRole})`;
+    return `${prefix}${s.name}${idStr} [${statusColor}${statusLabel}${colors.reset}] (${shortRole})`;
   });
   const chunkedSubagents = calculateStackedChunks(subStrs, 3);
 
@@ -313,7 +349,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   activeLayout = activeLayout.filter(row => row.length > 0);
 
   // 3. Matrix Builder
-  let finalLines: string[] = [];
+  const finalLines: string[] = [];
   
   for (let rowIndex = 0; rowIndex < activeLayout.length; rowIndex++) {
     const rowKeys = activeLayout[rowIndex];
