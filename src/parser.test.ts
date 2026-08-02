@@ -248,4 +248,161 @@ describe('parseStream', () => {
     delete process.env.AGY_MAX_CONTEXT_TOKENS;
     delete process.env.AGY_MAX_STEPS;
   });
+
+  describe('fuzzing and resilience guard-rails', () => {
+    it('should ignore unknown and experimental top-level/nested payload fields without crashing', async () => {
+      const payload = {
+        agent_state: 'Thinking',
+        unknown_experimental_flag: true,
+        nested_future_struct: {
+          quantum_tokens: 999999,
+          deep_mind_vector: [0.1, 0.2, 0.3]
+        },
+        future_subagent_field: 'unrecognized'
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.agentState).toBe('THINKING');
+      expect(result.contextUsage).toBe(0);
+    });
+
+    it('should handle malformed subagents array items (null, non-object, invalid role/name types)', async () => {
+      const payload = {
+        agent_state: 'Working',
+        subagents: [
+          null,
+          123,
+          'string-subagent',
+          { name: null, role: 456, status: 'working' },
+          { name: 'valid', role: 'Worker', status: 'working', depth: -5 },
+          { name: 'malformed-role', role: null, status: 'working' }
+        ] as unknown as AntigravityPayload['subagents']
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(Array.isArray(result.subagents)).toBe(true);
+      expect(result.subagents).toContainEqual(
+        expect.objectContaining({ name: 'valid', role: 'Worker', status: 'working' })
+      );
+    });
+
+    it('should handle 2M+ context window and extreme token usage gracefully', async () => {
+      const payload = {
+        agent_state: 'Thinking',
+        context_window: {
+          total_input_tokens: 1850000,
+          used_percentage: 88.2,
+          context_window_size: 2097152,
+          current_usage: {
+            cache_read_input_tokens: 450000
+          }
+        },
+        exceeds_200k_tokens: true
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.totalInputTokens).toBe(1850000);
+      expect(result.contextUsage).toBe(88);
+      expect(result.contextWindowSize).toBe(2097152);
+      expect(result.cacheTokens).toBe(450000);
+      expect(result.exceeds200k).toBe(true);
+    });
+
+    it('should handle invalid/out-of-bounds context window values (NaN, negative, >100)', async () => {
+      const payload = {
+        agent_state: 'Working',
+        context_window: {
+          total_input_tokens: -500,
+          used_percentage: 150,
+          current_usage: {
+            cache_read_input_tokens: -10
+          }
+        }
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.totalInputTokens).toBe(0);
+      expect(result.contextUsage).toBe(100);
+      expect(result.cacheTokens).toBe(0);
+    });
+
+    it('should handle non-object or malformed tool_info', async () => {
+      const payload = {
+        agent_state: 'Working',
+        tool_info: 'invalid-string-tool-info' as unknown as AntigravityPayload['tool_info']
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.activeTool).toBeUndefined();
+
+      const payload2 = {
+        agent_state: 'Working',
+        tool_info: { name: 12345, summary: { invalid: 'object' }, status: null } as unknown as AntigravityPayload['tool_info']
+      };
+      const stream2 = Readable.from([JSON.stringify(payload2)]);
+      const result2 = await parseStream(stream2);
+      expect(result2.activeTool).toBeUndefined();
+    });
+
+    it('should handle malformed model, session_id, and cwd fields gracefully', async () => {
+      const payload = {
+        agent_state: 'Idle',
+        model: { display_name: 12345 } as unknown as AntigravityPayload['model'],
+        session_id: 999999 as unknown as AntigravityPayload['session_id'],
+        cwd: 123 as unknown as AntigravityPayload['cwd']
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.model).toBe('Unknown Model');
+      expect(result.sessionName).toBe('Unknown');
+      expect(result.workspace).toBe('Unknown Workspace');
+    });
+
+    it('should handle non-object root JSON payloads (array, string, number, boolean, null)', async () => {
+      const arrayStream = Readable.from(['[1, 2, 3]']);
+      await expect(parseStream(arrayStream)).rejects.toThrow('Missing required metrics in payload');
+
+      const stringStream = Readable.from(['"just a string"']);
+      await expect(parseStream(stringStream)).rejects.toThrow('Missing required metrics in payload');
+
+      const nullStream = Readable.from(['null']);
+      await expect(parseStream(nullStream)).rejects.toThrow('Missing required metrics in payload');
+    });
+
+    it('should handle malformed quota structures and unknown quota types', async () => {
+      const payload = {
+        agent_state: 'Idle',
+        quota: {
+          'gemini-weekly': 'invalid-quota-string' as unknown as { remaining_fraction: number },
+          '3p-weekly': { remaining_fraction: 'invalid' as unknown as number, reset_in_seconds: -100 },
+          'future-quota-model': { remaining_fraction: 0.5, reset_in_seconds: 1000 }
+        }
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.quotaWeekly).toBe(0);
+      expect(result.quotaWeeklyResetSeconds).toBe(0);
+    });
+
+    it('should handle malformed sandbox and vcs objects', async () => {
+      const payload = {
+        agent_state: 'Idle',
+        sandbox: 'not-an-object' as unknown as AntigravityPayload['sandbox'],
+        vcs: 12345 as unknown as AntigravityPayload['vcs']
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.isSandboxed).toBe(false);
+      expect(result.gitBranches).toEqual([]);
+    });
+  });
 });
+
