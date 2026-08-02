@@ -171,10 +171,23 @@ Priority 2: Physical Model Telemetry & Defaults (context_window_size / 1M max, 2
 
 | Variable | Description | Default | Example |
 | :--- | :--- | :--- | :--- |
+| `AGY_AGENT_NAME` | Custom agent identity label displayed in statusline header. | `TARS` | `export AGY_AGENT_NAME="TARS"` |
 | `AGY_MAX_CONTEXT_TOKENS` | Custom context window physical capacity ceiling limit. | `1048576` (1M) | `export AGY_MAX_CONTEXT_TOKENS=1000000` |
 | `AGY_SOFT_CONTEXT_TOKENS` | Custom soft degradation context limit (scales 5-segment microbar). | `200000` (200k) | `export AGY_SOFT_CONTEXT_TOKENS=150000` |
 | `AGY_MAX_STEPS` | Custom session step ceiling for turn budget tracking. | `20` | `export AGY_MAX_STEPS=30` |
 | `AGY_SKIP_PERMISSIONS` | Toggles Danger Mode indicator in HUD statusline (`☢️ Danger Mode`). | `false` | `export AGY_SKIP_PERMISSIONS=true` |
+
+### 🤖 Why "TARS"?
+
+The default agent label in the statusline header (`[TARS]`) pays homage to **TARS** ("*TARS Answers from Raw Sources*") — our local-first second brain project and autonomous pairing agent persona.
+
+Inspired by the direct, high-honesty robotic companion in *Interstellar*, TARS embodies radical candor, surgical precision, and high-standard pair engineering:
+
+* **Radical Candor & High Standards:** Critical, direct pair-programming that pushes back on fragile or over-engineered solutions.
+* **Options Over Prescriptions:** Always evaluates 2–3 viable design options with trade-offs before executing.
+* **Clarity First:** Simple, explicit, maintainable code (*"Simple is better than complex — done is better than perfect"*).
+
+*You can customize your HUD's agent tag anytime by setting `export AGY_AGENT_NAME="YourName"` in your shell!*
 
 ### Bundled Token Ledger & Evaluation Hook
 
