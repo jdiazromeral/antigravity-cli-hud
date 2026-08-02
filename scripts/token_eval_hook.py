@@ -17,8 +17,8 @@ import json
 import os
 from datetime import datetime
 
-WARN_CONTEXT_TOKENS = 75_000
-WARN_STEP_COUNT = 20
+WARN_CONTEXT_TOKENS = int(os.environ.get("AGY_SOFT_CONTEXT_TOKENS", 200_000))
+WARN_STEP_COUNT = int(os.environ.get("AGY_MAX_STEPS", 20))
 
 BASE_DIR = os.path.expanduser("~/.gemini/antigravity-cli")
 LEDGER_PATH = os.path.join(BASE_DIR, "token_ledger.jsonl")
@@ -76,7 +76,7 @@ def main():
         if est_tokens > WARN_CONTEXT_TOKENS or step_count > WARN_STEP_COUNT:
             msg = (
                 f"⚠️ [Token Budget Notice] Session step {step_count} with ~{est_tokens:,} context tokens. "
-                f"Thresholds (20 steps / 75k tokens) exceeded. "
+                f"Thresholds ({WARN_STEP_COUNT} steps / {WARN_CONTEXT_TOKENS // 1000}k tokens) exceeded. "
                 f"Consider summarizing progress and concluding this session to prevent context inflation."
             )
             inject_steps.append({"ephemeralMessage": msg})

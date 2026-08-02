@@ -201,3 +201,5 @@ Included in `scripts/token_eval_hook.py` is a security-hardened token evaluation
 
 - **[LAYOUT_ENGINE.md](LAYOUT_ENGINE.md)**: Technical spec for the HUD Matrix JSON engine.
 - **[HOOKS.md](HOOKS.md)**: Official documentation reverse-engineering the Antigravity CLI's telemetry JSON stream and `stdin` event loop.
+- **[docs/token_usage_hooks_guide.md](docs/token_usage_hooks_guide.md)**: Guide to telemetry hooks, privacy-preserving character counting, and configuring `token_eval_hook.py`.
+- **[docs/token_usage_audit.md](docs/token_usage_audit.md)**: Comprehensive auditing guide covering soft vs physical limits, prompt caching, and subagent context management.
