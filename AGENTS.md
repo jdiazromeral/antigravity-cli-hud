@@ -14,3 +14,5 @@ When working on this project (`antigravity-cli-hud`), all automated agents and s
 5. **Mocking**: Never hardcode paths like os.homedir() in Vitest mocks. Dynamically insert the homedir into test cases using `path.join(os.homedir(), ...)` to prevent cross-environment test fragility. **Do not use hardcoded literal string placeholders like `/tmp/mock-homedir`.**
 
 6. **Interface Updates**: When updating core interfaces like ParsedMetrics, you must update the corresponding mock data payloads across the entire test suite to prevent cascading TypeScript errors.
+
+7. **Side-Effecting Validators**: NEVER write a custom Node.js validator script (e.g. `node -e "import(...)"`) that imports the plugin's main entry points (`index.ts` or `dist/index.js`). The HUD plugin attaches a persistent `process.stdin` listener that will cause the background validation task to hang indefinitely. Instead, use static code analysis (`grep`), or export configurations/logic into side-effect-free modules for validation.
