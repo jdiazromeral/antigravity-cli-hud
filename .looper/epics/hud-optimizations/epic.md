@@ -6,7 +6,7 @@ Implement power-user optimizations for the HUD plugin, including telemetry block
 - **Purpose**: Modify src/formatter.ts to add the version and plan blocks to the large layout array.
 - **Dependencies**: None
 - **Validator**: `npm run build && npm run test`
-- **Status**: PENDING
+- **Status**: IN_PROGRESS
 
 ## [M2] Activate Token Ledger
 - **Purpose**: Create or update ~/.gemini/config/hooks.json to register scripts/token_eval_hook.py for PreInvocation and Stop events.
