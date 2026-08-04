@@ -35,7 +35,7 @@ export const HUD_CONFIG = {
   // Matrix rows map block IDs to visual layout ordering
   layouts: {
     large: [
-      ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
+      ['state', 'mode', 'model', 'effort', 'skill', 'version', 'plan', 'permissions'],
       ['workspace', 'sandbox', 'cache', 'ctx'],
       ['steps', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
