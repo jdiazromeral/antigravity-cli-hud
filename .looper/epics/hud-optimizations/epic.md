@@ -5,8 +5,8 @@ Implement power-user optimizations for the HUD plugin, including telemetry block
 ## [M1] Inject Telemetry Blocks
 - **Purpose**: Modify src/formatter.ts to add the version and plan blocks to the large layout array.
 - **Dependencies**: None
-- **Validator**: `npm run build && npm run test`
-- **Status**: BLOCKED
+- **Validator**: `npm run build && npm run test && node -e "const { HUD_CONFIG } = require('./dist/formatter.js'); if (!HUD_CONFIG.layouts.large[0].includes('version') || !HUD_CONFIG.layouts.large[0].includes('plan')) { console.error('Blocks missing!'); process.exit(1); }"`
+- **Status**: IN_PROGRESS
 
 ## [M2] Activate Token Ledger
 - **Purpose**: Create or update ~/.gemini/config/hooks.json to register scripts/token_eval_hook.py for PreInvocation and Stop events.
