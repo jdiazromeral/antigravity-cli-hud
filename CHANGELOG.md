@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.10] - 2026-08-04
+
+### Added
+- **Default Large Layout Update**: Added `version` and `plan` blocks to the default `large` matrix layout in `src/formatter.ts`.
+
+---
+
 ## [1.1.9] - 2026-08-01
 
 ### Added
