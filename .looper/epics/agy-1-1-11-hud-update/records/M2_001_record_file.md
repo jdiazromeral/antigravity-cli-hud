@@ -12,3 +12,10 @@
 - Verdict: DONE
 - Validator: PASS
 - Steering for next: You left `package-lock.json` uncommitted, violating the "never leave the tree dirty" rule. Please investigate if this change is intentional, commit it if so, or restore it, and then report DONE again.
+
+## Iteration 2
+- Worker did: Committed modified `package-lock.json` to keep tree clean, syncing lock file version with package.json.
+- Worker learned: `npm test` or `npm install` can update `package-lock.json` when `package.json` version is updated; always check for untracked/modified files before claiming DONE.
+- Commits: 8df66b8
+- Verdict: DONE
+- Validator: PASS
