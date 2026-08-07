@@ -28,3 +28,5 @@
 - Commits: f676abc
 - Verdict: DONE
 - Validator: PASS
+- Reviewer: REWORK(Soft criteria unmet: The credit block string does not utilize a Nerd Font icon (it appears as a space/empty string before "AI Credits:"). Method rule violated: Updating mock data payloads introduced a duplicate `credits` key in `src/parser.test.ts` (`credits: undefined` followed by `credits: { balance: 1250 }` in the same object).)
+- Steering for next: The reviewer returned REWORK. Please fix the duplicate `credits` key in `src/parser.test.ts`. Also, the Nerd Font icon you used '󰠖' is rendering as an empty string. Please use a more common/supported Nerd Font icon, such as `` (U+F51E) or `` (U+F155).
