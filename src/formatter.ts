@@ -210,7 +210,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
-    credits: metrics.credits !== undefined ? ` AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
+    credits: metrics.credits !== undefined ? `\\uF155 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
     tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
     version: `📦 v${metrics.version}`,

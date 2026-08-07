@@ -286,7 +286,7 @@ describe('formatMetrics', () => {
     it('displays AI credits block when credits are present', () => {
       const metrics = { ...baseMetrics, credits: 1250 };
       const out = formatMetrics(metrics);
-      expect(out).toContain(' AI Credits:');
+      expect(out).toContain('\\uF155 AI Credits:');
       expect(out).toContain('1250');
     });
 

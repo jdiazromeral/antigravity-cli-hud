@@ -1,9 +1,177 @@
 diff --git a/diff.txt b/diff.txt
 new file mode 100644
-index 0000000..7a02e15
+index 0000000..a066567
 --- /dev/null
 +++ b/diff.txt
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,515 @@
++diff --git a/diff.txt b/diff.txt
++new file mode 100644
++index 0000000..7a02e15
++--- /dev/null
+++++ b/diff.txt
++@@ -0,0 +1,153 @@
+++diff --git a/package-lock.json b/package-lock.json
+++index 80e3641..a73a0b1 100644
+++--- a/package-lock.json
++++++ b/package-lock.json
+++@@ -1,12 +1,12 @@
+++ {
+++   "name": "antigravity-cli-hud",
+++-  "version": "1.0.0",
++++  "version": "1.1.10",
+++   "lockfileVersion": 3,
+++   "requires": true,
+++   "packages": {
+++     "": {
+++       "name": "antigravity-cli-hud",
+++-      "version": "1.0.0",
++++      "version": "1.1.10",
+++       "license": "AGPL-3.0-or-later",
+++       "devDependencies": {
+++         "@eslint/js": "^10.0.1",
+++diff --git a/src/formatter.test.ts b/src/formatter.test.ts
+++index 97a01bf..2df73d8 100644
+++--- a/src/formatter.test.ts
++++++ b/src/formatter.test.ts
+++@@ -280,4 +280,21 @@ describe('formatMetrics', () => {
+++       expect(out).toContain('high');
+++     });
+++   });
++++
++++  describe('credits formatting', () => {
++++    it('displays AI credits block when credits are present', () => {
++++      const metrics = { ...baseMetrics, credits: 1250 };
++++      const out = formatMetrics(metrics);
++++      expect(out).toContain('🪙 AI Credits:');
++++      expect(out).toContain('1250');
++++    });
++++
++++    it('does not display quota when credits are present', () => {
++++      const metrics = { ...baseMetrics, credits: 1250, quotaWeekly: 100, quota5h: 100 };
++++      const out = formatMetrics(metrics);
++++      expect(out).not.toContain('Quota');
++++      expect(out).not.toContain('Weekly');
++++      expect(out).not.toContain('5h');
++++    });
++++  });
+++ });
+++diff --git a/src/formatter.ts b/src/formatter.ts
+++index 6f22ae0..ab92e44 100644
+++--- a/src/formatter.ts
++++++ b/src/formatter.ts
+++@@ -210,6 +210,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
+++     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
+++     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
+++     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
++++    credits: metrics.credits !== undefined ? `🪙 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
+++     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
+++     tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
+++     version: `📦 v${metrics.version}`,
+++@@ -325,6 +326,23 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
+++     activeLayout = activeLayout.map(row => row.filter(k => k !== 'sandbox'));
+++   }
+++ 
++++  // Handle credits overriding quotas
++++  if (metrics.credits !== undefined) {
++++    activeLayout = activeLayout.map(row => {
++++      const newRow: string[] = [];
++++      for (const k of row) {
++++        if (k === '5h') {
++++          newRow.push('credits');
++++        } else if (k === 'weekly') {
++++          // Hide weekly when credits are present
++++        } else {
++++          newRow.push(k);
++++        }
++++      }
++++      return newRow;
++++    });
++++  }
++++
+++   // Dynamic Culling: Hide tasks and subagents when they are inactive to prevent clutter
+++   if (HUD_CONFIG.autoHideEmptyBlocks) {
+++     if (metrics.taskCount === 0) {
+++diff --git a/src/parser.test.ts b/src/parser.test.ts
+++index c52b632..d80b7e0 100644
+++--- a/src/parser.test.ts
++++++ b/src/parser.test.ts
+++@@ -44,7 +44,8 @@ describe('parseStream', () => {
+++       effort: 'high',
+++       mode: 'plan',
+++       agent: 'MyCustomAgent',
+++-      editor_mode: 'I'
++++      editor_mode: 'I',
++++      credits: { balance: 1250 }
+++     };
+++ 
+++     const stream = Readable.from([JSON.stringify(payload)]);
+++@@ -88,7 +89,8 @@ describe('parseStream', () => {
+++       transcriptPath: '/path/to/my/transcript.txt',
+++       effort: 'high',
+++       agentName: 'MyCustomAgent',
+++-      editorMode: 'I'
++++      editorMode: 'I',
++++      credits: 1250
+++     });
+++   });
+++ 
+++@@ -425,6 +427,18 @@ describe('parseStream', () => {
+++       expect(result.quotaWeeklyResetSeconds).toBe(0);
+++     });
+++ 
++++    it('should gracefully handle malformed credits payload', async () => {
++++      const payload = {
++++        agent_state: 'Idle',
++++        editor_mode: 'N',
++++        credits: 'invalid-credits-string' as unknown as { balance: number }
++++      };
++++      const stream = Readable.from([JSON.stringify(payload)]);
++++      const result = await parseStream(stream);
++++
++++      expect(result.credits).toBeUndefined();
++++    });
++++
+++     it('should handle malformed sandbox and vcs objects', async () => {
+++       const payload = {
+++         agent_state: 'Idle',
+++diff --git a/src/parser.ts b/src/parser.ts
+++index 18079c3..1bb8d78 100644
+++--- a/src/parser.ts
++++++ b/src/parser.ts
+++@@ -40,6 +40,7 @@ export interface AntigravityPayload {
+++   max_steps?: number;
+++   max_context_tokens?: number;
+++   editor_mode?: string;
++++  credits?: { balance: number };
+++ }
+++ 
+++ import * as fs from 'fs';
+++@@ -101,6 +102,7 @@ export interface ParsedMetrics {
+++   effort: string;
+++   agentName: string;
+++   editorMode?: string;
++++  credits?: number;
+++ }
+++ 
+++ export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
+++@@ -610,6 +612,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
+++     transcriptPath: resolvedTranscriptPath,
+++     effort,
+++     agentName,
+++-    editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined
++++    editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
++++    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined
+++   };
+++ }
++diff --git a/log.txt b/log.txt
++new file mode 100644
++index 0000000..eeb14f4
++--- /dev/null
+++++ b/log.txt
++@@ -0,0 +1,3 @@
+++8df66b8 chore: sync package-lock.json version with package.json
+++f78f6b4 feat: implement AI credits telemetry parsing and formatting
+++7c5df75 test: failing tests for AI credits parsing and formatting
 +diff --git a/package-lock.json b/package-lock.json
 +index 80e3641..a73a0b1 100644
 +--- a/package-lock.json
@@ -24,10 +192,20 @@ index 0000000..7a02e15
 +       "devDependencies": {
 +         "@eslint/js": "^10.0.1",
 +diff --git a/src/formatter.test.ts b/src/formatter.test.ts
-+index 97a01bf..2df73d8 100644
++index 97a01bf..cb5bd9f 100644
 +--- a/src/formatter.test.ts
 ++++ b/src/formatter.test.ts
-+@@ -280,4 +280,21 @@ describe('formatMetrics', () => {
++@@ -38,7 +38,8 @@ describe('formatMetrics', () => {
++     maxSteps: 20,
++     maxContextTokens: 0,
++     contextWindowSize: 1048576,
++-    editorMode: undefined
+++    editorMode: undefined,
+++    credits: undefined
++   };
++ 
++   it('formats single and multiple active skills correctly', () => {
++@@ -280,4 +281,21 @@ describe('formatMetrics', () => {
 +       expect(out).toContain('high');
 +     });
 +   });
@@ -36,7 +214,7 @@ index 0000000..7a02e15
 ++    it('displays AI credits block when credits are present', () => {
 ++      const metrics = { ...baseMetrics, credits: 1250 };
 ++      const out = formatMetrics(metrics);
-++      expect(out).toContain('🪙 AI Credits:');
+++      expect(out).toContain('󰠖 AI Credits:');
 ++      expect(out).toContain('1250');
 ++    });
 ++
@@ -50,14 +228,14 @@ index 0000000..7a02e15
 ++  });
 + });
 +diff --git a/src/formatter.ts b/src/formatter.ts
-+index 6f22ae0..ab92e44 100644
++index 6f22ae0..bc4b3e7 100644
 +--- a/src/formatter.ts
 ++++ b/src/formatter.ts
 +@@ -210,6 +210,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
 +     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
 +     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
 +     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
-++    credits: metrics.credits !== undefined ? `🪙 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
+++    credits: metrics.credits !== undefined ? `󰠖 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
 +     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
 +     tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
 +     version: `📦 v${metrics.version}`,
@@ -86,20 +264,29 @@ index 0000000..7a02e15
 +   if (HUD_CONFIG.autoHideEmptyBlocks) {
 +     if (metrics.taskCount === 0) {
 +diff --git a/src/parser.test.ts b/src/parser.test.ts
-+index c52b632..d80b7e0 100644
++index c52b632..88dd5b4 100644
 +--- a/src/parser.test.ts
 ++++ b/src/parser.test.ts
++@@ -19,7 +19,7 @@ describe('parseStream', () => {
++   it('should parse valid JSON payload and extract metrics', async () => {
++     const payload: AntigravityPayload = {
++       agent_state: 'Thinking',
++-      editor_mode: 'N',
+++      editor_mode: "N", credits: undefined,
++       context_window: {
++         total_input_tokens: 45000,
++         used_percentage: 45,
 +@@ -44,7 +44,8 @@ describe('parseStream', () => {
 +       effort: 'high',
 +       mode: 'plan',
 +       agent: 'MyCustomAgent',
 +-      editor_mode: 'I'
-++      editor_mode: 'I',
+++      editor_mode: "I", credits: undefined,
 ++      credits: { balance: 1250 }
 +     };
 + 
 +     const stream = Readable.from([JSON.stringify(payload)]);
-+@@ -88,7 +89,8 @@ describe('parseStream', () => {
++@@ -88,14 +89,15 @@ describe('parseStream', () => {
 +       transcriptPath: '/path/to/my/transcript.txt',
 +       effort: 'high',
 +       agentName: 'MyCustomAgent',
@@ -109,14 +296,184 @@ index 0000000..7a02e15
 +     });
 +   });
 + 
-+@@ -425,6 +427,18 @@ describe('parseStream', () => {
++   it('should parse subagents depth correctly', async () => {
++     const payload = {
++       agent_state: 'Working',
++-      editor_mode: 'N',
+++      editor_mode: "N", credits: undefined,
++       subagents: [
++         { name: 'parent', role: 'Manager', status: 'working', depth: 0, conversation_id: 'sub-123456', log_uri: '/path/to/log.txt' },
++         { name: 'child', role: 'Worker', status: 'working', depth: 1 }
++@@ -112,7 +114,7 @@ describe('parseStream', () => {
++   it('should parse tool_info correctly when present', async () => {
++     const payload = {
++       agent_state: 'Working',
++-      editor_mode: 'N',
+++      editor_mode: "N", credits: undefined,
++       tool_info: { name: 'run_command', summary: 'git status', status: 'running' }
++     };
++     const stream = Readable.from([JSON.stringify(payload)]);
++@@ -139,7 +141,7 @@ describe('parseStream', () => {
++     it('should parse executionMode from settings.json', async () => {
++       fs.writeFileSync(settingsPath, JSON.stringify({ mode: 'accept-edits' }));
++       
++-      const payload = { agent_state: 'Idle', editor_mode: 'N' };
+++      const payload = { agent_state: 'Idle', editor_mode: "N", credits: undefined };
++       const stream = Readable.from([JSON.stringify(payload)]);
++       const result = await parseStream(stream);
++ 
++@@ -149,7 +151,7 @@ describe('parseStream', () => {
++     it('should default to request-review if mode is missing in settings.json', async () => {
++       fs.writeFileSync(settingsPath, JSON.stringify({}));
++       
++-      const payload = { agent_state: 'Idle', editor_mode: 'N' };
+++      const payload = { agent_state: 'Idle', editor_mode: "N", credits: undefined };
++       const stream = Readable.from([JSON.stringify(payload)]);
++       const result = await parseStream(stream);
++ 
++@@ -158,7 +160,7 @@ describe('parseStream', () => {
++     it('should use mode from payload if present, bypassing settings.json', async () => {
++       fs.writeFileSync(settingsPath, JSON.stringify({ mode: 'accept-edits' }));
++       
++-      const payload = { agent_state: 'Idle', mode: 'plan', editor_mode: 'N' };
+++      const payload = { agent_state: 'Idle', mode: 'plan', editor_mode: "N", credits: undefined };
++       const stream = Readable.from([JSON.stringify(payload)]);
++       const result = await parseStream(stream);
++ 
++@@ -169,7 +171,7 @@ describe('parseStream', () => {
++   it('should leverage vcs payload if present to avoid OS blocking', async () => {
++     const payload: AntigravityPayload = {
++       agent_state: 'Idle',
++-      editor_mode: 'N',
+++      editor_mode: "N", credits: undefined,
++       cwd: '/path/to/project',
++       vcs: { branch: 'feature-branch', dirty: true }
++     };
++@@ -181,7 +183,7 @@ describe('parseStream', () => {
++   it('should not append * if not dirty', async () => {
++     const payload: AntigravityPayload = {
++       agent_state: 'Idle',
++-      editor_mode: 'N',
+++      editor_mode: "N", credits: undefined,
++       cwd: '/path/to/project',
++       vcs: { branch: 'main', dirty: false }
++     };
++@@ -223,7 +225,7 @@ describe('parseStream', () => {
++   it('should correctly parse exceeds_200k_tokens', async () => {
++     const payload = {
++       agent_state: 'Idle',
++-      editor_mode: 'N',
+++      editor_mode: "N", credits: undefined,
++       exceeds_200k_tokens: true
++     };
++     const stream = Readable.from([JSON.stringify(payload)]);
++@@ -234,7 +236,7 @@ describe('parseStream', () => {
++   it('should correctly parse editor_mode', async () => {
++     const payload = {
++       agent_state: 'Idle',
++-      editor_mode: 'N'
+++      editor_mode: "N", credits: undefined
++     };
++     const stream = Readable.from([JSON.stringify(payload)]);
++     const result = await parseStream(stream);
++@@ -244,7 +246,7 @@ describe('parseStream', () => {
++   it('should detect active skills from tool_info, subagents, and looper', async () => {
++     const payload = {
++       agent_state: 'Working',
++-      editor_mode: 'N',
+++      editor_mode: "N", credits: undefined,
++       tool_info: {
++         name: 'view_file',
++         summary: '/Users/javidiaz/.gemini/config/plugins/looper/skills/looper/SKILL.md'
++@@ -264,7 +266,7 @@ describe('parseStream', () => {
++     process.env.AGY_MAX_CONTEXT_TOKENS = '75000';
++     process.env.AGY_MAX_STEPS = '30';
++ 
++-    const payload = { agent_state: 'Working', editor_mode: 'N' };
+++    const payload = { agent_state: 'Working', editor_mode: "N", credits: undefined };
++     const stream = Readable.from([JSON.stringify(payload)]);
++     const result = await parseStream(stream);
++ 
++@@ -279,7 +281,7 @@ describe('parseStream', () => {
++     it('should ignore unknown and experimental top-level/nested payload fields without crashing', async () => {
++       const payload = {
++         agent_state: 'Thinking',
++-        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
++         unknown_experimental_flag: true,
++         nested_future_struct: {
++           quantum_tokens: 999999,
++@@ -297,7 +299,7 @@ describe('parseStream', () => {
++     it('should handle malformed subagents array items (null, non-object, invalid role/name types)', async () => {
++       const payload = {
++         agent_state: 'Working',
++-        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
++         subagents: [
++           null,
++           123,
++@@ -319,7 +321,7 @@ describe('parseStream', () => {
++     it('should handle 2M+ context window and extreme token usage gracefully', async () => {
++       const payload = {
++         agent_state: 'Thinking',
++-        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
++         context_window: {
++           total_input_tokens: 1850000,
++           used_percentage: 88.2,
++@@ -343,7 +345,7 @@ describe('parseStream', () => {
++     it('should handle invalid/out-of-bounds context window values (NaN, negative, >100)', async () => {
++       const payload = {
++         agent_state: 'Working',
++-        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
++         context_window: {
++           total_input_tokens: -500,
++           used_percentage: 150,
++@@ -363,7 +365,7 @@ describe('parseStream', () => {
++     it('should handle non-object or malformed tool_info', async () => {
++       const payload = {
++         agent_state: 'Working',
++-        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
++         tool_info: 'invalid-string-tool-info' as unknown as AntigravityPayload['tool_info']
++       };
++       const stream = Readable.from([JSON.stringify(payload)]);
++@@ -373,7 +375,7 @@ describe('parseStream', () => {
++ 
++       const payload2 = {
++         agent_state: 'Working',
++-        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
++         tool_info: { name: 12345, summary: { invalid: 'object' }, status: null } as unknown as AntigravityPayload['tool_info']
++       };
++       const stream2 = Readable.from([JSON.stringify(payload2)]);
++@@ -384,7 +386,7 @@ describe('parseStream', () => {
++     it('should handle malformed model, session_id, and cwd fields gracefully', async () => {
++       const payload = {
++         agent_state: 'Idle',
++-        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
++         model: { display_name: 12345 } as unknown as AntigravityPayload['model'],
++         session_id: 999999 as unknown as AntigravityPayload['session_id'],
++         cwd: 123 as unknown as AntigravityPayload['cwd']
++@@ -411,7 +413,7 @@ describe('parseStream', () => {
++     it('should handle malformed quota structures and unknown quota types', async () => {
++       const payload = {
++         agent_state: 'Idle',
++-        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
++         quota: {
++           'gemini-weekly': 'invalid-quota-string' as unknown as { remaining_fraction: number },
++           '3p-weekly': { remaining_fraction: 'invalid' as unknown as number, reset_in_seconds: -100 },
++@@ -425,10 +427,22 @@ describe('parseStream', () => {
 +       expect(result.quotaWeeklyResetSeconds).toBe(0);
 +     });
 + 
 ++    it('should gracefully handle malformed credits payload', async () => {
 ++      const payload = {
 ++        agent_state: 'Idle',
-++        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
 ++        credits: 'invalid-credits-string' as unknown as { balance: number }
 ++      };
 ++      const stream = Readable.from([JSON.stringify(payload)]);
@@ -128,6 +485,11 @@ index 0000000..7a02e15
 +     it('should handle malformed sandbox and vcs objects', async () => {
 +       const payload = {
 +         agent_state: 'Idle',
++-        editor_mode: 'N',
+++        editor_mode: "N", credits: undefined,
++         sandbox: 'not-an-object' as unknown as AntigravityPayload['sandbox'],
++         vcs: 12345 as unknown as AntigravityPayload['vcs']
++       };
 +diff --git a/src/parser.ts b/src/parser.ts
 +index 18079c3..1bb8d78 100644
 +--- a/src/parser.ts
@@ -159,10 +521,11 @@ index 0000000..7a02e15
 + }
 diff --git a/log.txt b/log.txt
 new file mode 100644
-index 0000000..eeb14f4
+index 0000000..c1d305e
 --- /dev/null
 +++ b/log.txt
-@@ -0,0 +1,3 @@
+@@ -0,0 +1,4 @@
++f676abc fix(hud): use Nerd Font icon for credits and add explicit credits payload in tests
 +8df66b8 chore: sync package-lock.json version with package.json
 +f78f6b4 feat: implement AI credits telemetry parsing and formatting
 +7c5df75 test: failing tests for AI credits parsing and formatting
@@ -186,7 +549,7 @@ index 80e3641..a73a0b1 100644
        "devDependencies": {
          "@eslint/js": "^10.0.1",
 diff --git a/src/formatter.test.ts b/src/formatter.test.ts
-index 97a01bf..cb5bd9f 100644
+index 97a01bf..0b59247 100644
 --- a/src/formatter.test.ts
 +++ b/src/formatter.test.ts
 @@ -38,7 +38,8 @@ describe('formatMetrics', () => {
@@ -208,7 +571,7 @@ index 97a01bf..cb5bd9f 100644
 +    it('displays AI credits block when credits are present', () => {
 +      const metrics = { ...baseMetrics, credits: 1250 };
 +      const out = formatMetrics(metrics);
-+      expect(out).toContain('󰠖 AI Credits:');
++      expect(out).toContain(' AI Credits:');
 +      expect(out).toContain('1250');
 +    });
 +
@@ -222,14 +585,14 @@ index 97a01bf..cb5bd9f 100644
 +  });
  });
 diff --git a/src/formatter.ts b/src/formatter.ts
-index 6f22ae0..bc4b3e7 100644
+index 6f22ae0..9799ce3 100644
 --- a/src/formatter.ts
 +++ b/src/formatter.ts
 @@ -210,6 +210,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
      cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
      '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
      weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
-+    credits: metrics.credits !== undefined ? `󰠖 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
++    credits: metrics.credits !== undefined ? ` AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
      tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
      tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
      version: `📦 v${metrics.version}`,
@@ -258,7 +621,7 @@ index 6f22ae0..bc4b3e7 100644
    if (HUD_CONFIG.autoHideEmptyBlocks) {
      if (metrics.taskCount === 0) {
 diff --git a/src/parser.test.ts b/src/parser.test.ts
-index c52b632..88dd5b4 100644
+index c52b632..1d9de6f 100644
 --- a/src/parser.test.ts
 +++ b/src/parser.test.ts
 @@ -19,7 +19,7 @@ describe('parseStream', () => {
@@ -275,7 +638,7 @@ index c52b632..88dd5b4 100644
        mode: 'plan',
        agent: 'MyCustomAgent',
 -      editor_mode: 'I'
-+      editor_mode: "I", credits: undefined,
++      editor_mode: "I",
 +      credits: { balance: 1250 }
      };
  
