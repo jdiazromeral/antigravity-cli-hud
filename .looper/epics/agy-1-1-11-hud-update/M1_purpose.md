@@ -1,8 +1,8 @@
 ---
-validator: "npm run lint && npm run test"
+validator: "grep -q 'editor_mode' src/parser.ts && npm run lint && npm run test"
 max_iterations: 8
-branch: epic/agy-1-1-11-hud-update/M1
-status: BLOCKED
+branch: hud-m1
+status: IN_PROGRESS
 ---
 
 # Purpose
@@ -18,8 +18,10 @@ Parse the Vim editing mode state from the telemetry payload in src/parser.ts and
 - Smallest vertical slice of the new behavior.
 
 # Method
-- TDD: write a failing test first.
-- Documentation: Update relevant README or documentation files when changing public APIs.
+- TDD: write a failing test first, verify they fail, write minimum code to make them pass, then refactor. You must commit the failing test separately from the implementation.
+- Strict TypeScript: Avoid using `any` and explicitly type all payloads and interfaces.
+- Mocking: Dynamically insert the homedir into test cases using `path.join(os.homedir(), ...)` to prevent cross-environment test fragility. Do not use hardcoded literal string placeholders like `/tmp/mock-homedir`.
+- Interface Updates: When updating core interfaces like ParsedMetrics, update the corresponding mock data payloads across the entire test suite.
 
 # Constraints
-- (none)
+- NEVER write a custom Node.js validator script (e.g. `node -e "import(...)"`) that imports the plugin's main entry points.
