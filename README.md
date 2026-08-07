@@ -99,9 +99,10 @@ npm run demo
 
 For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
 
-### Latest Updates (v1.1.10)
+### Latest Updates (v1.1.11)
+- **Vim Mode Badge**: Dynamic mode indicator (`[N]`, `[I]`, `[V]`) parsing Vim editing states directly from telemetry.
+- **AI Credits Layout Block**: Replaces standard quotas with a visual AI Credits balance block (``) when pay-as-you-go models are active.
 - **Default Large Layout Update**: Included `version` and `plan` blocks in the default `large` terminal matrix layout.
-- **Session Step Budget Block (`steps`):** Real-time tracking of session step ceilings (`👟 Steps: ▰▰▰▰▱ 14/20`).
 - **Bundled Token Evaluation Hook:** Included `scripts/token_eval_hook.py` executable script for token ledger logging and budget enforcement.
 - **Multi-Skill Telemetry Block (`skill`):** Real-time tracking of single (`🧠 Skill: looper`) or multiple (`🧠 Skills: looper & tdd & mapper`) active skills.
 - **Micro Progress Bars:** Dynamic 5-character progress bars (`▰▰▱▱▱`) for `Ctx`, `5h`, `Weekly` quotas, and Looper Epics.
@@ -131,6 +132,7 @@ Here are all the available blocks you can slot into your matrix:
 - **`tool`**: Active Tool Execution block (e.g. `🛠️ run_command (git status)`). Displays real-time tool calls streamed in telemetry; automatically culled when no tool is running.
 - **`ctx`**: Context window saturation limit. Shows percentage used and raw token count.
 - **`cache`**: Context window caching telemetry (`⚡ Cache: 70k`). Displays how many tokens were read from cache, allowing you to instantly visualize your cost savings. Automatically hides if 0.
+- **`credits`**: AI Credits block. Renders the active credit balance with a distinct Nerd Font icon. Automatically replaces `5h` and `weekly` quotas when pay-as-you-go models are active.
 - **`5h` / `weekly`**: Rolling quota buckets. Shows percentage used and the countdown timer until the quota bucket resets.
 - **`tasks`**: Active asynchronous background processes (shell commands, cron jobs, active timers, or background scripts) spawned by the CLI.
 - **`subagents`**: Active parallel AI subagents. Surfacing subagent IDs (`[id:abc123]`). Grandchild subagents (depth > 0) are visually nested in a tree hierarchy using `↳` characters. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.

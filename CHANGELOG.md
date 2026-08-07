@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.11] - 2026-08-07
+
+### Added
+- **Vim Mode Badge**: Parses the Vim editing mode state from the telemetry payload and displays a styled mode badge (e.g., `[N]`, `[I]`, `[V]`) alongside the execution mode.
+- **AI Credits Block**: Dynamically parses AI credit balances from the telemetry payload and adds a new visual layout block with Nerd Font icons, overriding quota bars when credits are present.
+
+---
+
 ## [1.1.10] - 2026-08-04
 
 ### Added

@@ -40,6 +40,7 @@ You can drag and drop these string keys into any layout array:
 - `'artifacts'`: The list of active session artifacts. (Stacked block, MUST be the last item on a row or its own row).
 - `'ctx'`: The token context window percentage.
 - `'cache'`: Context cache token reads for Gemini 1.5/2.0 API.
+- `'credits'`: AI Credits balance block.
 - `'5h'`: The 5-hour rolling Gemini token quota.
 - `'weekly'`: The weekly rolling Gemini token quota.
 - `'tasks'`: The active background task count.
