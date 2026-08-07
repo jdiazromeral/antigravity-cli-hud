@@ -19,3 +19,5 @@
 - Commits: 8df66b8
 - Verdict: DONE
 - Validator: PASS
+- Reviewer: REWORK(Soft criteria: Uses a standard Unicode emoji (🪙) for the credits block instead of a Nerd Font icon. Method: Failed to update mock data payloads across the entire test suite (e.g., `baseMetrics` in `src/formatter.test.ts` and most payloads in `src/parser.test.ts` were left unmodified).)
+- Steering for next: The reviewer returned REWORK. Please fix the soft criteria by using a Nerd Font icon (e.g., 󰁝, 󰀨, 󰠘, etc.) instead of the Unicode emoji '🪙'. Also, ensure you update the mock data payloads to include `credits` where appropriate across ALL test files that use `ParsedMetrics` or the parser payload, not just a few tests.
