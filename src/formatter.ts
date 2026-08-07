@@ -127,7 +127,18 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     'accept-edits': `${colors.green}🟢 accept-edits${colors.reset}`,
     'plan': `${colors.blue}🔵 plan${colors.reset}`
   };
-  const modeStr = modeColors[metrics.executionMode] || `${colors.yellow}🟡 request-review${colors.reset}`;
+  
+  let vimBadge = '';
+  if (metrics.editorMode) {
+    const m = metrics.editorMode.toUpperCase().charAt(0);
+    let icon = '';
+    if (m === 'I') icon = '';
+    else if (m === 'V') icon = '';
+    
+    const color = m === 'I' ? colors.yellow : (m === 'V' ? colors.blue : colors.cyan);
+    vimBadge = ` ${color}${icon}${colors.reset}`;
+  }
+  const modeStr = (modeColors[metrics.executionMode] || `${colors.yellow}🟡 request-review${colors.reset}`) + vimBadge;
 
   const effortColors: Record<string, string> = {
     'low': `${colors.green}󰾆 low${colors.reset}`,
@@ -199,6 +210,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
+    credits: metrics.credits !== undefined ? `\\uF155 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
     tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
     version: `📦 v${metrics.version}`,
@@ -312,6 +324,23 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   }
   if (termWidth <= 70) {
     activeLayout = activeLayout.map(row => row.filter(k => k !== 'sandbox'));
+  }
+
+  // Handle credits overriding quotas
+  if (metrics.credits !== undefined) {
+    activeLayout = activeLayout.map(row => {
+      const newRow: string[] = [];
+      for (const k of row) {
+        if (k === '5h') {
+          newRow.push('credits');
+        } else if (k === 'weekly') {
+          // Hide weekly when credits are present
+        } else {
+          newRow.push(k);
+        }
+      }
+      return newRow;
+    });
   }
 
   // Dynamic Culling: Hide tasks and subagents when they are inactive to prevent clutter

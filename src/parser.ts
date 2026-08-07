@@ -39,6 +39,8 @@ export interface AntigravityPayload {
   step_index?: number;
   max_steps?: number;
   max_context_tokens?: number;
+  editor_mode?: string;
+  credits?: { balance: number };
 }
 
 import * as fs from 'fs';
@@ -99,6 +101,8 @@ export interface ParsedMetrics {
   transcriptPath?: string;
   effort: string;
   agentName: string;
+  editorMode?: string;
+  credits?: number;
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -180,7 +184,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   let gitBranches: {name: string, branch: string}[] = [];
 
-  let activeWorkspaceRepos: string[] = [];
+  const activeWorkspaceRepos: string[] = [];
   
   if (cwd) {
     if (vcsObj && typeof vcsObj.branch === 'string') {
@@ -222,7 +226,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
     if (!useCache) {
       try {
-        let targetDir = parsed.cwd;
+        const targetDir = parsed.cwd;
         // Check if current dir is a git repo
         try {
           cp.execSync('git rev-parse --is-inside-work-tree', { cwd: targetDir, stdio: 'ignore', timeout: 200 });
@@ -285,8 +289,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
     if (!useLooperCache) {
       try {
-        let repoRoots: string[] = [];
-        let targetDir = parsed.cwd;
+        const repoRoots: string[] = [];
+        const targetDir = parsed.cwd;
         try {
           const root = cp.execSync('git rev-parse --show-toplevel', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
           if (root) repoRoots.push(root);
@@ -408,11 +412,11 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
   
-  let workspaceName = cwd ? path.basename(cwd) : 'Unknown Workspace';
+  const workspaceName = cwd ? path.basename(cwd) : 'Unknown Workspace';
 
   const artifactCount = typeof parsed.artifact_count === 'number' ? parsed.artifact_count : 0;
   
-  let artifactList: string[] = [];
+  const artifactList: string[] = [];
   if (conversationId) {
     const brainDir = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId);
     if (fs.existsSync(brainDir)) {
@@ -607,6 +611,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     executionMode,
     transcriptPath: resolvedTranscriptPath,
     effort,
-    agentName
+    agentName,
+    editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
+    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined
   };
 }

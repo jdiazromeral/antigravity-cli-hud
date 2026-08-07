@@ -37,7 +37,9 @@ describe('formatMetrics', () => {
     stepCount: 0,
     maxSteps: 20,
     maxContextTokens: 0,
-    contextWindowSize: 1048576
+    contextWindowSize: 1048576,
+    editorMode: undefined,
+    credits: undefined
   };
 
   it('formats single and multiple active skills correctly', () => {
@@ -216,6 +218,45 @@ describe('formatMetrics', () => {
     });
   });
 
+  describe('vim mode badge formatting', () => {
+    it('renders normal mode badge with cyan icon', () => {
+      const metrics = { ...baseMetrics, executionMode: 'plan', editorMode: 'N' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🔵 plan');
+      expect(out).toContain('');
+      expect(out).not.toContain('[N]');
+      expect(out).toContain('\x1b[36m'); // cyan
+    });
+
+    it('renders insert mode badge with yellow icon', () => {
+      const metrics = { ...baseMetrics, executionMode: 'request-review', editorMode: 'I' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('');
+      expect(out).not.toContain('[I]');
+      expect(out).toContain('\x1b[33m'); // yellow
+    });
+
+    it('renders visual mode badge with blue icon', () => {
+      const metrics = { ...baseMetrics, executionMode: 'accept-edits', editorMode: 'V' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('');
+      expect(out).not.toContain('[V]');
+      expect(out).toContain('\x1b[34m'); // blue
+    });
+
+    it('handles lowercase and missing editorMode gracefully', () => {
+      const metricsLower = { ...baseMetrics, executionMode: 'plan', editorMode: 'i' };
+      const outLower = formatMetrics(metricsLower);
+      expect(outLower).toContain('');
+      expect(outLower).not.toContain('[I]');
+
+      const outMissing = formatMetrics(baseMetrics);
+      expect(outMissing).not.toContain('');
+      expect(outMissing).not.toContain('');
+      expect(outMissing).not.toContain('');
+    });
+  });
+
   
   describe('transcript formatting', () => {
     it('formats transcript path with tail -f hint when present', () => {
@@ -238,6 +279,23 @@ describe('formatMetrics', () => {
       const out = formatMetrics(metrics);
       expect(out).toContain('Effort');
       expect(out).toContain('high');
+    });
+  });
+
+  describe('credits formatting', () => {
+    it('displays AI credits block when credits are present', () => {
+      const metrics = { ...baseMetrics, credits: 1250 };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('\\uF155 AI Credits:');
+      expect(out).toContain('1250');
+    });
+
+    it('does not display quota when credits are present', () => {
+      const metrics = { ...baseMetrics, credits: 1250, quotaWeekly: 100, quota5h: 100 };
+      const out = formatMetrics(metrics);
+      expect(out).not.toContain('Quota');
+      expect(out).not.toContain('Weekly');
+      expect(out).not.toContain('5h');
     });
   });
 });

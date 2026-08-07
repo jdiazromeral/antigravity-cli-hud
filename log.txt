@@ -1,0 +1,7 @@
+453d8b7 feat(formatter): change credits icon to dollar sign for terminal compatibility
+0c2181c test(formatter): expect dollar sign Nerd Font icon for AI credits
+c95567d fix: address reviewer comments on duplicate credits key and nerd font icon
+f676abc fix(hud): use Nerd Font icon for credits and add explicit credits payload in tests
+8df66b8 chore: sync package-lock.json version with package.json
+f78f6b4 feat: implement AI credits telemetry parsing and formatting
+7c5df75 test: failing tests for AI credits parsing and formatting
