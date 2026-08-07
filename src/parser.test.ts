@@ -44,7 +44,8 @@ describe('parseStream', () => {
       effort: 'high',
       mode: 'plan',
       agent: 'MyCustomAgent',
-      editor_mode: 'I'
+      editor_mode: 'I',
+      credits: { balance: 1250 }
     };
 
     const stream = Readable.from([JSON.stringify(payload)]);
@@ -88,7 +89,8 @@ describe('parseStream', () => {
       transcriptPath: '/path/to/my/transcript.txt',
       effort: 'high',
       agentName: 'MyCustomAgent',
-      editorMode: 'I'
+      editorMode: 'I',
+      credits: 1250
     });
   });
 
@@ -423,6 +425,18 @@ describe('parseStream', () => {
 
       expect(result.quotaWeekly).toBe(0);
       expect(result.quotaWeeklyResetSeconds).toBe(0);
+    });
+
+    it('should gracefully handle malformed credits payload', async () => {
+      const payload = {
+        agent_state: 'Idle',
+        editor_mode: 'N',
+        credits: 'invalid-credits-string' as unknown as { balance: number }
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.credits).toBeUndefined();
     });
 
     it('should handle malformed sandbox and vcs objects', async () => {

@@ -280,4 +280,21 @@ describe('formatMetrics', () => {
       expect(out).toContain('high');
     });
   });
+
+  describe('credits formatting', () => {
+    it('displays AI credits block when credits are present', () => {
+      const metrics = { ...baseMetrics, credits: 1250 };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🪙 AI Credits:');
+      expect(out).toContain('1250');
+    });
+
+    it('does not display quota when credits are present', () => {
+      const metrics = { ...baseMetrics, credits: 1250, quotaWeekly: 100, quota5h: 100 };
+      const out = formatMetrics(metrics);
+      expect(out).not.toContain('Quota');
+      expect(out).not.toContain('Weekly');
+      expect(out).not.toContain('5h');
+    });
+  });
 });
