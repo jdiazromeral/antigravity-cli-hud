@@ -42,7 +42,8 @@ describe('parseStream', () => {
       transcript_path: '/path/to/my/transcript.txt',
       effort: 'high',
       mode: 'plan',
-      agent: 'MyCustomAgent'
+      agent: 'MyCustomAgent',
+      editor_mode: 'I'
     };
 
     const stream = Readable.from([JSON.stringify(payload)]);
@@ -85,7 +86,8 @@ describe('parseStream', () => {
       executionMode: 'plan',
       transcriptPath: '/path/to/my/transcript.txt',
       effort: 'high',
-      agentName: 'MyCustomAgent'
+      agentName: 'MyCustomAgent',
+      editorMode: 'I'
     });
   });
 
@@ -208,6 +210,7 @@ describe('parseStream', () => {
     expect(result.effort).toBe('normal');
     expect(result.agentName).toBe('TARS');
     expect(result.executionMode).toBe('request-review');
+    expect(result.editorMode).toBeUndefined();
     process.env.AGENT_NAME = oldAgent;
     process.env.AGY_AGENT_NAME = oldAgyAgent;
   });
@@ -220,6 +223,16 @@ describe('parseStream', () => {
     const stream = Readable.from([JSON.stringify(payload)]);
     const result = await parseStream(stream);
     expect(result.exceeds200k).toBe(true);
+  });
+
+  it('should correctly parse editor_mode', async () => {
+    const payload = {
+      agent_state: 'Idle',
+      editor_mode: 'N'
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.editorMode).toBe('N');
   });
 
   it('should detect active skills from tool_info, subagents, and looper', async () => {
