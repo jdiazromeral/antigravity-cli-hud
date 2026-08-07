@@ -37,3 +37,5 @@
 - Commits: c95567d
 - Verdict: DONE
 - Validator: PASS
+- Reviewer: REWORK(Soft criterion: Terminal HUD output strings for the credit block do not utilize a Nerd Font icon (the format string is just ` AI Credits:` without any icon).)
+- Steering for next: The reviewer returned REWORK because the credit block string is STILL rendering as just ` AI Credits:` without the icon. It seems the character `` (U+F51E) you used is also getting stripped by the reviewer's terminal environment. Please try using a highly standard Nerd Font / FontAwesome icon that has been around forever, such as `` (U+F155, dollar sign) or `󰁝` (U+F005D, coins) and update the tests accordingly.
