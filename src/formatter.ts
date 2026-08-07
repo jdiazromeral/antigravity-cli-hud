@@ -131,12 +131,8 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   let vimBadge = '';
   if (metrics.editorMode) {
     const m = metrics.editorMode.toUpperCase().charAt(0);
-    let icon = '';
-    if (m === 'I') icon = '';
-    else if (m === 'V') icon = '';
-    
     const color = m === 'I' ? colors.yellow : (m === 'V' ? colors.blue : colors.cyan);
-    vimBadge = ` ${color}${icon}${colors.reset}`;
+    vimBadge = ` ${color} [${m}]${colors.reset}`;
   }
   const modeStr = (modeColors[metrics.executionMode] || `${colors.yellow}🟡 request-review${colors.reset}`) + vimBadge;
 
