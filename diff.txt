@@ -1,0 +1,153 @@
+diff --git a/package-lock.json b/package-lock.json
+index 80e3641..a73a0b1 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "antigravity-cli-hud",
+-  "version": "1.0.0",
++  "version": "1.1.10",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "antigravity-cli-hud",
+-      "version": "1.0.0",
++      "version": "1.1.10",
+       "license": "AGPL-3.0-or-later",
+       "devDependencies": {
+         "@eslint/js": "^10.0.1",
+diff --git a/src/formatter.test.ts b/src/formatter.test.ts
+index 97a01bf..2df73d8 100644
+--- a/src/formatter.test.ts
++++ b/src/formatter.test.ts
+@@ -280,4 +280,21 @@ describe('formatMetrics', () => {
+       expect(out).toContain('high');
+     });
+   });
++
++  describe('credits formatting', () => {
++    it('displays AI credits block when credits are present', () => {
++      const metrics = { ...baseMetrics, credits: 1250 };
++      const out = formatMetrics(metrics);
++      expect(out).toContain('🪙 AI Credits:');
++      expect(out).toContain('1250');
++    });
++
++    it('does not display quota when credits are present', () => {
++      const metrics = { ...baseMetrics, credits: 1250, quotaWeekly: 100, quota5h: 100 };
++      const out = formatMetrics(metrics);
++      expect(out).not.toContain('Quota');
++      expect(out).not.toContain('Weekly');
++      expect(out).not.toContain('5h');
++    });
++  });
+ });
+diff --git a/src/formatter.ts b/src/formatter.ts
+index 6f22ae0..ab92e44 100644
+--- a/src/formatter.ts
++++ b/src/formatter.ts
+@@ -210,6 +210,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
+     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
+     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
+     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
++    credits: metrics.credits !== undefined ? `🪙 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
+     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
+     tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
+     version: `📦 v${metrics.version}`,
+@@ -325,6 +326,23 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
+     activeLayout = activeLayout.map(row => row.filter(k => k !== 'sandbox'));
+   }
+ 
++  // Handle credits overriding quotas
++  if (metrics.credits !== undefined) {
++    activeLayout = activeLayout.map(row => {
++      const newRow: string[] = [];
++      for (const k of row) {
++        if (k === '5h') {
++          newRow.push('credits');
++        } else if (k === 'weekly') {
++          // Hide weekly when credits are present
++        } else {
++          newRow.push(k);
++        }
++      }
++      return newRow;
++    });
++  }
++
+   // Dynamic Culling: Hide tasks and subagents when they are inactive to prevent clutter
+   if (HUD_CONFIG.autoHideEmptyBlocks) {
+     if (metrics.taskCount === 0) {
+diff --git a/src/parser.test.ts b/src/parser.test.ts
+index c52b632..d80b7e0 100644
+--- a/src/parser.test.ts
++++ b/src/parser.test.ts
+@@ -44,7 +44,8 @@ describe('parseStream', () => {
+       effort: 'high',
+       mode: 'plan',
+       agent: 'MyCustomAgent',
+-      editor_mode: 'I'
++      editor_mode: 'I',
++      credits: { balance: 1250 }
+     };
+ 
+     const stream = Readable.from([JSON.stringify(payload)]);
+@@ -88,7 +89,8 @@ describe('parseStream', () => {
+       transcriptPath: '/path/to/my/transcript.txt',
+       effort: 'high',
+       agentName: 'MyCustomAgent',
+-      editorMode: 'I'
++      editorMode: 'I',
++      credits: 1250
+     });
+   });
+ 
+@@ -425,6 +427,18 @@ describe('parseStream', () => {
+       expect(result.quotaWeeklyResetSeconds).toBe(0);
+     });
+ 
++    it('should gracefully handle malformed credits payload', async () => {
++      const payload = {
++        agent_state: 'Idle',
++        editor_mode: 'N',
++        credits: 'invalid-credits-string' as unknown as { balance: number }
++      };
++      const stream = Readable.from([JSON.stringify(payload)]);
++      const result = await parseStream(stream);
++
++      expect(result.credits).toBeUndefined();
++    });
++
+     it('should handle malformed sandbox and vcs objects', async () => {
+       const payload = {
+         agent_state: 'Idle',
+diff --git a/src/parser.ts b/src/parser.ts
+index 18079c3..1bb8d78 100644
+--- a/src/parser.ts
++++ b/src/parser.ts
+@@ -40,6 +40,7 @@ export interface AntigravityPayload {
+   max_steps?: number;
+   max_context_tokens?: number;
+   editor_mode?: string;
++  credits?: { balance: number };
+ }
+ 
+ import * as fs from 'fs';
+@@ -101,6 +102,7 @@ export interface ParsedMetrics {
+   effort: string;
+   agentName: string;
+   editorMode?: string;
++  credits?: number;
+ }
+ 
+ export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
+@@ -610,6 +612,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
+     transcriptPath: resolvedTranscriptPath,
+     effort,
+     agentName,
+-    editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined
++    editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
++    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined
+   };
+ }

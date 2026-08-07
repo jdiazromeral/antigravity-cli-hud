@@ -38,7 +38,8 @@ describe('formatMetrics', () => {
     maxSteps: 20,
     maxContextTokens: 0,
     contextWindowSize: 1048576,
-    editorMode: undefined
+    editorMode: undefined,
+    credits: undefined
   };
 
   it('formats single and multiple active skills correctly', () => {
@@ -285,7 +286,7 @@ describe('formatMetrics', () => {
     it('displays AI credits block when credits are present', () => {
       const metrics = { ...baseMetrics, credits: 1250 };
       const out = formatMetrics(metrics);
-      expect(out).toContain('🪙 AI Credits:');
+      expect(out).toContain('󰠖 AI Credits:');
       expect(out).toContain('1250');
     });
 
