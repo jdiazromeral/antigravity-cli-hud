@@ -40,6 +40,7 @@ export interface AntigravityPayload {
   max_steps?: number;
   max_context_tokens?: number;
   editor_mode?: string;
+  credits?: { balance: number };
 }
 
 import * as fs from 'fs';
@@ -101,6 +102,7 @@ export interface ParsedMetrics {
   effort: string;
   agentName: string;
   editorMode?: string;
+  credits?: number;
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -610,6 +612,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     transcriptPath: resolvedTranscriptPath,
     effort,
     agentName,
-    editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined
+    editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
+    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined
   };
 }
