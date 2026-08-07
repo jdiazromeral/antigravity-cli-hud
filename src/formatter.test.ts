@@ -37,7 +37,8 @@ describe('formatMetrics', () => {
     stepCount: 0,
     maxSteps: 20,
     maxContextTokens: 0,
-    contextWindowSize: 1048576
+    contextWindowSize: 1048576,
+    editorMode: undefined
   };
 
   it('formats single and multiple active skills correctly', () => {
@@ -213,6 +214,45 @@ describe('formatMetrics', () => {
       const metrics = { ...baseMetrics } as any;
       delete metrics.executionMode;
       expect(() => formatMetrics(metrics)).not.toThrow();
+    });
+  });
+
+  describe('vim mode badge formatting', () => {
+    it('renders normal mode badge with cyan icon', () => {
+      const metrics = { ...baseMetrics, executionMode: 'plan', editorMode: 'N' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🔵 plan');
+      expect(out).toContain('');
+      expect(out).not.toContain('[N]');
+      expect(out).toContain('\x1b[36m'); // cyan
+    });
+
+    it('renders insert mode badge with yellow icon', () => {
+      const metrics = { ...baseMetrics, executionMode: 'request-review', editorMode: 'I' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('');
+      expect(out).not.toContain('[I]');
+      expect(out).toContain('\x1b[33m'); // yellow
+    });
+
+    it('renders visual mode badge with blue icon', () => {
+      const metrics = { ...baseMetrics, executionMode: 'accept-edits', editorMode: 'V' };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('');
+      expect(out).not.toContain('[V]');
+      expect(out).toContain('\x1b[34m'); // blue
+    });
+
+    it('handles lowercase and missing editorMode gracefully', () => {
+      const metricsLower = { ...baseMetrics, executionMode: 'plan', editorMode: 'i' };
+      const outLower = formatMetrics(metricsLower);
+      expect(outLower).toContain('');
+      expect(outLower).not.toContain('[I]');
+
+      const outMissing = formatMetrics(baseMetrics);
+      expect(outMissing).not.toContain('');
+      expect(outMissing).not.toContain('');
+      expect(outMissing).not.toContain('');
     });
   });
 

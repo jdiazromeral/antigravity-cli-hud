@@ -127,7 +127,18 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
     'accept-edits': `${colors.green}🟢 accept-edits${colors.reset}`,
     'plan': `${colors.blue}🔵 plan${colors.reset}`
   };
-  const modeStr = modeColors[metrics.executionMode] || `${colors.yellow}🟡 request-review${colors.reset}`;
+  
+  let vimBadge = '';
+  if (metrics.editorMode) {
+    const m = metrics.editorMode.toUpperCase().charAt(0);
+    let icon = '';
+    if (m === 'I') icon = '';
+    else if (m === 'V') icon = '';
+    
+    const color = m === 'I' ? colors.yellow : (m === 'V' ? colors.blue : colors.cyan);
+    vimBadge = ` ${color}${icon}${colors.reset}`;
+  }
+  const modeStr = (modeColors[metrics.executionMode] || `${colors.yellow}🟡 request-review${colors.reset}`) + vimBadge;
 
   const effortColors: Record<string, string> = {
     'low': `${colors.green}󰾆 low${colors.reset}`,

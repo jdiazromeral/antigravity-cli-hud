@@ -19,6 +19,7 @@ describe('parseStream', () => {
   it('should parse valid JSON payload and extract metrics', async () => {
     const payload: AntigravityPayload = {
       agent_state: 'Thinking',
+      editor_mode: 'N',
       context_window: {
         total_input_tokens: 45000,
         used_percentage: 45,
@@ -42,7 +43,8 @@ describe('parseStream', () => {
       transcript_path: '/path/to/my/transcript.txt',
       effort: 'high',
       mode: 'plan',
-      agent: 'MyCustomAgent'
+      agent: 'MyCustomAgent',
+      editor_mode: 'I'
     };
 
     const stream = Readable.from([JSON.stringify(payload)]);
@@ -85,13 +87,15 @@ describe('parseStream', () => {
       executionMode: 'plan',
       transcriptPath: '/path/to/my/transcript.txt',
       effort: 'high',
-      agentName: 'MyCustomAgent'
+      agentName: 'MyCustomAgent',
+      editorMode: 'I'
     });
   });
 
   it('should parse subagents depth correctly', async () => {
     const payload = {
       agent_state: 'Working',
+      editor_mode: 'N',
       subagents: [
         { name: 'parent', role: 'Manager', status: 'working', depth: 0, conversation_id: 'sub-123456', log_uri: '/path/to/log.txt' },
         { name: 'child', role: 'Worker', status: 'working', depth: 1 }
@@ -108,6 +112,7 @@ describe('parseStream', () => {
   it('should parse tool_info correctly when present', async () => {
     const payload = {
       agent_state: 'Working',
+      editor_mode: 'N',
       tool_info: { name: 'run_command', summary: 'git status', status: 'running' }
     };
     const stream = Readable.from([JSON.stringify(payload)]);
@@ -134,7 +139,7 @@ describe('parseStream', () => {
     it('should parse executionMode from settings.json', async () => {
       fs.writeFileSync(settingsPath, JSON.stringify({ mode: 'accept-edits' }));
       
-      const payload = { agent_state: 'Idle' };
+      const payload = { agent_state: 'Idle', editor_mode: 'N' };
       const stream = Readable.from([JSON.stringify(payload)]);
       const result = await parseStream(stream);
 
@@ -144,7 +149,7 @@ describe('parseStream', () => {
     it('should default to request-review if mode is missing in settings.json', async () => {
       fs.writeFileSync(settingsPath, JSON.stringify({}));
       
-      const payload = { agent_state: 'Idle' };
+      const payload = { agent_state: 'Idle', editor_mode: 'N' };
       const stream = Readable.from([JSON.stringify(payload)]);
       const result = await parseStream(stream);
 
@@ -153,7 +158,7 @@ describe('parseStream', () => {
     it('should use mode from payload if present, bypassing settings.json', async () => {
       fs.writeFileSync(settingsPath, JSON.stringify({ mode: 'accept-edits' }));
       
-      const payload = { agent_state: 'Idle', mode: 'plan' };
+      const payload = { agent_state: 'Idle', mode: 'plan', editor_mode: 'N' };
       const stream = Readable.from([JSON.stringify(payload)]);
       const result = await parseStream(stream);
 
@@ -164,6 +169,7 @@ describe('parseStream', () => {
   it('should leverage vcs payload if present to avoid OS blocking', async () => {
     const payload: AntigravityPayload = {
       agent_state: 'Idle',
+      editor_mode: 'N',
       cwd: '/path/to/project',
       vcs: { branch: 'feature-branch', dirty: true }
     };
@@ -175,6 +181,7 @@ describe('parseStream', () => {
   it('should not append * if not dirty', async () => {
     const payload: AntigravityPayload = {
       agent_state: 'Idle',
+      editor_mode: 'N',
       cwd: '/path/to/project',
       vcs: { branch: 'main', dirty: false }
     };
@@ -208,6 +215,7 @@ describe('parseStream', () => {
     expect(result.effort).toBe('normal');
     expect(result.agentName).toBe('TARS');
     expect(result.executionMode).toBe('request-review');
+    expect(result.editorMode).toBeUndefined();
     process.env.AGENT_NAME = oldAgent;
     process.env.AGY_AGENT_NAME = oldAgyAgent;
   });
@@ -215,6 +223,7 @@ describe('parseStream', () => {
   it('should correctly parse exceeds_200k_tokens', async () => {
     const payload = {
       agent_state: 'Idle',
+      editor_mode: 'N',
       exceeds_200k_tokens: true
     };
     const stream = Readable.from([JSON.stringify(payload)]);
@@ -222,9 +231,20 @@ describe('parseStream', () => {
     expect(result.exceeds200k).toBe(true);
   });
 
+  it('should correctly parse editor_mode', async () => {
+    const payload = {
+      agent_state: 'Idle',
+      editor_mode: 'N'
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.editorMode).toBe('N');
+  });
+
   it('should detect active skills from tool_info, subagents, and looper', async () => {
     const payload = {
       agent_state: 'Working',
+      editor_mode: 'N',
       tool_info: {
         name: 'view_file',
         summary: '/Users/javidiaz/.gemini/config/plugins/looper/skills/looper/SKILL.md'
@@ -244,7 +264,7 @@ describe('parseStream', () => {
     process.env.AGY_MAX_CONTEXT_TOKENS = '75000';
     process.env.AGY_MAX_STEPS = '30';
 
-    const payload = { agent_state: 'Working' };
+    const payload = { agent_state: 'Working', editor_mode: 'N' };
     const stream = Readable.from([JSON.stringify(payload)]);
     const result = await parseStream(stream);
 
@@ -259,6 +279,7 @@ describe('parseStream', () => {
     it('should ignore unknown and experimental top-level/nested payload fields without crashing', async () => {
       const payload = {
         agent_state: 'Thinking',
+        editor_mode: 'N',
         unknown_experimental_flag: true,
         nested_future_struct: {
           quantum_tokens: 999999,
@@ -276,6 +297,7 @@ describe('parseStream', () => {
     it('should handle malformed subagents array items (null, non-object, invalid role/name types)', async () => {
       const payload = {
         agent_state: 'Working',
+        editor_mode: 'N',
         subagents: [
           null,
           123,
@@ -297,6 +319,7 @@ describe('parseStream', () => {
     it('should handle 2M+ context window and extreme token usage gracefully', async () => {
       const payload = {
         agent_state: 'Thinking',
+        editor_mode: 'N',
         context_window: {
           total_input_tokens: 1850000,
           used_percentage: 88.2,
@@ -320,6 +343,7 @@ describe('parseStream', () => {
     it('should handle invalid/out-of-bounds context window values (NaN, negative, >100)', async () => {
       const payload = {
         agent_state: 'Working',
+        editor_mode: 'N',
         context_window: {
           total_input_tokens: -500,
           used_percentage: 150,
@@ -339,6 +363,7 @@ describe('parseStream', () => {
     it('should handle non-object or malformed tool_info', async () => {
       const payload = {
         agent_state: 'Working',
+        editor_mode: 'N',
         tool_info: 'invalid-string-tool-info' as unknown as AntigravityPayload['tool_info']
       };
       const stream = Readable.from([JSON.stringify(payload)]);
@@ -348,6 +373,7 @@ describe('parseStream', () => {
 
       const payload2 = {
         agent_state: 'Working',
+        editor_mode: 'N',
         tool_info: { name: 12345, summary: { invalid: 'object' }, status: null } as unknown as AntigravityPayload['tool_info']
       };
       const stream2 = Readable.from([JSON.stringify(payload2)]);
@@ -358,6 +384,7 @@ describe('parseStream', () => {
     it('should handle malformed model, session_id, and cwd fields gracefully', async () => {
       const payload = {
         agent_state: 'Idle',
+        editor_mode: 'N',
         model: { display_name: 12345 } as unknown as AntigravityPayload['model'],
         session_id: 999999 as unknown as AntigravityPayload['session_id'],
         cwd: 123 as unknown as AntigravityPayload['cwd']
@@ -384,6 +411,7 @@ describe('parseStream', () => {
     it('should handle malformed quota structures and unknown quota types', async () => {
       const payload = {
         agent_state: 'Idle',
+        editor_mode: 'N',
         quota: {
           'gemini-weekly': 'invalid-quota-string' as unknown as { remaining_fraction: number },
           '3p-weekly': { remaining_fraction: 'invalid' as unknown as number, reset_in_seconds: -100 },
@@ -400,6 +428,7 @@ describe('parseStream', () => {
     it('should handle malformed sandbox and vcs objects', async () => {
       const payload = {
         agent_state: 'Idle',
+        editor_mode: 'N',
         sandbox: 'not-an-object' as unknown as AntigravityPayload['sandbox'],
         vcs: 12345 as unknown as AntigravityPayload['vcs']
       };
