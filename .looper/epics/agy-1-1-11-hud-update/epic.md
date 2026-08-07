@@ -5,11 +5,11 @@ Integrate the new UI-facing features from the `agy` 1.1.11 update into the Antig
 ## [M1] Vim Mode Badge
 - **Purpose**: Parse the Vim editing mode state from the telemetry payload in `src/parser.ts` and display a styled mode badge (e.g., `[N]`, `[I]`, `[V]`) in `src/formatter.ts`.
 - **Dependencies**: None
-- **Validator**: `npm run lint && npm run test`
-- **Status**: BLOCKED
+- **Validator**: `grep -q "editor_mode" src/parser.ts && npm run lint && npm run test`
+- **Status**: PENDING
 
 ## [M2] AI Credits Block
 - **Purpose**: Investigate the telemetry payload for AI credit balances (addressed in `agy` 1.1.11 fixes) in `src/parser.ts` and add a new visual layout block for credits in `src/formatter.ts` alongside or instead of the quota bars.
 - **Dependencies**: [M1]
-- **Validator**: `npm run lint && npm run test`
+- **Validator**: `grep -q "credits" src/parser.ts && npm run lint && npm run test`
 - **Status**: PENDING
