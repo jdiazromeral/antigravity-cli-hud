@@ -2,7 +2,7 @@
 validator: "grep -q 'editor_mode' src/parser.ts && npm run lint && npm run test"
 max_iterations: 8
 branch: hud-m1
-status: IN_PROGRESS
+status: FAILED
 ---
 
 # Purpose
