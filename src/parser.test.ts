@@ -189,8 +189,12 @@ describe('parseStream', () => {
   });
 
   it('should fallback to defaults if missing required fields', async () => {
+    const oldAgent = process.env.AGENT_NAME;
+    const oldAgyAgent = process.env.AGY_AGENT_NAME;
+    process.env.AGENT_NAME = 'TARS';
+    process.env.AGY_AGENT_NAME = '';
     const payload = {
-      agent_state: 'Idle'
+      agent_state: 'idle',
     };
     const stream = Readable.from([JSON.stringify(payload)]);
     const result = await parseStream(stream);
@@ -204,6 +208,8 @@ describe('parseStream', () => {
     expect(result.effort).toBe('normal');
     expect(result.agentName).toBe('TARS');
     expect(result.executionMode).toBe('request-review');
+    process.env.AGENT_NAME = oldAgent;
+    process.env.AGY_AGENT_NAME = oldAgyAgent;
   });
 
   it('should correctly parse exceeds_200k_tokens', async () => {
