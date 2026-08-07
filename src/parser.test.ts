@@ -44,7 +44,7 @@ describe('parseStream', () => {
       effort: 'high',
       mode: 'plan',
       agent: 'MyCustomAgent',
-      editor_mode: "I", credits: undefined,
+      editor_mode: "I",
       credits: { balance: 1250 }
     };
 
