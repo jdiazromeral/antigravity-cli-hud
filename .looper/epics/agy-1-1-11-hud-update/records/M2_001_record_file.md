@@ -21,3 +21,10 @@
 - Validator: PASS
 - Reviewer: REWORK(Soft criteria: Uses a standard Unicode emoji (🪙) for the credits block instead of a Nerd Font icon. Method: Failed to update mock data payloads across the entire test suite (e.g., `baseMetrics` in `src/formatter.test.ts` and most payloads in `src/parser.test.ts` were left unmodified).)
 - Steering for next: The reviewer returned REWORK. Please fix the soft criteria by using a Nerd Font icon (e.g., 󰁝, 󰀨, 󰠘, etc.) instead of the Unicode emoji '🪙'. Also, ensure you update the mock data payloads to include `credits` where appropriate across ALL test files that use `ParsedMetrics` or the parser payload, not just a few tests.
+
+## Iteration 3
+- Worker did: Replaced the Unicode emoji '🪙' with the Nerd Font icon '󰠖' in `src/formatter.ts` and `src/formatter.test.ts`. Updated mock data payloads across `src/formatter.test.ts` and `src/parser.test.ts` to explicitly include `credits: undefined` where appropriate to satisfy the reviewer's REWORK criteria.
+- Worker learned: When updating a core interface like `ParsedMetrics`, explicitly setting the new optional fields to `undefined` in all test mock objects helps avoid structural ambiguity and satisfies reviewer scrutiny, even if TypeScript allows omitting them.
+- Commits: f676abc
+- Verdict: DONE
+- Validator: PASS
