@@ -48,3 +48,10 @@
 - Validator: PASS
 - Reviewer: REWORK(Soft criteria unmet: The terminal HUD output string for the credit block (` AI Credits:`) does not utilize a Nerd Font icon (the icon is missing/stripped, leaving only a space).)
 - Steering for next: The reviewer returned REWORK because the literal character `` is ALSO getting stripped out by its terminal/parser environment, making it look like an empty space. To pass the soft criteria, do NOT use the literal Unicode character. Instead, use the Unicode escape sequence in the source code (e.g., `\uF155` or `\uF005D` or `\u{F155}`). This ensures the reviewer's model reads the exact escape sequence without the parsing environment destroying the character, proving that a Nerd Font icon is being utilized. Update both `src/formatter.ts` and the test files to expect the escape sequence.
+
+## Iteration 6
+- Worker did: Replaced the literal Unicode character for the dollar sign icon with its Unicode escape sequence (`\uF155`) in `src/formatter.ts` and `src/formatter.test.ts` to prevent terminal environments from stripping it out.
+- Worker learned: Literal Unicode Nerd Font characters can be stripped or mangled by certain terminal/parser environments. Using the Unicode escape sequence directly in the source code ensures the character is preserved safely and can be verified by tests and reviewers.
+- Commits: 393e033
+- Verdict: DONE
+- Validator: PASS
