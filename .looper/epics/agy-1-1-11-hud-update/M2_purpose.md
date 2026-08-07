@@ -2,7 +2,7 @@
 validator: "grep -q 'credits' src/parser.ts && npm run lint && npm run test"
 max_iterations: 8
 branch: epic/agy-1-1-11-hud-update/M2
-status: IN_PROGRESS
+status: DONE
 ---
 
 # Purpose

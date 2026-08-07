@@ -12,4 +12,4 @@ Integrate the new UI-facing features from the `agy` 1.1.11 update into the Antig
 - **Purpose**: Investigate the telemetry payload for AI credit balances (addressed in `agy` 1.1.11 fixes) in `src/parser.ts` and add a new visual layout block for credits in `src/formatter.ts` alongside or instead of the quota bars.
 - **Dependencies**: [M1]
 - **Validator**: `grep -q "credits" src/parser.ts && npm run lint && npm run test`
-- **Status**: IN_PROGRESS
+- **Status**: DONE
