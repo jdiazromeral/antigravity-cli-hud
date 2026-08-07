@@ -39,3 +39,10 @@
 - Validator: PASS
 - Reviewer: REWORK(Soft criterion: Terminal HUD output strings for the credit block do not utilize a Nerd Font icon (the format string is just ` AI Credits:` without any icon).)
 - Steering for next: The reviewer returned REWORK because the credit block string is STILL rendering as just ` AI Credits:` without the icon. It seems the character `` (U+F51E) you used is also getting stripped by the reviewer's terminal environment. Please try using a highly standard Nerd Font / FontAwesome icon that has been around forever, such as `` (U+F155, dollar sign) or `󰁝` (U+F005D, coins) and update the tests accordingly.
+
+## Iteration 5
+- Worker did: Replaced the unsupported Nerd Font icon (`` U+F51E) in the credits block with a highly standard dollar sign icon (`` U+F155) in `src/formatter.ts` and `src/formatter.test.ts` to fix terminal rendering issues.
+- Worker learned: Using more obscure or newer Nerd Font characters like U+F51E can result in terminal stripping issues; it is safer to stick to standard, well-supported legacy icons like U+F155 (dollar sign).
+- Commits: 0c2181c, 453d8b7
+- Verdict: DONE
+- Validator: PASS
