@@ -1,5 +1,7 @@
 import { ParsedMetrics } from './parser.js';
 import * as os from 'os';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const colors = {
   reset: '\x1b[0m',
@@ -15,11 +17,40 @@ const colors = {
 
 // ============================================================================
 // HUD LAYOUT CONFIGURATION
-// You can dynamically re-arrange the terminal layout here!
+// Default layout matrix and budget ceilings.
+// Custom overrides can be placed in ~/.gemini/hud_config.json
 // Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'tool', 'transcript'
-// Note: To completely disable the Looper integration, simply remove 'looper' from the layout arrays below.
 // ============================================================================
-export const HUD_CONFIG = {
+export interface HudBudgetConfig {
+  maxSteps?: number;
+  maxContextTokens?: number;
+}
+
+export interface HudBreakpointsConfig {
+  large: number;
+  medium: number;
+  small: number;
+}
+
+export interface HudLayoutsConfig {
+  large: string[][];
+  medium: string[][];
+  small: string[][];
+}
+
+export interface HudConfig {
+  autoHideEmptyBlocks?: boolean;
+  budget?: HudBudgetConfig;
+  breakpoints?: HudBreakpointsConfig;
+  layouts?: HudLayoutsConfig;
+}
+
+export const DEFAULT_HUD_CONFIG: {
+  autoHideEmptyBlocks: boolean;
+  budget: { maxSteps: number; maxContextTokens?: number };
+  breakpoints: { large: number; medium: number; small: number };
+  layouts: { large: string[][]; medium: string[][]; small: string[][] };
+} = {
   // Whether to dynamically hide 'tasks' and 'subagents' blocks from the UI when their count is 0
   autoHideEmptyBlocks: true,
   // Budget ceiling defaults
@@ -68,8 +99,67 @@ export const HUD_CONFIG = {
   }
 };
 
-export function formatMetrics(metrics: ParsedMetrics, width: number = 80): string {
+export const HUD_CONFIG = DEFAULT_HUD_CONFIG;
+
+export function loadHudConfig(customPath?: string): typeof DEFAULT_HUD_CONFIG {
+  const configPath = customPath || path.join(os.homedir(), '.gemini', 'hud_config.json');
+  try {
+    if (fs.existsSync(configPath)) {
+      const raw = fs.readFileSync(configPath, 'utf-8');
+      const userConfig = JSON.parse(raw);
+      return {
+        ...DEFAULT_HUD_CONFIG,
+        ...userConfig,
+        budget: {
+          ...DEFAULT_HUD_CONFIG.budget,
+          ...(userConfig.budget || {})
+        },
+        breakpoints: {
+          ...DEFAULT_HUD_CONFIG.breakpoints,
+          ...(userConfig.breakpoints || {})
+        },
+        layouts: {
+          large: userConfig.layouts?.large || DEFAULT_HUD_CONFIG.layouts.large.map(r => [...r]),
+          medium: userConfig.layouts?.medium || DEFAULT_HUD_CONFIG.layouts.medium.map(r => [...r]),
+          small: userConfig.layouts?.small || DEFAULT_HUD_CONFIG.layouts.small.map(r => [...r]),
+        }
+      };
+    }
+  } catch {
+    // Fall back to default config if file cannot be read or parsed
+  }
+
+  return {
+    ...DEFAULT_HUD_CONFIG,
+    budget: { ...DEFAULT_HUD_CONFIG.budget },
+    breakpoints: { ...DEFAULT_HUD_CONFIG.breakpoints },
+    layouts: {
+      large: DEFAULT_HUD_CONFIG.layouts.large.map(r => [...r]),
+      medium: DEFAULT_HUD_CONFIG.layouts.medium.map(r => [...r]),
+      small: DEFAULT_HUD_CONFIG.layouts.small.map(r => [...r]),
+    }
+  };
+}
+
+export function formatMetrics(metrics: ParsedMetrics, width: number = 80, configOverride?: HudConfig): string {
   const termWidth = metrics.terminalWidth || width || 80;
+  const hudConfig = configOverride ? {
+    ...DEFAULT_HUD_CONFIG,
+    ...configOverride,
+    budget: {
+      ...DEFAULT_HUD_CONFIG.budget,
+      ...(configOverride.budget || {})
+    },
+    breakpoints: {
+      ...DEFAULT_HUD_CONFIG.breakpoints,
+      ...(configOverride.breakpoints || {})
+    },
+    layouts: {
+      large: configOverride.layouts?.large || DEFAULT_HUD_CONFIG.layouts.large.map(r => [...r]),
+      medium: configOverride.layouts?.medium || DEFAULT_HUD_CONFIG.layouts.medium.map(r => [...r]),
+      small: configOverride.layouts?.small || DEFAULT_HUD_CONFIG.layouts.small.map(r => [...r]),
+    }
+  } : loadHudConfig();
 
   // 1. Calculate Blocks Independently
   const paddedState = metrics.agentState.padEnd(7, ' ');
@@ -157,7 +247,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   }
 
   const envMaxSteps = process.env.AGY_MAX_STEPS ? parseInt(process.env.AGY_MAX_STEPS, 10) : undefined;
-  const maxSteps = (envMaxSteps && !isNaN(envMaxSteps)) ? envMaxSteps : (metrics.maxSteps || HUD_CONFIG.budget?.maxSteps || 20);
+  const maxSteps = (envMaxSteps && !isNaN(envMaxSteps)) ? envMaxSteps : (metrics.maxSteps || hudConfig.budget?.maxSteps || 20);
   const stepCount = metrics.stepCount || 0;
   const stepPct = Math.round((stepCount / maxSteps) * 100);
   const stepColor = getThresholdColor(stepPct);
@@ -165,7 +255,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   const stepStr = `👟 Steps: ${stepBar} ${stepColor}${stepCount}/${maxSteps}${colors.reset}`;
 
   const envMaxTokens = process.env.AGY_MAX_CONTEXT_TOKENS ? parseInt(process.env.AGY_MAX_CONTEXT_TOKENS, 10) : undefined;
-  const configMaxTokens = HUD_CONFIG.budget?.maxContextTokens;
+  const configMaxTokens = hudConfig.budget?.maxContextTokens;
   const limitTokens = (envMaxTokens && !isNaN(envMaxTokens))
     ? envMaxTokens
     : (metrics.maxContextTokens > 0 ? metrics.maxContextTokens : (metrics.contextWindowSize || configMaxTokens || 1048576));
@@ -311,11 +401,11 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
 
   // 2. Responsive Router
   let activeLayout: string[][] = [];
-  if (termWidth >= HUD_CONFIG.breakpoints.large) activeLayout = HUD_CONFIG.layouts.large;
-  else if (termWidth >= HUD_CONFIG.breakpoints.medium) activeLayout = HUD_CONFIG.layouts.medium;
-  else activeLayout = HUD_CONFIG.layouts.small;
+  if (termWidth >= hudConfig.breakpoints.large) activeLayout = hudConfig.layouts.large;
+  else if (termWidth >= hudConfig.breakpoints.medium) activeLayout = hudConfig.layouts.medium;
+  else activeLayout = hudConfig.layouts.small;
 
-  // Clone to avoid mutating the global configuration
+  // Clone to avoid mutating the configuration
   activeLayout = activeLayout.map(row => [...row]);
 
   // Responsive Culling: Drop non-essential blocks on narrow screens
@@ -344,7 +434,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80): strin
   }
 
   // Dynamic Culling: Hide tasks and subagents when they are inactive to prevent clutter
-  if (HUD_CONFIG.autoHideEmptyBlocks) {
+  if (hudConfig.autoHideEmptyBlocks) {
     if (metrics.taskCount === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'tasks'));
     }

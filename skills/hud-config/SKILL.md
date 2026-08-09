@@ -1,6 +1,6 @@
 ---
 name: hud-config
-description: An interactive wizard that helps the user configure their HUD Matrix Layout and dynamically recompiles the plugin.
+description: An interactive wizard that helps the user configure their HUD Matrix Layout via ~/.gemini/hud_config.json at runtime without requiring recompilation.
 ---
 
 # HUD Configurator Skill
@@ -12,7 +12,7 @@ You are the official configuration wizard for the `antigravity-cli-hud` plugin. 
 When the user invokes this skill:
 
 1. **Locate the Configuration**:
-   Read the `~/.gemini/config/plugins/hud/src/formatter.ts` file to inspect the current `HUD_CONFIG` object.
+   Read `~/.gemini/hud_config.json` if it exists. If not, the HUD uses the built-in defaults from `DEFAULT_HUD_CONFIG`.
 
 2. **Explain the Available Telemetry Blocks**:
    List all available blocks users can place in their matrix layout:
@@ -52,8 +52,8 @@ When the user invokes this skill:
    **Budget Ceilings**:
    Ask if they want to customize `budget` limits (`maxSteps` defaults to 20). Context soft degradation limit defaults to 200,000 tokens (or `AGY_SOFT_CONTEXT_TOKENS`) and model physical max capacity defaults to `context_window_size` / 1,048,576 tokens (or `AGY_MAX_CONTEXT_TOKENS`).
 
-4. **Apply and Recompile**:
+4. **Apply Configuration**:
    Once agreed on the updated configuration:
-   - Use `replace_file_content` to safely overwrite `HUD_CONFIG` in `~/.gemini/config/plugins/hud/src/formatter.ts` (and repository source `src/formatter.ts` if available).
-   - Use `run_command` to execute `npm run build` inside `~/.gemini/config/plugins/hud/`.
+   - Use `write_to_file` (or `replace_file_content`) to write the JSON configuration directly to `~/.gemini/hud_config.json`.
+   - No code editing or esbuild recompilation (`npm run build`) is required! The HUD formatter dynamically reads `~/.gemini/hud_config.json` on every statusline refresh.
    - Inform the user that the HUD statusline will visually update on the very next token pulse!

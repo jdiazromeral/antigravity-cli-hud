@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { formatMetrics } from './formatter';
+import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig } from './formatter';
 import { ParsedMetrics } from './parser';
 import * as os from 'os';
+import * as fs from 'fs';
+import * as path from 'path';
 
 describe('formatMetrics', () => {
   const baseMetrics: ParsedMetrics = {
@@ -298,4 +300,142 @@ describe('formatMetrics', () => {
       expect(out).not.toContain('5h');
     });
   });
+
+  describe('runtime configuration and layout loading', () => {
+    const tmpDir = os.tmpdir();
+    const testConfigFile = path.join(tmpDir, `hud_config_test_${Date.now()}.json`);
+
+    it('exports DEFAULT_HUD_CONFIG and HUD_CONFIG', () => {
+      expect(DEFAULT_HUD_CONFIG).toBeDefined();
+      expect(HUD_CONFIG).toBeDefined();
+      expect(DEFAULT_HUD_CONFIG.budget.maxSteps).toBe(20);
+      expect(DEFAULT_HUD_CONFIG.layouts.large).toBeDefined();
+    });
+
+    it('loads defaults when config file does not exist', () => {
+      const config = loadHudConfig('/non/existent/path/hud_config.json');
+      expect(config.budget.maxSteps).toBe(20);
+      expect(config.autoHideEmptyBlocks).toBe(true);
+      expect(config.breakpoints.large).toBe(135);
+    });
+
+    it('gracefully handles corrupted JSON without throwing', () => {
+      fs.writeFileSync(testConfigFile, '{ invalid json: broken', 'utf-8');
+      try {
+        const config = loadHudConfig(testConfigFile);
+        expect(config.budget.maxSteps).toBe(20);
+      } finally {
+        if (fs.existsSync(testConfigFile)) fs.unlinkSync(testConfigFile);
+      }
+    });
+
+    it('loads custom runtime overrides from JSON file and merges with defaults', () => {
+      const customConfig = {
+        autoHideEmptyBlocks: false,
+        budget: {
+          maxSteps: 50
+        },
+        layouts: {
+          large: [
+            ['workspace', 'model'],
+            ['steps']
+          ]
+        }
+      };
+      fs.writeFileSync(testConfigFile, JSON.stringify(customConfig), 'utf-8');
+      try {
+        const loaded = loadHudConfig(testConfigFile);
+        expect(loaded.autoHideEmptyBlocks).toBe(false);
+        expect(loaded.budget.maxSteps).toBe(50);
+        // Breakpoints should be preserved from defaults
+        expect(loaded.breakpoints.large).toBe(135);
+        expect(loaded.layouts.large).toEqual([
+          ['workspace', 'model'],
+          ['steps']
+        ]);
+        // Other layouts preserved
+        expect(loaded.layouts.medium).toEqual(DEFAULT_HUD_CONFIG.layouts.medium);
+      } finally {
+        if (fs.existsSync(testConfigFile)) fs.unlinkSync(testConfigFile);
+      }
+    });
+
+    it('renders custom layouts and budget limits with formatMetrics config override', () => {
+      const customConfig = {
+        budget: { maxSteps: 35 },
+        breakpoints: { large: 100, medium: 50, small: 0 },
+        layouts: {
+          large: [
+            ['workspace', 'model'],
+            ['steps']
+          ],
+          medium: [
+            ['workspace'],
+            ['steps']
+          ],
+          small: [
+            ['steps']
+          ]
+        }
+      };
+
+      const metrics = { ...baseMetrics, maxSteps: undefined, stepCount: 7, terminalWidth: 120 };
+      const out = formatMetrics(metrics as any, 120, customConfig);
+      // Line 1 should have workspace and model
+      expect(out).toContain('work');
+      expect(out).toContain('Gemini 3.1 Pro');
+      // Line 2 should have 7/35 steps
+      expect(out).toContain('7/35');
+      // It should not render other unconfigured blocks on large layout
+      expect(out).not.toContain('Unsandboxed');
+      expect(out).not.toContain('5h');
+    });
+
+    it('respects autoHideEmptyBlocks: false in custom config', () => {
+      const customConfig = {
+        autoHideEmptyBlocks: false,
+        layouts: {
+          large: [
+            ['tasks', 'subagents']
+          ],
+          medium: [
+            ['tasks', 'subagents']
+          ],
+          small: [
+            ['tasks']
+          ]
+        }
+      };
+
+      const metricsNoTasksNoSubs = { ...baseMetrics, taskCount: 0, subagents: [], terminalWidth: 120 };
+      const out = formatMetrics(metricsNoTasksNoSubs, 120, customConfig);
+      // Tasks and Subagents should still be rendered because autoHideEmptyBlocks is false
+      expect(out).toContain('Active Tasks:');
+      expect(out).toContain('Subagents (0)');
+    });
+
+    it('end-to-end: loads config from file and renders layout accordingly', () => {
+      const fileConfig = {
+        budget: { maxSteps: 42 },
+        layouts: {
+          large: [
+            ['model', 'steps']
+          ]
+        }
+      };
+      fs.writeFileSync(testConfigFile, JSON.stringify(fileConfig), 'utf-8');
+      try {
+        const loadedConfig = loadHudConfig(testConfigFile);
+        const metrics = { ...baseMetrics, maxSteps: undefined, stepCount: 21, terminalWidth: 140 };
+        const out = formatMetrics(metrics as any, 140, loadedConfig);
+        expect(out).toContain('Gemini 3.1 Pro');
+        expect(out).toContain('21/42');
+        expect(out).not.toContain('Unsandboxed');
+      } finally {
+        if (fs.existsSync(testConfigFile)) fs.unlinkSync(testConfigFile);
+      }
+    });
+  });
 });
+
+
