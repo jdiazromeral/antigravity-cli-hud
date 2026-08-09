@@ -12,7 +12,7 @@ Streamline the Antigravity HUD plugin based on adversarial Melon review: prune g
 - **Purpose**: Eliminate blocking `transcript.jsonl` disk reads and memory line-splitting in `src/parser.ts` by reading `step_count` directly from telemetry payload, and simplify `hooks/status-line.sh` to remove process-tree walking `ps` loop.
 - **Dependencies**: [M1]
 - **Validator**: `npx vitest run src/parser.test.ts && npm test && npm run build`
-- **Status**: PENDING
+- **Status**: DONE
 
 ## [M3] declarative-runtime-layout-config
 - **Purpose**: Decouple HUD matrix configuration from TypeScript source editing and `esbuild` recompilation by enabling `src/formatter.ts` to load user overrides from `~/.gemini/hud_config.json` at runtime, and update `skills/hud-config/SKILL.md`.
