@@ -512,7 +512,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     });
   }
 
-  let stepCount = typeof parsed.step_count === 'number' ? parsed.step_count : (typeof parsed.step_index === 'number' ? parsed.step_index : 0);
+  const stepCount = typeof parsed.step_count === 'number' ? parsed.step_count : (typeof parsed.step_index === 'number' ? parsed.step_index : 0);
   let resolvedTranscriptPath = typeof parsed.transcript_path === 'string' ? parsed.transcript_path : undefined;
   if (resolvedTranscriptPath) {
     if (!fs.existsSync(resolvedTranscriptPath)) {
@@ -530,27 +530,6 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       resolvedTranscriptPath = candidate1;
     } else if (fs.existsSync(candidate2)) {
       resolvedTranscriptPath = candidate2;
-    }
-  }
-
-  if (resolvedTranscriptPath && fs.existsSync(resolvedTranscriptPath)) {
-    try {
-      const content = fs.readFileSync(resolvedTranscriptPath, 'utf8');
-      const lines = content.split('\n');
-      let userTurns = 0;
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        if (line.includes('"USER_INPUT"') || line.includes('"USER_EXPLICIT"')) {
-          userTurns++;
-        }
-      }
-      if (userTurns > 0) {
-        stepCount = userTurns;
-      } else if (stepCount === 0) {
-        stepCount = lines.filter(l => l.trim().length > 0).length;
-      }
-    } catch (e) {
-      // ignore
     }
   }
 

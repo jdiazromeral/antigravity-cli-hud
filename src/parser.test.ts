@@ -277,6 +277,71 @@ describe('parseStream', () => {
     delete process.env.AGY_MAX_STEPS;
   });
 
+  describe('stepCount parsing', () => {
+    it('should parse step_count directly from payload', async () => {
+      const payload = {
+        agent_state: 'Working',
+        editor_mode: "N", credits: undefined,
+        step_count: 14
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.stepCount).toBe(14);
+    });
+
+    it('should fallback to step_index if step_count is absent', async () => {
+      const payload = {
+        agent_state: 'Working',
+        editor_mode: "N", credits: undefined,
+        step_index: 8
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.stepCount).toBe(8);
+    });
+
+    it('should prioritize step_count over step_index when both are provided', async () => {
+      const payload = {
+        agent_state: 'Working',
+        editor_mode: "N", credits: undefined,
+        step_count: 12,
+        step_index: 5
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.stepCount).toBe(12);
+    });
+
+    it('should default stepCount to 0 when neither step_count nor step_index is provided', async () => {
+      const payload = {
+        agent_state: 'Working',
+        editor_mode: "N", credits: undefined
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.stepCount).toBe(0);
+    });
+
+    it('should not read transcript file to compute stepCount', async () => {
+      const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}.jsonl`);
+      fs.writeFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"USER_INPUT"}\n{"type":"USER_INPUT"}\n');
+      
+      const payload = {
+        agent_state: 'Working',
+        editor_mode: "N", credits: undefined,
+        transcript_path: tmpTranscript,
+        step_count: 1
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      
+      // stepCount should be 1 (from payload), not 3 (from transcript user turns)
+      expect(result.stepCount).toBe(1);
+      
+      fs.unlinkSync(tmpTranscript);
+    });
+  });
+
   describe('fuzzing and resilience guard-rails', () => {
     it('should ignore unknown and experimental top-level/nested payload fields without crashing', async () => {
       const payload = {
