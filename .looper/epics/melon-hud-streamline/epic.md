@@ -18,4 +18,4 @@ Streamline the Antigravity HUD plugin based on adversarial Melon review: prune g
 - **Purpose**: Decouple HUD matrix configuration from TypeScript source editing and `esbuild` recompilation by enabling `src/formatter.ts` to load user overrides from `~/.gemini/hud_config.json` at runtime, and update `skills/hud-config/SKILL.md`.
 - **Dependencies**: [M2]
 - **Validator**: `npx vitest run src/formatter.test.ts && npm test && npm run build`
-- **Status**: PENDING
+- **Status**: DONE
