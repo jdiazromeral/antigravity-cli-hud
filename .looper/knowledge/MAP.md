@@ -1,6 +1,6 @@
 ---
-built_at_commit: 7608ffb31034b12e37390adb0928093d0a699411
-built_at: 2026-06-20T18:41:06Z
+built_at_commit: 0770f6ebf080781fd9d002565c69a7420415af3a
+built_at: 2026-08-09T15:58:00Z
 ---
 
 # Codebase map: antigravity-cli-hud
@@ -17,8 +17,6 @@ A production-grade, highly responsive terminal HUD plugin for the Antigravity CL
 ## Where to find what
 - Defensively parsing the `stdin` JSON payload → `parser`
 - Layout algorithms, breakpoints, and UI components → `formatter`
-- Token quota handling → `src/quota.ts`
-- Subagent display truncation → `src/subagents.ts`
 - Antigravity hooks specification → `HOOKS.md`
 - Layout configuration manual → `LAYOUT_ENGINE.md`
 

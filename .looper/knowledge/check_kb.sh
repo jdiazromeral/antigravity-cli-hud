@@ -17,7 +17,7 @@ done
 
 # 2. Citations Resolve (very basic check)
 # Check path references in MAP.md and area files
-for path in "src/" "src/quota.ts" "src/subagents.ts" "src/parser.ts" "src/index.ts" "src/formatter.ts" "HOOKS.md" "LAYOUT_ENGINE.md"; do
+for path in "src/" "src/parser.ts" "src/index.ts" "src/formatter.ts" "HOOKS.md" "LAYOUT_ENGINE.md"; do
   if [ ! -e "$path" ]; then
     echo "Error: Citation $path does not exist"
     exit 1
