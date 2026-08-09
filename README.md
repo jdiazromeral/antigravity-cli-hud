@@ -99,18 +99,12 @@ npm run demo
 
 For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
 
-### Latest Updates (v1.1.11)
+### Latest Updates (v1.2.0)
+- **Zero Disk I/O Real-Time Engine**: High-velocity statusline rendering (<2ms) parsing step counts and quotas directly in-memory from telemetry stream with zero disk thrashing.
+- **Declarative Runtime Configuration (`~/.gemini/hud_config.json`)**: Real-time layout customization without needing TypeScript recompilation.
+- **Pruned Lean Core**: Purged dead legacy subsystems and repo clutter, optimizing bundle size and test speed (<200ms).
 - **Vim Mode Badge**: Dynamic mode indicator (`[N]`, `[I]`, `[V]`) parsing Vim editing states directly from telemetry.
 - **AI Credits Layout Block**: Replaces standard quotas with a visual AI Credits balance block (``) when pay-as-you-go models are active.
-- **Default Large Layout Update**: Included `version` and `plan` blocks in the default `large` terminal matrix layout.
-- **Bundled Token Evaluation Hook:** Included `scripts/token_eval_hook.py` executable script for token ledger logging and budget enforcement.
-- **Multi-Skill Telemetry Block (`skill`):** Real-time tracking of single (`🧠 Skill: looper`) or multiple (`🧠 Skills: looper & tdd & mapper`) active skills.
-- **Micro Progress Bars:** Dynamic 5-character progress bars (`▰▰▱▱▱`) for `Ctx`, `5h`, `Weekly` quotas, and Looper Epics.
-- **Modern Accent Bar UI:** Replaced comb brackets with a state-colored vertical bar (`▌`) and clean guide line (`│`).
-- **Active Tool Execution Block (`tool`):** Renders active tool execution status in real-time (`🛠️ run_command (git status)`).
-- **Subagent Conversation Tracking:** Displays truncated subagent conversation IDs (`[id:sub-88]`).
-- **Strict Session Scoping:** Prevents auto-scanning unrelated branches when outside active session context (`hud_context.json`).
-- **Contextual Terminal Window Titles:** Explicit `repo:branch` tab title formatting.
 
 ## Understanding Telemetry Blocks
 

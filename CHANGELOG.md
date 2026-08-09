@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-08-09
+
+### Added
+- **Declarative Runtime Configuration (`hud_config.json`):** Matrix layouts, responsive breakpoints, and step/context budget ceilings can now be customized at runtime via `~/.gemini/hud_config.json` with safe fallbacks, eliminating the need for TypeScript source edits and esbuild recompilations.
+- **Modernized Config Wizard Skill (`/hud-config`):** Interactive AI wizard now directly generates and validates `~/.gemini/hud_config.json`.
+
+### Performance & Optimization
+- **Zero Disk I/O Statusline Engine:** Completely eliminated synchronous multi-megabyte `transcript.jsonl` disk reads and in-memory line-splitting on the render path, extracting `stepCount` directly from real-time telemetry payload streams.
+- **Streamlined Shell Execution:** Removed process-tree walking `while ps` subshell loops from `hooks/status-line.sh`, achieving consistent `<2ms` hook render latency.
+
+### Removed
+- **Dead & Ghost Subsystems:** Purged unused legacy mock modules (`quota.ts`, `subagents.ts`, `doctor.ts`) and repository clutter (`diff.txt`, `log.txt`), reducing bundle size and maintenance overhead.
+
+---
+
 ## [1.1.11] - 2026-08-07
 
 ### Added
