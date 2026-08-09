@@ -222,6 +222,22 @@ describe('parseStream', () => {
     process.env.AGY_AGENT_NAME = oldAgyAgent;
   });
 
+  it('should correctly parse dangerously_skip_permissions and skip_permissions from payload', async () => {
+    const payload1 = {
+      agent_state: 'working',
+      dangerously_skip_permissions: true
+    };
+    const res1 = await parseStream(Readable.from([JSON.stringify(payload1)]));
+    expect(res1.skipPermissions).toBe(true);
+
+    const payload2 = {
+      agent_state: 'working',
+      skip_permissions: true
+    };
+    const res2 = await parseStream(Readable.from([JSON.stringify(payload2)]));
+    expect(res2.skipPermissions).toBe(true);
+  });
+
   it('should correctly parse exceeds_200k_tokens', async () => {
     const payload = {
       agent_state: 'Idle',

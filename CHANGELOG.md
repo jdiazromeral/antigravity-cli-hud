@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.1] - 2026-08-09
+
+### Fixed
+- **Danger Mode Detection:** Restored fast 1-hop parent PID check (`ps -o args= -p $PPID`) in `hooks/status-line.sh` and payload property extraction (`dangerously_skip_permissions`, `skip_permissions`) in `src/parser.ts`, ensuring the `☢️ Danger Mode` badge displays whenever Antigravity CLI is launched with recursive permissions.
+- **Process Optimization:** Converted `hooks/status-line.sh` and `hooks/title.sh` to use `exec node` to eliminate lingering subshell processes.
+
+---
+
 ## [1.2.0] - 2026-08-09
 
 ### Added

@@ -41,6 +41,8 @@ export interface AntigravityPayload {
   max_context_tokens?: number;
   editor_mode?: string;
   credits?: { balance: number };
+  dangerously_skip_permissions?: boolean;
+  skip_permissions?: boolean;
 }
 
 import * as fs from 'fs';
@@ -576,7 +578,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     email: typeof parsed.email === 'string' ? parsed.email : 'unknown',
     planTier: typeof parsed.plan_tier === 'string' ? parsed.plan_tier : 'Unknown Tier',
     terminalWidth: termWidth,
-    skipPermissions: process.env.AGY_SKIP_PERMISSIONS === 'true',
+    skipPermissions: process.env.AGY_SKIP_PERMISSIONS === 'true' || !!parsed.dangerously_skip_permissions || !!parsed.skip_permissions,
     gitBranches,
     artifactCount,
     conversationId,
