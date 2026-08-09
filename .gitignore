@@ -3,3 +3,4 @@ dist/
 .looper/*
 !.looper/epics/
 !.looper/knowledge/
+scripts/demo.js
