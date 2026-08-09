@@ -8,7 +8,7 @@
 ## Iteration 1
 - Worker did: Deleted ghost subsystems (`src/quota.ts`, `src/subagents.ts`, `src/doctor.ts`) and their test files (`src/quota.test.ts`, `src/subagents.test.ts`, `src/doctor.test.ts`). Removed unused `runDoctor` export from `src/index.ts`. Purged repository junk (`diff.txt`, `log.txt`, `scripts/demo.js`). Updated `.looper/knowledge/MAP.md`, `formatter.md`, and `check_kb.sh` to remove citations to deleted files.
 - Worker learned: Removing unused subsystem modules reduces the bundle size of `dist/index.js` from 44.0kb to 40.3kb while all 54 remaining tests pass cleanly.
-- Commits: pending
+- Commits: f008fb1
 - Verdict: DONE
 - Validator: PASS
 - Reviewer: APPROVE
