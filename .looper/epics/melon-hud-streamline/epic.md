@@ -6,7 +6,7 @@ Streamline the Antigravity HUD plugin based on adversarial Melon review: prune g
 - **Purpose**: Permanently delete ghost subsystems (`src/quota.ts`, `src/subagents.ts`, `src/doctor.ts` and their tests), remove dead exports from `src/index.ts`, delete root repository junk (`diff.txt`, `log.txt`, `payload.json`, `scripts/demo.js`), and update knowledge base maps.
 - **Dependencies**: None
 - **Validator**: `npm test && npm run build && ! test -f src/quota.ts && ! test -f src/subagents.ts && ! test -f src/doctor.ts && ! test -f diff.txt && ! test -f log.txt`
-- **Status**: PENDING
+- **Status**: DONE
 
 ## [M2] latency-optimization-and-parser-streamline
 - **Purpose**: Eliminate blocking `transcript.jsonl` disk reads and memory line-splitting in `src/parser.ts` by reading `step_count` directly from telemetry payload, and simplify `hooks/status-line.sh` to remove process-tree walking `ps` loop.
