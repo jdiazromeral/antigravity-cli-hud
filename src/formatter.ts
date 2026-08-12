@@ -305,7 +305,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
     version: `📦 v${metrics.version}`,
     email: `📧 ${colors.dim}${metrics.email}${colors.reset}`,
-    plan: `💎 ${metrics.planTier}`,
+    plan: metrics.planTier.startsWith('GE-') || metrics.planTier.includes('Enterprise') ? `🏢 ${metrics.planTier}` : `💎 ${metrics.planTier}`,
     transcript: metrics.transcriptPath ? `📜 tail -f ${metrics.transcriptPath.replace(os.homedir(), '~')}` : ''
   };
 

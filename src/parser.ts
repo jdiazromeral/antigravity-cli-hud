@@ -134,8 +134,45 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const conversationId = typeof parsed.conversation_id === 'string' ? parsed.conversation_id : (typeof parsed.session_id === 'string' ? parsed.session_id : undefined);
 
   const getQuotaObj = (key: string) => {
-    if (!parsed.quota || typeof parsed.quota !== 'object' || Array.isArray(parsed.quota)) return { percent: 0, resetSeconds: 0 };
-    const q = (parsed.quota as Record<string, any>)[key];
+    let q: any;
+    if (parsed.quota && typeof parsed.quota === 'object' && !Array.isArray(parsed.quota)) {
+      q = (parsed.quota as Record<string, any>)[key];
+    }
+    
+    // Instant Hydration Fallback: If quota is missing, try to read from our headless cache
+    const quotaCacheFile = path.join(os.homedir(), '.gemini', 'hud_quota.cache');
+    if (!q) {
+      try {
+        if (fs.existsSync(quotaCacheFile)) {
+          const cacheRaw = fs.readFileSync(quotaCacheFile, 'utf8');
+          const cacheData = JSON.parse(cacheRaw);
+          if (cacheData && cacheData.quota && cacheData.quota[key]) {
+            q = cacheData.quota[key];
+          }
+        }
+      } catch (e) {
+        // Silently ignore cache read errors
+      }
+      
+      // Asynchronously fetch quota using the new 1.1.11 non-interactive print mode
+      try {
+         const fileStat = fs.existsSync(quotaCacheFile) ? fs.statSync(quotaCacheFile) : null;
+         const isStale = !fileStat || (Date.now() - fileStat.mtimeMs > 60000); // 1 minute cache
+         
+         if (isStale) {
+           // touch the file immediately to prevent concurrent spawns
+           fs.writeFileSync(quotaCacheFile, fs.existsSync(quotaCacheFile) ? fs.readFileSync(quotaCacheFile, 'utf8') : '{}', { mode: 0o600 });
+           
+           const outFd = fs.openSync(quotaCacheFile, 'w');
+           const subprocess = cp.spawn('agy', ['-p', '/quota', '--output-format', 'json'], {
+             detached: true,
+             stdio: ['ignore', outFd, 'ignore']
+           });
+           subprocess.unref();
+         }
+      } catch (e) {}
+    }
+
     if (!q || typeof q !== 'object' || Array.isArray(q)) return { percent: 0, resetSeconds: 0 };
     const resetSeconds = typeof q.reset_in_seconds === 'number' && q.reset_in_seconds > 0 ? q.reset_in_seconds : 0;
     const remFrac = typeof q.remaining_fraction === 'number' ? q.remaining_fraction : 1;
