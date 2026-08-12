@@ -85,14 +85,15 @@ def main():
         print(json.dumps(output))
         return
 
-    if event_type == "Stop":
+    if event_type in ("Stop", "PostInvocation"):
         record = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "conversation_id": conv_id,
+            "event_type": event_type,
             "step_count": step_count,
             "est_context_tokens": est_tokens,
             "est_thinking_tokens": est_thinking_tokens,
-            "termination_reason": payload.get("terminationReason", "")
+            "termination_reason": payload.get("terminationReason", "") if event_type == "Stop" else ""
         }
         
         # Enforce secure directory and file permissions (user-only 0700 / 0600)
