@@ -677,7 +677,8 @@ describe('formatMetrics', () => {
         ]
       };
       const out = formatMetrics(metrics);
-      expect(out).toContain('🎯 Epic: agy-1-1-13-hud-updates');
+      expect(out).toContain('🎯 Epic:');
+      expect(out).toContain('agy-1-1-13-hud-updates');
       expect(out).not.toContain('agy-1-1-13-hud-updates - Epic:');
       expect(out).toContain('3/5 DONE');
     });
@@ -690,7 +691,8 @@ describe('formatMetrics', () => {
         ]
       };
       const out = formatMetrics(metrics);
-      expect(out).toContain('🎯 [antigravity-cli-hud] custom-blocks');
+      expect(out).toContain('🎯 [antigravity-cli-hud]');
+      expect(out).toContain('custom-blocks');
       expect(out).not.toContain('antigravity-cli-hud - Epic:');
       expect(out).toContain('2/4 DONE');
     });
@@ -706,8 +708,10 @@ describe('formatMetrics', () => {
         ]
       };
       const out = formatMetrics(metrics);
-      expect(out).toContain('🎯 [work] hud-updates');
-      expect(out).toContain('   ↳ [M3] [IN_PROGRESS Iteration 2/8]');
+      expect(out).toContain('🎯 [work]');
+      expect(out).toContain('hud-updates');
+      expect(out).toContain('↳ [M3]');
+      expect(out).toContain('IN_PROGRESS Iteration 2/8');
       expect(out).not.toContain('work - hud-updates/M3');
     });
 
@@ -720,7 +724,8 @@ describe('formatMetrics', () => {
         ]
       };
       const out = formatMetrics(metrics);
-      expect(out).toContain('• [M1] [IN_PROGRESS Iteration 1/5]');
+      expect(out).toContain('• [M1]');
+      expect(out).toContain('IN_PROGRESS Iteration 1/5');
       expect(out).not.toContain('sample_faqs - faq-sync/M1');
     });
 
@@ -736,9 +741,12 @@ describe('formatMetrics', () => {
         ]
       };
       const out = formatMetrics(metrics);
-      expect(out).toContain('🎯 Epic: my-epic');
-      expect(out).toContain('   ↳ [M1] [FAILED - npm test failed]');
-      expect(out).toContain('• [M2] [BLOCKED - deps missing]');
+      expect(out).toContain('🎯 Epic:');
+      expect(out).toContain('my-epic');
+      expect(out).toContain('↳ [M1]');
+      expect(out).toContain('FAILED - npm test failed');
+      expect(out).toContain('• [M2]');
+      expect(out).toContain('BLOCKED - deps missing');
     });
   });
 });

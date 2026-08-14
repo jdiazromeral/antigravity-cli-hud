@@ -454,25 +454,49 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
   const chunkedArtifacts = calculateStackedChunks(artStrs, 5);
 
   const looperStrs: string[] = [];
+  const processedMissions = new Set<typeof metrics.looperMissions extends (infer U)[] | undefined ? U : never>();
+
   if (metrics.looperEpics) {
     for (const e of metrics.looperEpics) {
       const pColor = e.done === e.total ? colors.green : colors.yellow;
       const epicPct = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
       const epicBar = renderMicroBar(epicPct, pColor, 5);
-      looperStrs.push(`🎯 ${colors.dim}${e.repo} -${colors.reset} Epic: ${colors.bold}${e.epic}${colors.reset} ${epicBar} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
+      const epicHeader = e.repo === e.epic
+        ? `🎯 Epic: ${colors.bold}${e.epic}${colors.reset}`
+        : `🎯 [${e.repo}] ${colors.bold}${e.epic}${colors.reset}`;
+      looperStrs.push(`${epicHeader} ${epicBar} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
+
+      // Nest matching active missions under this epic
+      const matchingMissions = (metrics.looperMissions || []).filter(m => m.epic === e.epic);
+      for (const m of matchingMissions) {
+        processedMissions.add(m);
+        const statusColor = m.status === 'IN_PROGRESS' ? colors.cyan : (m.status === 'FAILED' || m.status === 'BLOCKED' ? colors.red : colors.green);
+        
+        let suffix = '';
+        if (m.iteration && m.maxIterations && (m.status === 'IN_PROGRESS' || m.status === 'PENDING')) {
+          suffix = ` Iteration ${m.iteration}/${m.maxIterations}`;
+        } else if (m.reason && (m.status === 'FAILED' || m.status === 'BLOCKED')) {
+          suffix = ` - ${m.reason}`;
+        }
+
+        looperStrs.push(`   ↳ [${m.mission}] [${statusColor}${m.status}${suffix}${colors.reset}]`);
+      }
     }
   }
+
   for (const m of (metrics.looperMissions || [])) {
-    const statusColor = m.status === 'IN_PROGRESS' ? colors.cyan : (m.status === 'FAILED' || m.status === 'BLOCKED' ? colors.red : colors.green);
-    
-    let suffix = '';
-    if (m.iteration && m.maxIterations && (m.status === 'IN_PROGRESS' || m.status === 'PENDING')) {
-      suffix = ` Iteration ${m.iteration}/${m.maxIterations}`;
-    } else if (m.reason && (m.status === 'FAILED' || m.status === 'BLOCKED')) {
-      suffix = ` - ${m.reason}`;
+    if (!processedMissions.has(m)) {
+      const statusColor = m.status === 'IN_PROGRESS' ? colors.cyan : (m.status === 'FAILED' || m.status === 'BLOCKED' ? colors.red : colors.green);
+      
+      let suffix = '';
+      if (m.iteration && m.maxIterations && (m.status === 'IN_PROGRESS' || m.status === 'PENDING')) {
+        suffix = ` Iteration ${m.iteration}/${m.maxIterations}`;
+      } else if (m.reason && (m.status === 'FAILED' || m.status === 'BLOCKED')) {
+        suffix = ` - ${m.reason}`;
+      }
+      
+      looperStrs.push(`• [${m.mission}] [${statusColor}${m.status}${suffix}${colors.reset}]`);
     }
-    
-    looperStrs.push(`• ${colors.dim}${m.repo} -${colors.reset} ${colors.bold}${m.epic}/${m.mission}${colors.reset} [${statusColor}${m.status}${suffix}${colors.reset}]`);
   }
   const chunkedLooper = calculateStackedChunks(looperStrs, 5);
 
