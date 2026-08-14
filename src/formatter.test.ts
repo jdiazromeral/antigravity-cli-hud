@@ -667,6 +667,81 @@ describe('formatMetrics', () => {
       expect(out).toContain('work');
     });
   });
+
+  describe('looper block hierarchical tree and deduplication', () => {
+    it('eliminates redundant repo name when repo equals epic name', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [
+          { repo: 'agy-1-1-13-hud-updates', epic: 'agy-1-1-13-hud-updates', total: 5, done: 3 }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🎯 Epic: agy-1-1-13-hud-updates');
+      expect(out).not.toContain('agy-1-1-13-hud-updates - Epic:');
+      expect(out).toContain('3/5 DONE');
+    });
+
+    it('renders repository tag when repo and epic names are distinct', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [
+          { repo: 'antigravity-cli-hud', epic: 'custom-blocks', total: 4, done: 2 }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🎯 [antigravity-cli-hud] custom-blocks');
+      expect(out).not.toContain('antigravity-cli-hud - Epic:');
+      expect(out).toContain('2/4 DONE');
+    });
+
+    it('renders nested missions under their matching parent epic in a hierarchical tree', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [
+          { repo: 'work', epic: 'hud-updates', total: 4, done: 2 }
+        ],
+        looperMissions: [
+          { repo: 'work', epic: 'hud-updates', mission: 'M3', status: 'IN_PROGRESS', iteration: 2, maxIterations: 8 }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🎯 [work] hud-updates');
+      expect(out).toContain('   ↳ [M3] [IN_PROGRESS Iteration 2/8]');
+      expect(out).not.toContain('work - hud-updates/M3');
+    });
+
+    it('renders standalone missions cleanly when not matched to any active epic', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [],
+        looperMissions: [
+          { repo: 'sample_faqs', epic: 'faq-sync', mission: 'M1', status: 'IN_PROGRESS', iteration: 1, maxIterations: 5 }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('• [M1] [IN_PROGRESS Iteration 1/5]');
+      expect(out).not.toContain('sample_faqs - faq-sync/M1');
+    });
+
+    it('formats failed and blocked missions with reason suffix in tree and standalone', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [
+          { repo: 'my-epic', epic: 'my-epic', total: 2, done: 0 }
+        ],
+        looperMissions: [
+          { repo: 'my-epic', epic: 'my-epic', mission: 'M1', status: 'FAILED', reason: 'npm test failed' },
+          { repo: 'other-repo', epic: 'other-epic', mission: 'M2', status: 'BLOCKED', reason: 'deps missing' }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🎯 Epic: my-epic');
+      expect(out).toContain('   ↳ [M1] [FAILED - npm test failed]');
+      expect(out).toContain('• [M2] [BLOCKED - deps missing]');
+    });
+  });
 });
+
 
 
