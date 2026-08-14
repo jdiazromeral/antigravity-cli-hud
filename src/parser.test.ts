@@ -533,6 +533,82 @@ describe('parseStream', () => {
       expect(result.isSandboxed).toBe(false);
       expect(result.gitBranches).toEqual([]);
     });
+
+    describe('API key mode parsing', () => {
+      it('should parse direct GEMINI_API_KEY payload when is_api_key or api_key_mode is true', async () => {
+        const payload1 = {
+          agent_state: 'Working',
+          is_api_key: true,
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res1 = await parseStream(Readable.from([JSON.stringify(payload1)]));
+        expect(res1.isApiKey).toBe(true);
+
+        const payload2 = {
+          agent_state: 'Working',
+          api_key_mode: true,
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res2 = await parseStream(Readable.from([JSON.stringify(payload2)]));
+        expect(res2.isApiKey).toBe(true);
+      });
+
+      it('should detect API key mode when plan_tier or email indicates API key', async () => {
+        const payload1 = {
+          agent_state: 'Working',
+          plan_tier: 'API Key',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res1 = await parseStream(Readable.from([JSON.stringify(payload1)]));
+        expect(res1.isApiKey).toBe(true);
+
+        const payload2 = {
+          agent_state: 'Working',
+          email: '<api-key>',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res2 = await parseStream(Readable.from([JSON.stringify(payload2)]));
+        expect(res2.isApiKey).toBe(true);
+
+        const payload3 = {
+          agent_state: 'Working',
+          email: 'api_key',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res3 = await parseStream(Readable.from([JSON.stringify(payload3)]));
+        expect(res3.isApiKey).toBe(true);
+      });
+
+      it('should detect API key mode when quota is absent or null', async () => {
+        const payload1 = {
+          agent_state: 'Working',
+          quota: null,
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res1 = await parseStream(Readable.from([JSON.stringify(payload1)]));
+        expect(res1.isApiKey).toBe(true);
+
+        const payload2 = {
+          agent_state: 'Working',
+          quota: {},
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res2 = await parseStream(Readable.from([JSON.stringify(payload2)]));
+        expect(res2.isApiKey).toBe(true);
+      });
+
+      it('should not detect API key mode when standard quota is present', async () => {
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          quota: {
+            'gemini-5h': { remaining_fraction: 0.8, reset_in_seconds: 3600 }
+          }
+        };
+        const res = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(res.isApiKey).toBe(false);
+      });
+    });
   });
 });
 

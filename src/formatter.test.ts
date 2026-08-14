@@ -436,6 +436,30 @@ describe('formatMetrics', () => {
       }
     });
   });
+
+  describe('API key mode formatting', () => {
+    it('renders [API Key] badge and omits broken quota bars on standard terminal', () => {
+      const metrics = { ...baseMetrics, isApiKey: true, quota5h: 0, quotaWeekly: 0 };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('[API Key]');
+      expect(out).not.toContain('5h:');
+      expect(out).not.toContain('Weekly:');
+    });
+
+    it('renders [API Key] badge on narrow terminal when plan block is not in layout', () => {
+      const metrics = { ...baseMetrics, isApiKey: true, terminalWidth: 70, quota5h: 0, quotaWeekly: 0 };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('[API Key]');
+      expect(out).not.toContain('5h:');
+      expect(out).not.toContain('Weekly:');
+    });
+
+    it('renders [API Key] badge when planTier is API Key', () => {
+      const metrics = { ...baseMetrics, planTier: 'API Key', isApiKey: true };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('[API Key]');
+    });
+  });
 });
 
 
