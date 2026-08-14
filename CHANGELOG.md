@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-08-14
+
+### Added
+- **Declarative Custom Executable Blocks Engine:** Define `customBlocks` in `~/.gemini/hud_config.json` with background execution and caching to display bespoke workspace scripts without modifying core plugin code.
+- **Direct GEMINI_API_KEY & Null Quota Safety:** Automatically renders a styled `🔑 [API Key]` badge and omits broken 0% quota bars for API key execution modes.
+- **In-Flight Tool Summary Streaming:** Captures progressive query strings (such as streaming `search_web` queries) and synthesized lifecycle actions (`Killed task X`, `Checked task X`) with responsive truncation.
+- **Looper Block Hierarchy & De-duplication:** Renders autonomous Looper missions hierarchically nested under their matching epics with tree indicators (`↳ [M1] [IN_PROGRESS]`), removing redundant repo/epic echoes.
+
+### Fixed
+- **Incremental Stat-Cached Step Counter:** Fixed the `Steps: 0/20` bug by using an ultra-fast `mtimeMs` (<0.02ms) stat-cached incremental counter on `transcript_path` when `step_count` is absent in telemetry payload streams.
+
+---
+
 ## [1.2.1] - 2026-08-09
 
 ### Fixed
