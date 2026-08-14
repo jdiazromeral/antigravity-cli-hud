@@ -451,7 +451,7 @@ describe('parseStream', () => {
       expect(result.stepCount).toBe(0);
     });
 
-    it('should not read transcript file to compute stepCount', async () => {
+    it('should not read transcript file if step_count is present', async () => {
       const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}.jsonl`);
       fs.writeFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"USER_INPUT"}\n{"type":"USER_INPUT"}\n');
       
@@ -467,6 +467,83 @@ describe('parseStream', () => {
       // stepCount should be 1 (from payload), not 3 (from transcript user turns)
       expect(result.stepCount).toBe(1);
       
+      fs.unlinkSync(tmpTranscript);
+    });
+
+    it('should compute stepCount from transcript_path when step_count and step_index are absent', async () => {
+      const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}-count.jsonl`);
+      fs.writeFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"PLANNER_RESPONSE"}\n{"type":"USER_INPUT"}\n');
+
+      const payload = {
+        agent_state: 'Working',
+        editor_mode: "N", credits: undefined,
+        transcript_path: tmpTranscript
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.stepCount).toBe(3);
+      fs.unlinkSync(tmpTranscript);
+    });
+
+    it('should cache stepCount based on mtime and recompute when mtime changes', async () => {
+      const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}-cache.jsonl`);
+      fs.writeFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"PLANNER_RESPONSE"}\n');
+
+      const payload = {
+        agent_state: 'Working',
+        editor_mode: "N", credits: undefined,
+        transcript_path: tmpTranscript
+      };
+
+      const result1 = await parseStream(Readable.from([JSON.stringify(payload)]));
+      expect(result1.stepCount).toBe(2);
+
+      // Verify cached result returns the same value
+      const result2 = await parseStream(Readable.from([JSON.stringify(payload)]));
+      expect(result2.stepCount).toBe(2);
+
+      // Update file with new mtime and more steps
+      // Wait slightly or update utimes to ensure mtime changes
+      const futureTime = new Date(Date.now() + 2000);
+      fs.appendFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"PLANNER_RESPONSE"}\n');
+      fs.utimesSync(tmpTranscript, futureTime, futureTime);
+
+      const result3 = await parseStream(Readable.from([JSON.stringify(payload)]));
+      expect(result3.stepCount).toBe(4);
+
+      fs.unlinkSync(tmpTranscript);
+    });
+
+    it('should compute stepCount from resolved transcript path via conversationId when transcript_path is omitted', async () => {
+      const convId = `test-conv-${Date.now()}`;
+      const brainDir = path.join(mockHome, '.gemini', 'antigravity-cli', 'brain', convId, '.system_generated', 'logs');
+      fs.mkdirSync(brainDir, { recursive: true });
+      const transcriptFile = path.join(brainDir, 'transcript.jsonl');
+      fs.writeFileSync(transcriptFile, '{"type":"USER_INPUT"}\n{"type":"USER_INPUT"}\n');
+
+      const payload = {
+        agent_state: 'Working',
+        conversation_id: convId
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.stepCount).toBe(2);
+    });
+
+    it('should fallback to 0 when transcript file is empty or corrupted', async () => {
+      const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}-empty.jsonl`);
+      fs.writeFileSync(tmpTranscript, '');
+
+      const payload = {
+        agent_state: 'Working',
+        transcript_path: tmpTranscript
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.stepCount).toBe(0);
       fs.unlinkSync(tmpTranscript);
     });
   });
