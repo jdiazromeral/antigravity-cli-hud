@@ -16,7 +16,15 @@ export interface AntigravityPayload {
     "3p-5h"?: { remaining_fraction: number; reset_in_seconds?: number };
   };
   subagents?: Array<{ name: string; role: string; status: string; depth?: number; conversation_id?: string; log_uri?: string }>;
-  tool_info?: { name: string; summary?: string; status?: string };
+  tool_info?: {
+    name: string;
+    summary?: string;
+    status?: string;
+    query?: string;
+    action?: string;
+    taskId?: string;
+    task_id?: string;
+  };
   task_count?: number;
   sandbox?: { enabled: boolean };
   model?: { display_name: string };
@@ -65,6 +73,8 @@ export interface ActiveToolInfo {
   name: string;
   summary?: string;
   status?: string;
+  query?: string;
+  action?: string;
 }
 
 export interface ParsedMetrics {
@@ -539,15 +549,48 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const toolInfoObj = (parsed.tool_info && typeof parsed.tool_info === 'object' && !Array.isArray(parsed.tool_info) && typeof parsed.tool_info.name === 'string') ? parsed.tool_info : undefined;
 
-  const activeTool: ActiveToolInfo | undefined = toolInfoObj ? {
-    name: toolInfoObj.name,
-    summary: typeof toolInfoObj.summary === 'string' ? toolInfoObj.summary : undefined,
-    status: typeof toolInfoObj.status === 'string' ? toolInfoObj.status : undefined
-  } : undefined;
+  let activeTool: ActiveToolInfo | undefined = undefined;
+  if (toolInfoObj) {
+    let summary = typeof toolInfoObj.summary === 'string' && toolInfoObj.summary.trim() ? toolInfoObj.summary.trim() : undefined;
+    const query = typeof toolInfoObj.query === 'string' && toolInfoObj.query.trim() ? toolInfoObj.query.trim() : undefined;
+    const action = typeof toolInfoObj.action === 'string' && toolInfoObj.action.trim() ? toolInfoObj.action.trim() : undefined;
+    const taskId = (typeof toolInfoObj.taskId === 'string' && toolInfoObj.taskId.trim())
+      ? toolInfoObj.taskId.trim()
+      : ((typeof toolInfoObj.task_id === 'string' && toolInfoObj.task_id.trim()) ? toolInfoObj.task_id.trim() : undefined);
+
+    if (!summary) {
+      if (query) {
+        summary = query;
+      } else if (action) {
+        const actLower = action.toLowerCase();
+        if (actLower === 'kill') {
+          summary = taskId ? `Killed task ${taskId}` : 'Killed task';
+        } else if (actLower === 'status' || actLower === 'check') {
+          summary = taskId ? `Checked task ${taskId}` : 'Checked task';
+        } else if (actLower === 'list') {
+          summary = 'Listed tasks';
+        } else if (actLower === 'send_input') {
+          summary = taskId ? `Sent input to task ${taskId}` : 'Sent input to task';
+        } else {
+          summary = taskId ? `${action} task ${taskId}` : action;
+        }
+      }
+    } else if (query && !summary.includes(query)) {
+      summary = `${summary}: ${query}`;
+    }
+
+    activeTool = {
+      name: toolInfoObj.name,
+      summary,
+      status: typeof toolInfoObj.status === 'string' ? toolInfoObj.status : undefined,
+      query,
+      action
+    };
+  }
 
   const skillsSet = new Set<string>();
-  if (toolInfoObj && typeof toolInfoObj.summary === 'string') {
-    const skillMatch = toolInfoObj.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
+  if (activeTool && typeof activeTool.summary === 'string') {
+    const skillMatch = activeTool.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
     if (skillMatch && skillMatch[1]) {
       skillsSet.add(skillMatch[1]);
     }

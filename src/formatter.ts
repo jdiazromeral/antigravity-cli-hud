@@ -303,7 +303,29 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     credits: metrics.credits !== undefined ? `\uF155 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
     apiKey: metrics.isApiKey ? `${colors.yellow}🔑 [API Key]${colors.reset}` : '',
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
-    tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
+    tool: (() => {
+      if (!metrics.activeTool) return '';
+      const isNarrow = termWidth <= 75;
+      const toolName = metrics.activeTool.name;
+      let summary = metrics.activeTool.summary;
+      if (summary) {
+        const maxSummaryLen = isNarrow ? 30 : 60;
+        if (summary.length > maxSummaryLen) {
+          summary = summary.substring(0, maxSummaryLen - 3) + '...';
+        }
+      }
+      const summaryPart = summary ? ` (${summary})` : '';
+      let statusBadge = '';
+      if (metrics.activeTool.status) {
+        const st = metrics.activeTool.status.toLowerCase();
+        if (st === 'failed' || st === 'error') {
+          statusBadge = ` ${colors.red}[${metrics.activeTool.status}]${colors.reset}${colors.cyan}`;
+        } else if (st === 'killed' || st === 'cancelled' || st === 'canceling') {
+          statusBadge = ` ${colors.yellow}[${metrics.activeTool.status}]${colors.reset}${colors.cyan}`;
+        }
+      }
+      return `🛠️  ${colors.cyan}${toolName}${statusBadge}${summaryPart}${colors.reset}`;
+    })(),
     version: `📦 v${metrics.version}`,
     email: `📧 ${colors.dim}${metrics.email}${colors.reset}`,
     plan: (metrics.isApiKey || (metrics.planTier && metrics.planTier.toLowerCase().includes('api')))

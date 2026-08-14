@@ -513,7 +513,7 @@ describe('formatMetrics', () => {
       };
       const narrowOut = formatMetrics(narrowMetrics);
       expect(narrowOut).toContain('search_web');
-      expect(narrowOut).toContain('Searching the web for lates...');
+      expect(narrowOut).toContain('Searching the web for the l...');
       expect(narrowOut).not.toContain('Searching the web for the latest updates');
     });
   });
