@@ -2,7 +2,7 @@
 validator: "npm run lint && npm test"
 max_iterations: 8
 branch: epic/agy-1-1-13-hud-updates/M2
-status: IN_PROGRESS
+status: DONE
 ---
 
 # Purpose
