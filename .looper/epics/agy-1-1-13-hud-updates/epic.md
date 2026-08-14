@@ -12,7 +12,7 @@ Integrate the new telemetry and engine capabilities from `agy` 1.1.13 into `anti
 - **Purpose**: Enhance `ActiveToolInfo` formatting in `src/formatter.ts` to cleanly display live tool summaries and progressive queries (e.g. streaming web searches and task lifecycle actions introduced in 1.1.13).
 - **Dependencies**: [M1]
 - **Validator**: `npm run lint && npm test`
-- **Status**: PENDING
+- **Status**: IN_PROGRESS
 
 ## [M3] Declarative Custom Executable Blocks Engine
 - **Purpose**: Implement the generic Custom Executable Blocks feature in `src/formatter.ts` and `src/parser.ts` as specified in `ideas/antigravity-cli-hud/custom_blocks.md`, executing external shell commands asynchronously with caching to adhere to Rule 8 (<2ms render path budget).
