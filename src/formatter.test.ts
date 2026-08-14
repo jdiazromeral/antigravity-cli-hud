@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig } from './formatter';
 import { ParsedMetrics } from './parser';
 import * as os from 'os';
@@ -515,6 +515,156 @@ describe('formatMetrics', () => {
       expect(narrowOut).toContain('search_web');
       expect(narrowOut).toContain('Searching the web for the l...');
       expect(narrowOut).not.toContain('Searching the web for the latest updates');
+    });
+  });
+
+  describe('Custom Executable Blocks', () => {
+    const testConfigFile = path.join(os.tmpdir(), `hud-config-custom-${Math.random().toString(36).substring(2)}.json`);
+
+    afterEach(() => {
+      if (fs.existsSync(testConfigFile)) fs.unlinkSync(testConfigFile);
+    });
+
+    it('loads customBlocks from hud_config.json', () => {
+      const customConfig = {
+        customBlocks: {
+          custom_1: {
+            title: 'Project',
+            command: './get-project.sh',
+            intervalMs: 3000
+          },
+          custom_2: {
+            command: 'git status -s'
+          }
+        }
+      };
+      fs.writeFileSync(testConfigFile, JSON.stringify(customConfig), 'utf-8');
+      const loaded = loadHudConfig(testConfigFile);
+      expect(loaded.customBlocks?.custom_1).toEqual({
+        title: 'Project',
+        command: './get-project.sh',
+        intervalMs: 3000
+      });
+      expect(loaded.customBlocks?.custom_2).toEqual({
+        command: 'git status -s'
+      });
+    });
+
+    it('formats custom block with title header cleanly', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        customBlocks: {
+          custom_1: 'lab/hud (feature-branch)'
+        }
+      };
+      const configOverride = {
+        customBlocks: {
+          custom_1: {
+            title: 'Project',
+            command: './get-project.sh'
+          }
+        },
+        layouts: {
+          large: [['state', 'custom_1']],
+          medium: [['state', 'custom_1']],
+          small: [['state', 'custom_1']]
+        }
+      };
+      const out = formatMetrics(metrics, 150, configOverride);
+      expect(out).toContain('Project:');
+      expect(out).toContain('lab/hud (feature-branch)');
+    });
+
+    it('formats custom block without title cleanly', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        customBlocks: {
+          custom_status: 'ONLINE'
+        }
+      };
+      const configOverride = {
+        customBlocks: {
+          custom_status: {
+            command: 'echo ONLINE'
+          }
+        },
+        layouts: {
+          large: [['state', 'custom_status']],
+          medium: [['state', 'custom_status']],
+          small: [['state', 'custom_status']]
+        }
+      };
+      const out = formatMetrics(metrics, 150, configOverride);
+      expect(out).toContain('ONLINE');
+    });
+
+    it('places custom blocks in small, medium, and large layouts', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        customBlocks: {
+          custom_1: 'large-data',
+          custom_2: 'med-data',
+          custom_3: 'small-data'
+        }
+      };
+      const configOverride = {
+        breakpoints: {
+          large: 120,
+          medium: 60,
+          small: 0
+        },
+        customBlocks: {
+          custom_1: { title: 'L-Block', command: 'cmd1' },
+          custom_2: { title: 'M-Block', command: 'cmd2' },
+          custom_3: { title: 'S-Block', command: 'cmd3' }
+        },
+        layouts: {
+          large: [['state', 'custom_1']],
+          medium: [['state', 'custom_2']],
+          small: [['state', 'custom_3']]
+        }
+      };
+
+      const outLarge = formatMetrics(metrics, 140, configOverride);
+      expect(outLarge).toContain('L-Block:');
+      expect(outLarge).toContain('large-data');
+      expect(outLarge).not.toContain('med-data');
+
+      const outMedium = formatMetrics(metrics, 80, configOverride);
+      expect(outMedium).toContain('M-Block:');
+      expect(outMedium).toContain('med-data');
+      expect(outMedium).not.toContain('large-data');
+
+      const outSmall = formatMetrics(metrics, 50, configOverride);
+      expect(outSmall).toContain('S-Block:');
+      expect(outSmall).toContain('small-data');
+      expect(outSmall).not.toContain('med-data');
+    });
+
+    it('auto-hides empty custom blocks when autoHideEmptyBlocks is true', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        customBlocks: {
+          custom_1: ''
+        }
+      };
+      const configOverride = {
+        autoHideEmptyBlocks: true,
+        customBlocks: {
+          custom_1: {
+            title: 'Project',
+            command: './get-project.sh'
+          }
+        },
+        layouts: {
+          large: [['workspace', 'custom_1']],
+          medium: [['workspace', 'custom_1']],
+          small: [['workspace', 'custom_1']]
+        }
+      };
+      const out = formatMetrics(metrics, 150, configOverride);
+      expect(out).not.toContain('Project:');
+      expect(out).toContain('work');
     });
   });
 });

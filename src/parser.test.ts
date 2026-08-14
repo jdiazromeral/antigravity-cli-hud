@@ -721,6 +721,55 @@ describe('parseStream', () => {
         expect(res.isApiKey).toBe(false);
       });
     });
+
+    describe('Custom Executable Blocks', () => {
+      const configDir = path.join(mockHome, '.gemini');
+      const configFile = path.join(configDir, 'hud_config.json');
+
+      beforeEach(() => {
+        if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+      });
+
+      afterEach(() => {
+        if (fs.existsSync(configFile)) fs.unlinkSync(configFile);
+      });
+
+      it('reads cached custom block outputs into ParsedMetrics', async () => {
+        const customConfig = {
+          customBlocks: {
+            custom_1: {
+              title: 'Project',
+              command: 'echo "lab/test (main)"',
+              intervalMs: 5000
+            }
+          }
+        };
+        fs.writeFileSync(configFile, JSON.stringify(customConfig), 'utf8');
+
+        const cacheFile = path.join(mockHome, '.gemini', 'hud_custom_custom_1.cache');
+        const metaFile = path.join(mockHome, '.gemini', 'hud_custom_custom_1.meta');
+        fs.writeFileSync(cacheFile, 'lab/test (main)', 'utf8');
+        fs.writeFileSync(metaFile, JSON.stringify({ timestamp: Date.now() }), 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.customBlocks).toBeDefined();
+        expect(result.customBlocks?.custom_1).toBe('lab/test (main)');
+      });
+
+      it('returns empty customBlocks when no custom blocks are configured', async () => {
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.customBlocks).toEqual({});
+      });
+    });
   });
 });
+
 
