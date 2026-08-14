@@ -18,7 +18,7 @@ Integrate the new telemetry and engine capabilities from `agy` 1.1.13 into `anti
 - **Purpose**: Implement the generic Custom Executable Blocks feature in `src/formatter.ts` and `src/parser.ts` as specified in `ideas/antigravity-cli-hud/custom_blocks.md`, executing external shell commands asynchronously with caching to adhere to Rule 8 (<2ms render path budget).
 - **Dependencies**: [M2]
 - **Validator**: `npm run lint && npm test && npm run build`
-- **Status**: IN_PROGRESS
+- **Status**: DONE
 
 ## [M4] Looper Block Hierarchy & De-duplication
 - **Purpose**: Refactor Looper block formatting in `src/formatter.ts` into a clean hierarchical tree (grouping active missions under their parent epic) and eliminating redundant repository/epic name echoes.
