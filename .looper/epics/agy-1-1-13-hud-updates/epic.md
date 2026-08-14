@@ -24,7 +24,7 @@ Integrate the new telemetry and engine capabilities from `agy` 1.1.13 into `anti
 - **Purpose**: Refactor Looper block formatting in `src/formatter.ts` into a clean hierarchical tree (grouping active missions under their parent epic) and eliminating redundant repository/epic name echoes.
 - **Dependencies**: [M3]
 - **Validator**: `npm run lint && npm test && npm run build`
-- **Status**: IN_PROGRESS
+- **Status**: DONE
 
 ## [M5] Ultra-Fast Incremental Step Counter
 - **Purpose**: Fix step counting in `src/parser.ts` by using a stat-cached incremental counter on `transcript_path` when `step_count` is absent in telemetry payload, upholding Rule 8 (<2ms render path budget).
