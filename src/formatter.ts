@@ -301,11 +301,14 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     credits: metrics.credits !== undefined ? `\uF155 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
+    apiKey: metrics.isApiKey ? `${colors.yellow}🔑 [API Key]${colors.reset}` : '',
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
     tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
     version: `📦 v${metrics.version}`,
     email: `📧 ${colors.dim}${metrics.email}${colors.reset}`,
-    plan: metrics.planTier.startsWith('GE-') || metrics.planTier.includes('Enterprise') ? `🏢 ${metrics.planTier}` : `💎 ${metrics.planTier}`,
+    plan: (metrics.isApiKey || (metrics.planTier && metrics.planTier.toLowerCase().includes('api')))
+      ? `${colors.yellow}🔑 [API Key]${colors.reset}`
+      : (metrics.planTier.startsWith('GE-') || metrics.planTier.includes('Enterprise') ? `🏢 ${metrics.planTier}` : `💎 ${metrics.planTier}`),
     transcript: metrics.transcriptPath ? `📜 tail -f ${metrics.transcriptPath.replace(os.homedir(), '~')}` : ''
   };
 
@@ -433,6 +436,26 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     });
   }
 
+  // Handle API Key mode omitting quotas and rendering [API Key] badge
+  if (metrics.isApiKey) {
+    const layoutHasPlan = activeLayout.some(row => row.includes('plan'));
+    activeLayout = activeLayout.map(row => {
+      const newRow: string[] = [];
+      for (const k of row) {
+        if (k === '5h') {
+          if (!layoutHasPlan) {
+            newRow.push('apiKey');
+          }
+        } else if (k === 'weekly') {
+          // Hide weekly when in API Key mode
+        } else {
+          newRow.push(k);
+        }
+      }
+      return newRow;
+    });
+  }
+
   // Dynamic Culling: Hide tasks and subagents when they are inactive to prevent clutter
   if (hudConfig.autoHideEmptyBlocks) {
     if (metrics.taskCount === 0) {
@@ -461,6 +484,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     }
     if (!metrics.transcriptPath) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'transcript'));
+    }
+    if (!metrics.isApiKey) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'apiKey'));
     }
   }
 

@@ -43,6 +43,8 @@ export interface AntigravityPayload {
   credits?: { balance: number };
   dangerously_skip_permissions?: boolean;
   skip_permissions?: boolean;
+  is_api_key?: boolean;
+  api_key_mode?: boolean;
 }
 
 import * as fs from 'fs';
@@ -105,6 +107,7 @@ export interface ParsedMetrics {
   agentName: string;
   editorMode?: string;
   credits?: number;
+  isApiKey?: boolean;
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -133,7 +136,45 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const conversationId = typeof parsed.conversation_id === 'string' ? parsed.conversation_id : (typeof parsed.session_id === 'string' ? parsed.session_id : undefined);
 
+  const rawPlanTier = typeof parsed.plan_tier === 'string' ? parsed.plan_tier : '';
+  const rawEmail = typeof parsed.email === 'string' ? parsed.email : '';
+  const planTierLower = rawPlanTier.toLowerCase();
+  const emailLower = rawEmail.toLowerCase();
+
+  const hasApiKeyIndicator = !!(
+    parsed.is_api_key ||
+    parsed.api_key_mode ||
+    (parsed as any).is_api_key_mode ||
+    planTierLower.includes('api_key') ||
+    planTierLower.includes('api-key') ||
+    planTierLower.includes('api key') ||
+    planTierLower.includes('gemini_api_key') ||
+    emailLower.includes('api_key') ||
+    emailLower.includes('api-key') ||
+    emailLower.includes('api key') ||
+    emailLower.includes('gemini_api_key') ||
+    emailLower === '<api-key>'
+  );
+
+  let hasValidQuotaInPayload = false;
+  if (parsed.quota && typeof parsed.quota === 'object' && !Array.isArray(parsed.quota)) {
+    const quotaEntries = Object.values(parsed.quota);
+    for (const qVal of quotaEntries) {
+      if (qVal && typeof qVal === 'object' && !Array.isArray(qVal)) {
+        if (typeof (qVal as any).remaining_fraction === 'number' || typeof (qVal as any).reset_in_seconds === 'number') {
+          hasValidQuotaInPayload = true;
+          break;
+        }
+      }
+    }
+  }
+
+  const isApiKey = !!(hasApiKeyIndicator || (!hasValidQuotaInPayload && !parsed.credits));
+
   const getQuotaObj = (key: string) => {
+    if (isApiKey) {
+      return { percent: 0, resetSeconds: 0 };
+    }
     let q: any;
     if (parsed.quota && typeof parsed.quota === 'object' && !Array.isArray(parsed.quota)) {
       q = (parsed.quota as Record<string, any>)[key];
@@ -613,7 +654,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     isSandboxed,
     version: typeof parsed.version === 'string' ? parsed.version : 'unknown',
     email: typeof parsed.email === 'string' ? parsed.email : 'unknown',
-    planTier: typeof parsed.plan_tier === 'string' ? parsed.plan_tier : 'Unknown Tier',
+    planTier: typeof parsed.plan_tier === 'string' ? parsed.plan_tier : (hasApiKeyIndicator ? 'API Key' : 'Unknown Tier'),
     terminalWidth: termWidth,
     skipPermissions: process.env.AGY_SKIP_PERMISSIONS === 'true' || !!parsed.dangerously_skip_permissions || !!parsed.skip_permissions,
     gitBranches,
@@ -631,6 +672,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     effort,
     agentName,
     editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
-    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined
+    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined,
+    isApiKey
   };
 }

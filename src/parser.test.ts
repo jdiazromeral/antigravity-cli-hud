@@ -90,7 +90,8 @@ describe('parseStream', () => {
       effort: 'high',
       agentName: 'MyCustomAgent',
       editorMode: 'I',
-      credits: 1250
+      credits: 1250,
+      isApiKey: false
     });
   });
 
@@ -218,6 +219,7 @@ describe('parseStream', () => {
     expect(result.agentName).toBe('TARS');
     expect(result.executionMode).toBe('request-review');
     expect(result.editorMode).toBeUndefined();
+    expect(result.isApiKey).toBe(true);
     process.env.AGENT_NAME = oldAgent;
     process.env.AGY_AGENT_NAME = oldAgyAgent;
   });

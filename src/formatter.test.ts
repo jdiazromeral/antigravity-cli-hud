@@ -41,7 +41,8 @@ describe('formatMetrics', () => {
     maxContextTokens: 0,
     contextWindowSize: 1048576,
     editorMode: undefined,
-    credits: undefined
+    credits: undefined,
+    isApiKey: false
   };
 
   it('formats single and multiple active skills correctly', () => {
