@@ -91,7 +91,8 @@ describe('parseStream', () => {
       agentName: 'MyCustomAgent',
       editorMode: 'I',
       credits: 1250,
-      isApiKey: false
+      isApiKey: false,
+      customBlocks: {}
     });
   });
 

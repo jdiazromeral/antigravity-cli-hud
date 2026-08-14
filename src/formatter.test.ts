@@ -625,17 +625,17 @@ describe('formatMetrics', () => {
         }
       };
 
-      const outLarge = formatMetrics(metrics, 140, configOverride);
+      const outLarge = formatMetrics({ ...metrics, terminalWidth: 140 }, 140, configOverride);
       expect(outLarge).toContain('L-Block:');
       expect(outLarge).toContain('large-data');
       expect(outLarge).not.toContain('med-data');
 
-      const outMedium = formatMetrics(metrics, 80, configOverride);
+      const outMedium = formatMetrics({ ...metrics, terminalWidth: 80 }, 80, configOverride);
       expect(outMedium).toContain('M-Block:');
       expect(outMedium).toContain('med-data');
       expect(outMedium).not.toContain('large-data');
 
-      const outSmall = formatMetrics(metrics, 50, configOverride);
+      const outSmall = formatMetrics({ ...metrics, terminalWidth: 50 }, 50, configOverride);
       expect(outSmall).toContain('S-Block:');
       expect(outSmall).toContain('small-data');
       expect(outSmall).not.toContain('med-data');

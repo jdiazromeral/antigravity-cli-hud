@@ -1,5 +1,5 @@
 export { parseStream, ParsedMetrics, AntigravityPayload, SubagentInfo } from './parser.js';
-export { formatMetrics, HUD_CONFIG } from './formatter.js';
+export { formatMetrics, HUD_CONFIG, CustomBlockConfig, HudConfig } from './formatter.js';
 import { parseStream as _parseStream } from './parser.js';
 import { formatMetrics as _formatMetrics } from './formatter.js';
 

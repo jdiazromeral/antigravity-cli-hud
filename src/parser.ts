@@ -118,6 +118,7 @@ export interface ParsedMetrics {
   editorMode?: string;
   credits?: number;
   isApiKey?: boolean;
+  customBlocks?: Record<string, string>;
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -676,6 +677,68 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const isSandboxed = !!(parsed.sandbox && typeof parsed.sandbox === 'object' && !Array.isArray(parsed.sandbox) && parsed.sandbox.enabled);
 
+  const customBlocks: Record<string, string> = {};
+  const hudConfigFile = path.join(os.homedir(), '.gemini', 'hud_config.json');
+  if (fs.existsSync(hudConfigFile)) {
+    try {
+      const configRaw = fs.readFileSync(hudConfigFile, 'utf8');
+      const configParsed = JSON.parse(configRaw);
+      const customBlocksConfig: Record<string, { title?: string; command: string; intervalMs?: number }> = {};
+      
+      if (configParsed && typeof configParsed === 'object' && !Array.isArray(configParsed)) {
+        if (configParsed.customBlocks && typeof configParsed.customBlocks === 'object' && !Array.isArray(configParsed.customBlocks)) {
+          Object.assign(customBlocksConfig, configParsed.customBlocks);
+        }
+        for (const [k, v] of Object.entries(configParsed)) {
+          if (v && typeof v === 'object' && !Array.isArray(v) && typeof (v as any).command === 'string' && k !== 'customBlocks' && k !== 'budget' && k !== 'breakpoints' && k !== 'layouts') {
+            customBlocksConfig[k] = v as any;
+          }
+        }
+      }
+
+      for (const [blockKey, blockDef] of Object.entries(customBlocksConfig)) {
+        if (!blockDef || typeof blockDef !== 'object' || typeof blockDef.command !== 'string') continue;
+        const cacheFile = path.join(os.homedir(), '.gemini', `hud_custom_${blockKey}.cache`);
+        const metaFile = path.join(os.homedir(), '.gemini', `hud_custom_${blockKey}.meta`);
+        
+        if (fs.existsSync(cacheFile)) {
+          try {
+            customBlocks[blockKey] = fs.readFileSync(cacheFile, 'utf8').trim();
+          } catch (e) {}
+        }
+
+        const intervalMs = typeof blockDef.intervalMs === 'number' && blockDef.intervalMs > 0 ? blockDef.intervalMs : 5000;
+        let isStale = true;
+        try {
+          if (fs.existsSync(metaFile)) {
+            const metaStat = fs.statSync(metaFile);
+            if (Date.now() - metaStat.mtimeMs < intervalMs) {
+              isStale = false;
+            }
+          }
+        } catch (e) {}
+
+        if (isStale) {
+          try {
+            if (!fs.existsSync(path.dirname(metaFile))) {
+              fs.mkdirSync(path.dirname(metaFile), { recursive: true });
+            }
+            fs.writeFileSync(metaFile, JSON.stringify({ timestamp: Date.now() }), { mode: 0o600 });
+            const cacheTmp = `${cacheFile}.tmp`;
+            const cmd = `(${blockDef.command}) > "${cacheTmp}" 2>/dev/null && mv "${cacheTmp}" "${cacheFile}"`;
+            const subprocess = cp.spawn(cmd, {
+              shell: true,
+              cwd: parsed.cwd || process.cwd(),
+              detached: true,
+              stdio: 'ignore'
+            });
+            subprocess.unref();
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+  }
+
   return {
     agentState: (typeof parsed.agent_state === 'string' ? parsed.agent_state : 'UNKNOWN').toUpperCase(),
     contextUsage,
@@ -716,6 +779,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     agentName,
     editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
     credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined,
-    isApiKey
+    isApiKey,
+    customBlocks
   };
 }

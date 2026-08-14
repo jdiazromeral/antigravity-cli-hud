@@ -21,6 +21,12 @@ const colors = {
 // Custom overrides can be placed in ~/.gemini/hud_config.json
 // Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'tool', 'transcript'
 // ============================================================================
+export interface CustomBlockConfig {
+  title?: string;
+  command: string;
+  intervalMs?: number;
+}
+
 export interface HudBudgetConfig {
   maxSteps?: number;
   maxContextTokens?: number;
@@ -43,6 +49,7 @@ export interface HudConfig {
   budget?: HudBudgetConfig;
   breakpoints?: HudBreakpointsConfig;
   layouts?: HudLayoutsConfig;
+  customBlocks?: Record<string, CustomBlockConfig>;
 }
 
 export const DEFAULT_HUD_CONFIG: {
@@ -50,6 +57,7 @@ export const DEFAULT_HUD_CONFIG: {
   budget: { maxSteps: number; maxContextTokens?: number };
   breakpoints: { large: number; medium: number; small: number };
   layouts: { large: string[][]; medium: string[][]; small: string[][] };
+  customBlocks?: Record<string, CustomBlockConfig>;
 } = {
   // Whether to dynamically hide 'tasks' and 'subagents' blocks from the UI when their count is 0
   autoHideEmptyBlocks: true,
@@ -96,7 +104,8 @@ export const DEFAULT_HUD_CONFIG: {
       ['git'],
       ['transcript']
     ]
-  }
+  },
+  customBlocks: {}
 };
 
 export const HUD_CONFIG = DEFAULT_HUD_CONFIG;
@@ -107,6 +116,12 @@ export function loadHudConfig(customPath?: string): typeof DEFAULT_HUD_CONFIG {
     if (fs.existsSync(configPath)) {
       const raw = fs.readFileSync(configPath, 'utf-8');
       const userConfig = JSON.parse(raw);
+      const userCustomBlocks: Record<string, CustomBlockConfig> = { ...(userConfig.customBlocks || {}) };
+      for (const [k, v] of Object.entries(userConfig)) {
+        if (v && typeof v === 'object' && !Array.isArray(v) && typeof (v as any).command === 'string' && k !== 'customBlocks' && k !== 'budget' && k !== 'breakpoints' && k !== 'layouts') {
+          userCustomBlocks[k] = v as CustomBlockConfig;
+        }
+      }
       return {
         ...DEFAULT_HUD_CONFIG,
         ...userConfig,
@@ -122,7 +137,8 @@ export function loadHudConfig(customPath?: string): typeof DEFAULT_HUD_CONFIG {
           large: userConfig.layouts?.large || DEFAULT_HUD_CONFIG.layouts.large.map(r => [...r]),
           medium: userConfig.layouts?.medium || DEFAULT_HUD_CONFIG.layouts.medium.map(r => [...r]),
           small: userConfig.layouts?.small || DEFAULT_HUD_CONFIG.layouts.small.map(r => [...r]),
-        }
+        },
+        customBlocks: userCustomBlocks
       };
     }
   } catch {
@@ -137,7 +153,8 @@ export function loadHudConfig(customPath?: string): typeof DEFAULT_HUD_CONFIG {
       large: DEFAULT_HUD_CONFIG.layouts.large.map(r => [...r]),
       medium: DEFAULT_HUD_CONFIG.layouts.medium.map(r => [...r]),
       small: DEFAULT_HUD_CONFIG.layouts.small.map(r => [...r]),
-    }
+    },
+    customBlocks: {}
   };
 }
 
@@ -158,6 +175,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
       large: configOverride.layouts?.large || DEFAULT_HUD_CONFIG.layouts.large.map(r => [...r]),
       medium: configOverride.layouts?.medium || DEFAULT_HUD_CONFIG.layouts.medium.map(r => [...r]),
       small: configOverride.layouts?.small || DEFAULT_HUD_CONFIG.layouts.small.map(r => [...r]),
+    },
+    customBlocks: {
+      ...(DEFAULT_HUD_CONFIG.customBlocks || {}),
+      ...(configOverride.customBlocks || {})
     }
   } : loadHudConfig();
 
@@ -333,6 +354,37 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
       : (metrics.planTier.startsWith('GE-') || metrics.planTier.includes('Enterprise') ? `🏢 ${metrics.planTier}` : `💎 ${metrics.planTier}`),
     transcript: metrics.transcriptPath ? `📜 tail -f ${metrics.transcriptPath.replace(os.homedir(), '~')}` : ''
   };
+
+  if (hudConfig.customBlocks) {
+    for (const [key, blockConf] of Object.entries(hudConfig.customBlocks)) {
+      let val = metrics.customBlocks?.[key];
+      if (val === undefined) {
+        const cacheFile = path.join(os.homedir(), '.gemini', `hud_custom_${key}.cache`);
+        if (fs.existsSync(cacheFile)) {
+          try {
+            val = fs.readFileSync(cacheFile, 'utf8').trim();
+          } catch (e) {}
+        }
+      }
+      if (val) {
+        const title = blockConf?.title;
+        blocks[key] = title ? `${title}: ${colors.cyan}${val}${colors.reset}` : `${colors.cyan}${val}${colors.reset}`;
+      } else {
+        blocks[key] = '';
+      }
+    }
+  }
+  if (metrics.customBlocks) {
+    for (const [key, val] of Object.entries(metrics.customBlocks)) {
+      if (!blocks[key]) {
+        if (val) {
+          blocks[key] = `${colors.cyan}${val}${colors.reset}`;
+        } else {
+          blocks[key] = '';
+        }
+      }
+    }
+  }
 
   // Generalized pre-calculator for stacked blocks
   const calculateStackedChunks = (items: string[], maxVisible: number) => {
@@ -510,6 +562,26 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     if (!metrics.isApiKey) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'apiKey'));
     }
+    if (hudConfig.customBlocks) {
+      for (const customKey of Object.keys(hudConfig.customBlocks)) {
+        if (!blocks[customKey]) {
+          activeLayout = activeLayout.map(row => row.filter(k => k !== customKey));
+        }
+      }
+    }
+    if (metrics.customBlocks) {
+      for (const customKey of Object.keys(metrics.customBlocks)) {
+        if (!blocks[customKey]) {
+          activeLayout = activeLayout.map(row => row.filter(k => k !== customKey));
+        }
+      }
+    }
+    activeLayout = activeLayout.map(row => row.filter(k => {
+      if (k.startsWith('custom_') || (hudConfig.customBlocks && hudConfig.customBlocks[k])) {
+        return !!blocks[k];
+      }
+      return true;
+    }));
   }
 
   // Clean up any rows that became entirely empty
