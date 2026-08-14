@@ -121,6 +121,39 @@ export interface ParsedMetrics {
   customBlocks?: Record<string, string>;
 }
 
+interface TranscriptCacheEntry {
+  mtimeMs: number;
+  count: number;
+}
+
+const transcriptStepCache = new Map<string, TranscriptCacheEntry>();
+
+function countTranscriptSteps(filePath: string): number {
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.size === 0) {
+      return 0;
+    }
+    const cached = transcriptStepCache.get(filePath);
+    if (cached && cached.mtimeMs === stat.mtimeMs) {
+      return cached.count;
+    }
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.split('\n').filter((line: string) => line.trim().length > 0);
+    const count = lines.length;
+
+    transcriptStepCache.set(filePath, {
+      mtimeMs: stat.mtimeMs,
+      count
+    });
+
+    return count;
+  } catch (e) {
+    return 0;
+  }
+}
+
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
   let data = '';
   let bytesRead = 0;
@@ -636,7 +669,6 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     });
   }
 
-  const stepCount = typeof parsed.step_count === 'number' ? parsed.step_count : (typeof parsed.step_index === 'number' ? parsed.step_index : 0);
   let resolvedTranscriptPath = typeof parsed.transcript_path === 'string' ? parsed.transcript_path : undefined;
   if (resolvedTranscriptPath) {
     if (!fs.existsSync(resolvedTranscriptPath)) {
@@ -655,6 +687,15 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     } else if (fs.existsSync(candidate2)) {
       resolvedTranscriptPath = candidate2;
     }
+  }
+
+  let stepCount = 0;
+  if (typeof parsed.step_count === 'number') {
+    stepCount = parsed.step_count;
+  } else if (typeof parsed.step_index === 'number') {
+    stepCount = parsed.step_index;
+  } else if (resolvedTranscriptPath && fs.existsSync(resolvedTranscriptPath)) {
+    stepCount = countTranscriptSteps(resolvedTranscriptPath);
   }
 
   const envMaxSteps = process.env.AGY_MAX_STEPS ? parseInt(process.env.AGY_MAX_STEPS, 10) : undefined;
