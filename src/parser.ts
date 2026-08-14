@@ -16,7 +16,15 @@ export interface AntigravityPayload {
     "3p-5h"?: { remaining_fraction: number; reset_in_seconds?: number };
   };
   subagents?: Array<{ name: string; role: string; status: string; depth?: number; conversation_id?: string; log_uri?: string }>;
-  tool_info?: { name: string; summary?: string; status?: string };
+  tool_info?: {
+    name: string;
+    summary?: string;
+    status?: string;
+    query?: string;
+    action?: string;
+    taskId?: string;
+    task_id?: string;
+  };
   task_count?: number;
   sandbox?: { enabled: boolean };
   model?: { display_name: string };
@@ -43,6 +51,8 @@ export interface AntigravityPayload {
   credits?: { balance: number };
   dangerously_skip_permissions?: boolean;
   skip_permissions?: boolean;
+  is_api_key?: boolean;
+  api_key_mode?: boolean;
 }
 
 import * as fs from 'fs';
@@ -63,6 +73,8 @@ export interface ActiveToolInfo {
   name: string;
   summary?: string;
   status?: string;
+  query?: string;
+  action?: string;
 }
 
 export interface ParsedMetrics {
@@ -105,6 +117,41 @@ export interface ParsedMetrics {
   agentName: string;
   editorMode?: string;
   credits?: number;
+  isApiKey?: boolean;
+  customBlocks?: Record<string, string>;
+}
+
+interface TranscriptCacheEntry {
+  mtimeMs: number;
+  count: number;
+}
+
+const transcriptStepCache = new Map<string, TranscriptCacheEntry>();
+
+function countTranscriptSteps(filePath: string): number {
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.size === 0) {
+      return 0;
+    }
+    const cached = transcriptStepCache.get(filePath);
+    if (cached && cached.mtimeMs === stat.mtimeMs) {
+      return cached.count;
+    }
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.split('\n').filter((line: string) => line.trim().length > 0);
+    const count = lines.length;
+
+    transcriptStepCache.set(filePath, {
+      mtimeMs: stat.mtimeMs,
+      count
+    });
+
+    return count;
+  } catch (e) {
+    return 0;
+  }
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -133,7 +180,45 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const conversationId = typeof parsed.conversation_id === 'string' ? parsed.conversation_id : (typeof parsed.session_id === 'string' ? parsed.session_id : undefined);
 
+  const rawPlanTier = typeof parsed.plan_tier === 'string' ? parsed.plan_tier : '';
+  const rawEmail = typeof parsed.email === 'string' ? parsed.email : '';
+  const planTierLower = rawPlanTier.toLowerCase();
+  const emailLower = rawEmail.toLowerCase();
+
+  const hasApiKeyIndicator = !!(
+    parsed.is_api_key ||
+    parsed.api_key_mode ||
+    (parsed as any).is_api_key_mode ||
+    planTierLower.includes('api_key') ||
+    planTierLower.includes('api-key') ||
+    planTierLower.includes('api key') ||
+    planTierLower.includes('gemini_api_key') ||
+    emailLower.includes('api_key') ||
+    emailLower.includes('api-key') ||
+    emailLower.includes('api key') ||
+    emailLower.includes('gemini_api_key') ||
+    emailLower === '<api-key>'
+  );
+
+  let hasValidQuotaInPayload = false;
+  if (parsed.quota && typeof parsed.quota === 'object' && !Array.isArray(parsed.quota)) {
+    const quotaEntries = Object.values(parsed.quota);
+    for (const qVal of quotaEntries) {
+      if (qVal && typeof qVal === 'object' && !Array.isArray(qVal)) {
+        if (typeof (qVal as any).remaining_fraction === 'number' || typeof (qVal as any).reset_in_seconds === 'number') {
+          hasValidQuotaInPayload = true;
+          break;
+        }
+      }
+    }
+  }
+
+  const isApiKey = !!(hasApiKeyIndicator || (!hasValidQuotaInPayload && !parsed.credits));
+
   const getQuotaObj = (key: string) => {
+    if (isApiKey) {
+      return { percent: 0, resetSeconds: 0 };
+    }
     let q: any;
     if (parsed.quota && typeof parsed.quota === 'object' && !Array.isArray(parsed.quota)) {
       q = (parsed.quota as Record<string, any>)[key];
@@ -498,15 +583,48 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const toolInfoObj = (parsed.tool_info && typeof parsed.tool_info === 'object' && !Array.isArray(parsed.tool_info) && typeof parsed.tool_info.name === 'string') ? parsed.tool_info : undefined;
 
-  const activeTool: ActiveToolInfo | undefined = toolInfoObj ? {
-    name: toolInfoObj.name,
-    summary: typeof toolInfoObj.summary === 'string' ? toolInfoObj.summary : undefined,
-    status: typeof toolInfoObj.status === 'string' ? toolInfoObj.status : undefined
-  } : undefined;
+  let activeTool: ActiveToolInfo | undefined = undefined;
+  if (toolInfoObj) {
+    let summary = typeof toolInfoObj.summary === 'string' && toolInfoObj.summary.trim() ? toolInfoObj.summary.trim() : undefined;
+    const query = typeof toolInfoObj.query === 'string' && toolInfoObj.query.trim() ? toolInfoObj.query.trim() : undefined;
+    const action = typeof toolInfoObj.action === 'string' && toolInfoObj.action.trim() ? toolInfoObj.action.trim() : undefined;
+    const taskId = (typeof toolInfoObj.taskId === 'string' && toolInfoObj.taskId.trim())
+      ? toolInfoObj.taskId.trim()
+      : ((typeof toolInfoObj.task_id === 'string' && toolInfoObj.task_id.trim()) ? toolInfoObj.task_id.trim() : undefined);
+
+    if (!summary) {
+      if (query) {
+        summary = query;
+      } else if (action) {
+        const actLower = action.toLowerCase();
+        if (actLower === 'kill') {
+          summary = taskId ? `Killed task ${taskId}` : 'Killed task';
+        } else if (actLower === 'status' || actLower === 'check') {
+          summary = taskId ? `Checked task ${taskId}` : 'Checked task';
+        } else if (actLower === 'list') {
+          summary = 'Listed tasks';
+        } else if (actLower === 'send_input') {
+          summary = taskId ? `Sent input to task ${taskId}` : 'Sent input to task';
+        } else {
+          summary = taskId ? `${action} task ${taskId}` : action;
+        }
+      }
+    } else if (query && !summary.includes(query)) {
+      summary = `${summary}: ${query}`;
+    }
+
+    activeTool = {
+      name: toolInfoObj.name,
+      summary,
+      status: typeof toolInfoObj.status === 'string' ? toolInfoObj.status : undefined,
+      query,
+      action
+    };
+  }
 
   const skillsSet = new Set<string>();
-  if (toolInfoObj && typeof toolInfoObj.summary === 'string') {
-    const skillMatch = toolInfoObj.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
+  if (activeTool && typeof activeTool.summary === 'string') {
+    const skillMatch = activeTool.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
     if (skillMatch && skillMatch[1]) {
       skillsSet.add(skillMatch[1]);
     }
@@ -551,7 +669,6 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     });
   }
 
-  const stepCount = typeof parsed.step_count === 'number' ? parsed.step_count : (typeof parsed.step_index === 'number' ? parsed.step_index : 0);
   let resolvedTranscriptPath = typeof parsed.transcript_path === 'string' ? parsed.transcript_path : undefined;
   if (resolvedTranscriptPath) {
     if (!fs.existsSync(resolvedTranscriptPath)) {
@@ -570,6 +687,15 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     } else if (fs.existsSync(candidate2)) {
       resolvedTranscriptPath = candidate2;
     }
+  }
+
+  let stepCount = 0;
+  if (typeof parsed.step_count === 'number') {
+    stepCount = parsed.step_count;
+  } else if (typeof parsed.step_index === 'number') {
+    stepCount = parsed.step_index;
+  } else if (resolvedTranscriptPath && fs.existsSync(resolvedTranscriptPath)) {
+    stepCount = countTranscriptSteps(resolvedTranscriptPath);
   }
 
   const envMaxSteps = process.env.AGY_MAX_STEPS ? parseInt(process.env.AGY_MAX_STEPS, 10) : undefined;
@@ -592,6 +718,68 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const isSandboxed = !!(parsed.sandbox && typeof parsed.sandbox === 'object' && !Array.isArray(parsed.sandbox) && parsed.sandbox.enabled);
 
+  const customBlocks: Record<string, string> = {};
+  const hudConfigFile = path.join(os.homedir(), '.gemini', 'hud_config.json');
+  if (fs.existsSync(hudConfigFile)) {
+    try {
+      const configRaw = fs.readFileSync(hudConfigFile, 'utf8');
+      const configParsed = JSON.parse(configRaw);
+      const customBlocksConfig: Record<string, { title?: string; command: string; intervalMs?: number }> = {};
+      
+      if (configParsed && typeof configParsed === 'object' && !Array.isArray(configParsed)) {
+        if (configParsed.customBlocks && typeof configParsed.customBlocks === 'object' && !Array.isArray(configParsed.customBlocks)) {
+          Object.assign(customBlocksConfig, configParsed.customBlocks);
+        }
+        for (const [k, v] of Object.entries(configParsed)) {
+          if (v && typeof v === 'object' && !Array.isArray(v) && typeof (v as any).command === 'string' && k !== 'customBlocks' && k !== 'budget' && k !== 'breakpoints' && k !== 'layouts') {
+            customBlocksConfig[k] = v as any;
+          }
+        }
+      }
+
+      for (const [blockKey, blockDef] of Object.entries(customBlocksConfig)) {
+        if (!blockDef || typeof blockDef !== 'object' || typeof blockDef.command !== 'string') continue;
+        const cacheFile = path.join(os.homedir(), '.gemini', `hud_custom_${blockKey}.cache`);
+        const metaFile = path.join(os.homedir(), '.gemini', `hud_custom_${blockKey}.meta`);
+        
+        if (fs.existsSync(cacheFile)) {
+          try {
+            customBlocks[blockKey] = fs.readFileSync(cacheFile, 'utf8').trim();
+          } catch (e) {}
+        }
+
+        const intervalMs = typeof blockDef.intervalMs === 'number' && blockDef.intervalMs > 0 ? blockDef.intervalMs : 5000;
+        let isStale = true;
+        try {
+          if (fs.existsSync(metaFile)) {
+            const metaStat = fs.statSync(metaFile);
+            if (Date.now() - metaStat.mtimeMs < intervalMs) {
+              isStale = false;
+            }
+          }
+        } catch (e) {}
+
+        if (isStale) {
+          try {
+            if (!fs.existsSync(path.dirname(metaFile))) {
+              fs.mkdirSync(path.dirname(metaFile), { recursive: true });
+            }
+            fs.writeFileSync(metaFile, JSON.stringify({ timestamp: Date.now() }), { mode: 0o600 });
+            const cacheTmp = `${cacheFile}.tmp`;
+            const cmd = `(${blockDef.command}) > "${cacheTmp}" 2>/dev/null && mv "${cacheTmp}" "${cacheFile}"`;
+            const subprocess = cp.spawn(cmd, {
+              shell: true,
+              cwd: parsed.cwd || process.cwd(),
+              detached: true,
+              stdio: 'ignore'
+            });
+            subprocess.unref();
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+  }
+
   return {
     agentState: (typeof parsed.agent_state === 'string' ? parsed.agent_state : 'UNKNOWN').toUpperCase(),
     contextUsage,
@@ -613,7 +801,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     isSandboxed,
     version: typeof parsed.version === 'string' ? parsed.version : 'unknown',
     email: typeof parsed.email === 'string' ? parsed.email : 'unknown',
-    planTier: typeof parsed.plan_tier === 'string' ? parsed.plan_tier : 'Unknown Tier',
+    planTier: typeof parsed.plan_tier === 'string' ? parsed.plan_tier : (hasApiKeyIndicator ? 'API Key' : 'Unknown Tier'),
     terminalWidth: termWidth,
     skipPermissions: process.env.AGY_SKIP_PERMISSIONS === 'true' || !!parsed.dangerously_skip_permissions || !!parsed.skip_permissions,
     gitBranches,
@@ -631,6 +819,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     effort,
     agentName,
     editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
-    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined
+    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined,
+    isApiKey,
+    customBlocks
   };
 }

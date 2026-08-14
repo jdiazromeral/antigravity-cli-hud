@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig } from './formatter';
 import { ParsedMetrics } from './parser';
 import * as os from 'os';
@@ -41,7 +41,8 @@ describe('formatMetrics', () => {
     maxContextTokens: 0,
     contextWindowSize: 1048576,
     editorMode: undefined,
-    credits: undefined
+    credits: undefined,
+    isApiKey: false
   };
 
   it('formats single and multiple active skills correctly', () => {
@@ -436,6 +437,319 @@ describe('formatMetrics', () => {
       }
     });
   });
+
+  describe('API key mode formatting', () => {
+    it('renders [API Key] badge and omits broken quota bars on standard terminal', () => {
+      const metrics = { ...baseMetrics, isApiKey: true, quota5h: 0, quotaWeekly: 0 };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('[API Key]');
+      expect(out).not.toContain('5h:');
+      expect(out).not.toContain('Weekly:');
+    });
+
+    it('renders [API Key] badge on narrow terminal when plan block is not in layout', () => {
+      const metrics = { ...baseMetrics, isApiKey: true, terminalWidth: 70, quota5h: 0, quotaWeekly: 0 };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('[API Key]');
+      expect(out).not.toContain('5h:');
+      expect(out).not.toContain('Weekly:');
+    });
+
+    it('renders [API Key] badge when planTier is API Key', () => {
+      const metrics = { ...baseMetrics, planTier: 'API Key', isApiKey: true };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('[API Key]');
+    });
+  });
+
+  describe('activeTool formatting', () => {
+    it('formats activeTool with live summary and queries cleanly', () => {
+      const metrics = {
+        ...baseMetrics,
+        activeTool: { name: 'search_web', summary: 'vitest mock os.homedir', status: 'running' }
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('search_web (vitest mock os.homedir)');
+      expect(out).toContain('🛠️');
+    });
+
+    it('formats activeTool with failure or cancellation status badge', () => {
+      const failedMetrics = {
+        ...baseMetrics,
+        activeTool: { name: 'run_command', summary: 'npm test', status: 'failed' }
+      };
+      const failedOut = formatMetrics(failedMetrics);
+      expect(failedOut).toContain('run_command');
+      expect(failedOut).toContain('[failed]');
+
+      const killedMetrics = {
+        ...baseMetrics,
+        activeTool: { name: 'manage_task', summary: 'Killed task task-123', status: 'killed' }
+      };
+      const killedOut = formatMetrics(killedMetrics);
+      expect(killedOut).toContain('manage_task');
+      expect(killedOut).toContain('[killed]');
+    });
+
+    it('applies responsive truncation for long tool summaries on wide and narrow screens', () => {
+      const longQuery = 'Searching the web for the latest updates on Antigravity CLI 1.1.13 release notes and changes in TypeScript layout engine';
+      
+      // Wide terminal (>75 width) truncates at 60 chars
+      const wideMetrics = {
+        ...baseMetrics,
+        terminalWidth: 120,
+        activeTool: { name: 'search_web', summary: longQuery, status: 'running' }
+      };
+      const wideOut = formatMetrics(wideMetrics);
+      expect(wideOut).toContain('search_web');
+      expect(wideOut).toContain('Searching the web for the latest updates on Antigravity C...');
+      expect(wideOut).not.toContain(longQuery);
+
+      // Narrow terminal (<=75 width) truncates at 30 chars
+      const narrowMetrics = {
+        ...baseMetrics,
+        terminalWidth: 70,
+        activeTool: { name: 'search_web', summary: longQuery, status: 'running' }
+      };
+      const narrowOut = formatMetrics(narrowMetrics);
+      expect(narrowOut).toContain('search_web');
+      expect(narrowOut).toContain('Searching the web for the l...');
+      expect(narrowOut).not.toContain('Searching the web for the latest updates');
+    });
+  });
+
+  describe('Custom Executable Blocks', () => {
+    const testConfigFile = path.join(os.tmpdir(), `hud-config-custom-${Math.random().toString(36).substring(2)}.json`);
+
+    afterEach(() => {
+      if (fs.existsSync(testConfigFile)) fs.unlinkSync(testConfigFile);
+    });
+
+    it('loads customBlocks from hud_config.json', () => {
+      const customConfig = {
+        customBlocks: {
+          custom_1: {
+            title: 'Project',
+            command: './get-project.sh',
+            intervalMs: 3000
+          },
+          custom_2: {
+            command: 'git status -s'
+          }
+        }
+      };
+      fs.writeFileSync(testConfigFile, JSON.stringify(customConfig), 'utf-8');
+      const loaded = loadHudConfig(testConfigFile);
+      expect(loaded.customBlocks?.custom_1).toEqual({
+        title: 'Project',
+        command: './get-project.sh',
+        intervalMs: 3000
+      });
+      expect(loaded.customBlocks?.custom_2).toEqual({
+        command: 'git status -s'
+      });
+    });
+
+    it('formats custom block with title header cleanly', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        customBlocks: {
+          custom_1: 'lab/hud (feature-branch)'
+        }
+      };
+      const configOverride = {
+        customBlocks: {
+          custom_1: {
+            title: 'Project',
+            command: './get-project.sh'
+          }
+        },
+        layouts: {
+          large: [['state', 'custom_1']],
+          medium: [['state', 'custom_1']],
+          small: [['state', 'custom_1']]
+        }
+      };
+      const out = formatMetrics(metrics, 150, configOverride);
+      expect(out).toContain('Project:');
+      expect(out).toContain('lab/hud (feature-branch)');
+    });
+
+    it('formats custom block without title cleanly', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        customBlocks: {
+          custom_status: 'ONLINE'
+        }
+      };
+      const configOverride = {
+        customBlocks: {
+          custom_status: {
+            command: 'echo ONLINE'
+          }
+        },
+        layouts: {
+          large: [['state', 'custom_status']],
+          medium: [['state', 'custom_status']],
+          small: [['state', 'custom_status']]
+        }
+      };
+      const out = formatMetrics(metrics, 150, configOverride);
+      expect(out).toContain('ONLINE');
+    });
+
+    it('places custom blocks in small, medium, and large layouts', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        customBlocks: {
+          custom_1: 'large-data',
+          custom_2: 'med-data',
+          custom_3: 'small-data'
+        }
+      };
+      const configOverride = {
+        breakpoints: {
+          large: 120,
+          medium: 60,
+          small: 0
+        },
+        customBlocks: {
+          custom_1: { title: 'L-Block', command: 'cmd1' },
+          custom_2: { title: 'M-Block', command: 'cmd2' },
+          custom_3: { title: 'S-Block', command: 'cmd3' }
+        },
+        layouts: {
+          large: [['state', 'custom_1']],
+          medium: [['state', 'custom_2']],
+          small: [['state', 'custom_3']]
+        }
+      };
+
+      const outLarge = formatMetrics({ ...metrics, terminalWidth: 140 }, 140, configOverride);
+      expect(outLarge).toContain('L-Block:');
+      expect(outLarge).toContain('large-data');
+      expect(outLarge).not.toContain('med-data');
+
+      const outMedium = formatMetrics({ ...metrics, terminalWidth: 80 }, 80, configOverride);
+      expect(outMedium).toContain('M-Block:');
+      expect(outMedium).toContain('med-data');
+      expect(outMedium).not.toContain('large-data');
+
+      const outSmall = formatMetrics({ ...metrics, terminalWidth: 50 }, 50, configOverride);
+      expect(outSmall).toContain('S-Block:');
+      expect(outSmall).toContain('small-data');
+      expect(outSmall).not.toContain('med-data');
+    });
+
+    it('auto-hides empty custom blocks when autoHideEmptyBlocks is true', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        customBlocks: {
+          custom_1: ''
+        }
+      };
+      const configOverride = {
+        autoHideEmptyBlocks: true,
+        customBlocks: {
+          custom_1: {
+            title: 'Project',
+            command: './get-project.sh'
+          }
+        },
+        layouts: {
+          large: [['workspace', 'custom_1']],
+          medium: [['workspace', 'custom_1']],
+          small: [['workspace', 'custom_1']]
+        }
+      };
+      const out = formatMetrics(metrics, 150, configOverride);
+      expect(out).not.toContain('Project:');
+      expect(out).toContain('work');
+    });
+  });
+
+  describe('looper block hierarchical tree and deduplication', () => {
+    it('eliminates redundant repo name when repo equals epic name', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [
+          { repo: 'agy-1-1-13-hud-updates', epic: 'agy-1-1-13-hud-updates', total: 5, done: 3 }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🎯 Epic:');
+      expect(out).toContain('agy-1-1-13-hud-updates');
+      expect(out).not.toContain('agy-1-1-13-hud-updates - Epic:');
+      expect(out).toContain('3/5 DONE');
+    });
+
+    it('renders repository tag when repo and epic names are distinct', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [
+          { repo: 'antigravity-cli-hud', epic: 'custom-blocks', total: 4, done: 2 }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🎯 [antigravity-cli-hud]');
+      expect(out).toContain('custom-blocks');
+      expect(out).not.toContain('antigravity-cli-hud - Epic:');
+      expect(out).toContain('2/4 DONE');
+    });
+
+    it('renders nested missions under their matching parent epic in a hierarchical tree', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [
+          { repo: 'work', epic: 'hud-updates', total: 4, done: 2 }
+        ],
+        looperMissions: [
+          { repo: 'work', epic: 'hud-updates', mission: 'M3', status: 'IN_PROGRESS', iteration: 2, maxIterations: 8 }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🎯 [work]');
+      expect(out).toContain('hud-updates');
+      expect(out).toContain('↳ [M3]');
+      expect(out).toContain('IN_PROGRESS Iteration 2/8');
+      expect(out).not.toContain('work - hud-updates/M3');
+    });
+
+    it('renders standalone missions cleanly when not matched to any active epic', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [],
+        looperMissions: [
+          { repo: 'sample_faqs', epic: 'faq-sync', mission: 'M1', status: 'IN_PROGRESS', iteration: 1, maxIterations: 5 }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('• [M1]');
+      expect(out).toContain('IN_PROGRESS Iteration 1/5');
+      expect(out).not.toContain('sample_faqs - faq-sync/M1');
+    });
+
+    it('formats failed and blocked missions with reason suffix in tree and standalone', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        looperEpics: [
+          { repo: 'my-epic', epic: 'my-epic', total: 2, done: 0 }
+        ],
+        looperMissions: [
+          { repo: 'my-epic', epic: 'my-epic', mission: 'M1', status: 'FAILED', reason: 'npm test failed' },
+          { repo: 'other-repo', epic: 'other-epic', mission: 'M2', status: 'BLOCKED', reason: 'deps missing' }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('🎯 Epic:');
+      expect(out).toContain('my-epic');
+      expect(out).toContain('↳ [M1]');
+      expect(out).toContain('FAILED - npm test failed');
+      expect(out).toContain('• [M2]');
+      expect(out).toContain('BLOCKED - deps missing');
+    });
+  });
 });
+
 
 

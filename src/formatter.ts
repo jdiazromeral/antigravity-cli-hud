@@ -21,6 +21,12 @@ const colors = {
 // Custom overrides can be placed in ~/.gemini/hud_config.json
 // Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'tool', 'transcript'
 // ============================================================================
+export interface CustomBlockConfig {
+  title?: string;
+  command: string;
+  intervalMs?: number;
+}
+
 export interface HudBudgetConfig {
   maxSteps?: number;
   maxContextTokens?: number;
@@ -43,6 +49,7 @@ export interface HudConfig {
   budget?: HudBudgetConfig;
   breakpoints?: HudBreakpointsConfig;
   layouts?: HudLayoutsConfig;
+  customBlocks?: Record<string, CustomBlockConfig>;
 }
 
 export const DEFAULT_HUD_CONFIG: {
@@ -50,6 +57,7 @@ export const DEFAULT_HUD_CONFIG: {
   budget: { maxSteps: number; maxContextTokens?: number };
   breakpoints: { large: number; medium: number; small: number };
   layouts: { large: string[][]; medium: string[][]; small: string[][] };
+  customBlocks?: Record<string, CustomBlockConfig>;
 } = {
   // Whether to dynamically hide 'tasks' and 'subagents' blocks from the UI when their count is 0
   autoHideEmptyBlocks: true,
@@ -96,7 +104,8 @@ export const DEFAULT_HUD_CONFIG: {
       ['git'],
       ['transcript']
     ]
-  }
+  },
+  customBlocks: {}
 };
 
 export const HUD_CONFIG = DEFAULT_HUD_CONFIG;
@@ -107,6 +116,12 @@ export function loadHudConfig(customPath?: string): typeof DEFAULT_HUD_CONFIG {
     if (fs.existsSync(configPath)) {
       const raw = fs.readFileSync(configPath, 'utf-8');
       const userConfig = JSON.parse(raw);
+      const userCustomBlocks: Record<string, CustomBlockConfig> = { ...(userConfig.customBlocks || {}) };
+      for (const [k, v] of Object.entries(userConfig)) {
+        if (v && typeof v === 'object' && !Array.isArray(v) && typeof (v as any).command === 'string' && k !== 'customBlocks' && k !== 'budget' && k !== 'breakpoints' && k !== 'layouts') {
+          userCustomBlocks[k] = v as CustomBlockConfig;
+        }
+      }
       return {
         ...DEFAULT_HUD_CONFIG,
         ...userConfig,
@@ -122,7 +137,8 @@ export function loadHudConfig(customPath?: string): typeof DEFAULT_HUD_CONFIG {
           large: userConfig.layouts?.large || DEFAULT_HUD_CONFIG.layouts.large.map(r => [...r]),
           medium: userConfig.layouts?.medium || DEFAULT_HUD_CONFIG.layouts.medium.map(r => [...r]),
           small: userConfig.layouts?.small || DEFAULT_HUD_CONFIG.layouts.small.map(r => [...r]),
-        }
+        },
+        customBlocks: userCustomBlocks
       };
     }
   } catch {
@@ -137,7 +153,8 @@ export function loadHudConfig(customPath?: string): typeof DEFAULT_HUD_CONFIG {
       large: DEFAULT_HUD_CONFIG.layouts.large.map(r => [...r]),
       medium: DEFAULT_HUD_CONFIG.layouts.medium.map(r => [...r]),
       small: DEFAULT_HUD_CONFIG.layouts.small.map(r => [...r]),
-    }
+    },
+    customBlocks: {}
   };
 }
 
@@ -158,6 +175,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
       large: configOverride.layouts?.large || DEFAULT_HUD_CONFIG.layouts.large.map(r => [...r]),
       medium: configOverride.layouts?.medium || DEFAULT_HUD_CONFIG.layouts.medium.map(r => [...r]),
       small: configOverride.layouts?.small || DEFAULT_HUD_CONFIG.layouts.small.map(r => [...r]),
+    },
+    customBlocks: {
+      ...(DEFAULT_HUD_CONFIG.customBlocks || {}),
+      ...(configOverride.customBlocks || {})
     }
   } : loadHudConfig();
 
@@ -301,13 +322,69 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     credits: metrics.credits !== undefined ? `\uF155 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
+    apiKey: metrics.isApiKey ? `${colors.yellow}🔑 [API Key]${colors.reset}` : '',
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
-    tool: metrics.activeTool ? `🛠️  ${colors.cyan}${metrics.activeTool.name}${metrics.activeTool.summary ? ` (${metrics.activeTool.summary})` : ''}${colors.reset}` : '',
+    tool: (() => {
+      if (!metrics.activeTool) return '';
+      const isNarrow = termWidth <= 75;
+      const toolName = metrics.activeTool.name;
+      let summary = metrics.activeTool.summary;
+      if (summary) {
+        const maxSummaryLen = isNarrow ? 30 : 60;
+        if (summary.length > maxSummaryLen) {
+          summary = summary.substring(0, maxSummaryLen - 3) + '...';
+        }
+      }
+      const summaryPart = summary ? ` (${summary})` : '';
+      let statusBadge = '';
+      if (metrics.activeTool.status) {
+        const st = metrics.activeTool.status.toLowerCase();
+        if (st === 'failed' || st === 'error') {
+          statusBadge = ` ${colors.red}[${metrics.activeTool.status}]${colors.reset}${colors.cyan}`;
+        } else if (st === 'killed' || st === 'cancelled' || st === 'canceling') {
+          statusBadge = ` ${colors.yellow}[${metrics.activeTool.status}]${colors.reset}${colors.cyan}`;
+        }
+      }
+      return `🛠️  ${colors.cyan}${toolName}${statusBadge}${summaryPart}${colors.reset}`;
+    })(),
     version: `📦 v${metrics.version}`,
     email: `📧 ${colors.dim}${metrics.email}${colors.reset}`,
-    plan: metrics.planTier.startsWith('GE-') || metrics.planTier.includes('Enterprise') ? `🏢 ${metrics.planTier}` : `💎 ${metrics.planTier}`,
+    plan: (metrics.isApiKey || (metrics.planTier && metrics.planTier.toLowerCase().includes('api')))
+      ? `${colors.yellow}🔑 [API Key]${colors.reset}`
+      : (metrics.planTier.startsWith('GE-') || metrics.planTier.includes('Enterprise') ? `🏢 ${metrics.planTier}` : `💎 ${metrics.planTier}`),
     transcript: metrics.transcriptPath ? `📜 tail -f ${metrics.transcriptPath.replace(os.homedir(), '~')}` : ''
   };
+
+  if (hudConfig.customBlocks) {
+    for (const [key, blockConf] of Object.entries(hudConfig.customBlocks)) {
+      let val = metrics.customBlocks?.[key];
+      if (val === undefined) {
+        const cacheFile = path.join(os.homedir(), '.gemini', `hud_custom_${key}.cache`);
+        if (fs.existsSync(cacheFile)) {
+          try {
+            val = fs.readFileSync(cacheFile, 'utf8').trim();
+          } catch (e) {}
+        }
+      }
+      if (val) {
+        const title = blockConf?.title;
+        blocks[key] = title ? `${title}: ${colors.cyan}${val}${colors.reset}` : `${colors.cyan}${val}${colors.reset}`;
+      } else {
+        blocks[key] = '';
+      }
+    }
+  }
+  if (metrics.customBlocks) {
+    for (const [key, val] of Object.entries(metrics.customBlocks)) {
+      if (!blocks[key]) {
+        if (val) {
+          blocks[key] = `${colors.cyan}${val}${colors.reset}`;
+        } else {
+          blocks[key] = '';
+        }
+      }
+    }
+  }
 
   // Generalized pre-calculator for stacked blocks
   const calculateStackedChunks = (items: string[], maxVisible: number) => {
@@ -377,25 +454,49 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
   const chunkedArtifacts = calculateStackedChunks(artStrs, 5);
 
   const looperStrs: string[] = [];
+  const processedMissions = new Set<typeof metrics.looperMissions extends (infer U)[] | undefined ? U : never>();
+
   if (metrics.looperEpics) {
     for (const e of metrics.looperEpics) {
       const pColor = e.done === e.total ? colors.green : colors.yellow;
       const epicPct = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
       const epicBar = renderMicroBar(epicPct, pColor, 5);
-      looperStrs.push(`🎯 ${colors.dim}${e.repo} -${colors.reset} Epic: ${colors.bold}${e.epic}${colors.reset} ${epicBar} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
+      const epicHeader = e.repo === e.epic
+        ? `🎯 Epic: ${colors.bold}${e.epic}${colors.reset}`
+        : `🎯 [${e.repo}] ${colors.bold}${e.epic}${colors.reset}`;
+      looperStrs.push(`${epicHeader} ${epicBar} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
+
+      // Nest matching active missions under this epic
+      const matchingMissions = (metrics.looperMissions || []).filter(m => m.epic === e.epic);
+      for (const m of matchingMissions) {
+        processedMissions.add(m);
+        const statusColor = m.status === 'IN_PROGRESS' ? colors.cyan : (m.status === 'FAILED' || m.status === 'BLOCKED' ? colors.red : colors.green);
+        
+        let suffix = '';
+        if (m.iteration && m.maxIterations && (m.status === 'IN_PROGRESS' || m.status === 'PENDING')) {
+          suffix = ` Iteration ${m.iteration}/${m.maxIterations}`;
+        } else if (m.reason && (m.status === 'FAILED' || m.status === 'BLOCKED')) {
+          suffix = ` - ${m.reason}`;
+        }
+
+        looperStrs.push(`   ↳ [${m.mission}] [${statusColor}${m.status}${suffix}${colors.reset}]`);
+      }
     }
   }
+
   for (const m of (metrics.looperMissions || [])) {
-    const statusColor = m.status === 'IN_PROGRESS' ? colors.cyan : (m.status === 'FAILED' || m.status === 'BLOCKED' ? colors.red : colors.green);
-    
-    let suffix = '';
-    if (m.iteration && m.maxIterations && (m.status === 'IN_PROGRESS' || m.status === 'PENDING')) {
-      suffix = ` Iteration ${m.iteration}/${m.maxIterations}`;
-    } else if (m.reason && (m.status === 'FAILED' || m.status === 'BLOCKED')) {
-      suffix = ` - ${m.reason}`;
+    if (!processedMissions.has(m)) {
+      const statusColor = m.status === 'IN_PROGRESS' ? colors.cyan : (m.status === 'FAILED' || m.status === 'BLOCKED' ? colors.red : colors.green);
+      
+      let suffix = '';
+      if (m.iteration && m.maxIterations && (m.status === 'IN_PROGRESS' || m.status === 'PENDING')) {
+        suffix = ` Iteration ${m.iteration}/${m.maxIterations}`;
+      } else if (m.reason && (m.status === 'FAILED' || m.status === 'BLOCKED')) {
+        suffix = ` - ${m.reason}`;
+      }
+      
+      looperStrs.push(`• [${m.mission}] [${statusColor}${m.status}${suffix}${colors.reset}]`);
     }
-    
-    looperStrs.push(`• ${colors.dim}${m.repo} -${colors.reset} ${colors.bold}${m.epic}/${m.mission}${colors.reset} [${statusColor}${m.status}${suffix}${colors.reset}]`);
   }
   const chunkedLooper = calculateStackedChunks(looperStrs, 5);
 
@@ -433,6 +534,26 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     });
   }
 
+  // Handle API Key mode omitting quotas and rendering [API Key] badge
+  if (metrics.isApiKey) {
+    const layoutHasPlan = activeLayout.some(row => row.includes('plan'));
+    activeLayout = activeLayout.map(row => {
+      const newRow: string[] = [];
+      for (const k of row) {
+        if (k === '5h') {
+          if (!layoutHasPlan) {
+            newRow.push('apiKey');
+          }
+        } else if (k === 'weekly') {
+          // Hide weekly when in API Key mode
+        } else {
+          newRow.push(k);
+        }
+      }
+      return newRow;
+    });
+  }
+
   // Dynamic Culling: Hide tasks and subagents when they are inactive to prevent clutter
   if (hudConfig.autoHideEmptyBlocks) {
     if (metrics.taskCount === 0) {
@@ -462,6 +583,29 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     if (!metrics.transcriptPath) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'transcript'));
     }
+    if (!metrics.isApiKey) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'apiKey'));
+    }
+    if (hudConfig.customBlocks) {
+      for (const customKey of Object.keys(hudConfig.customBlocks)) {
+        if (!blocks[customKey]) {
+          activeLayout = activeLayout.map(row => row.filter(k => k !== customKey));
+        }
+      }
+    }
+    if (metrics.customBlocks) {
+      for (const customKey of Object.keys(metrics.customBlocks)) {
+        if (!blocks[customKey]) {
+          activeLayout = activeLayout.map(row => row.filter(k => k !== customKey));
+        }
+      }
+    }
+    activeLayout = activeLayout.map(row => row.filter(k => {
+      if (k.startsWith('custom_') || (hudConfig.customBlocks && hudConfig.customBlocks[k])) {
+        return !!blocks[k];
+      }
+      return true;
+    }));
   }
 
   // Clean up any rows that became entirely empty
