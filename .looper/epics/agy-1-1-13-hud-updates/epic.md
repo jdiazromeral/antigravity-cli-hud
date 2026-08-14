@@ -6,7 +6,7 @@ Integrate the new telemetry and engine capabilities from `agy` 1.1.13 into `anti
 - **Purpose**: Add robust parsing and formatting for direct `GEMINI_API_KEY` setups (where standard quota objects are absent) in `src/parser.ts` and `src/formatter.ts`, rendering an `[API Key]` badge and avoiding broken 0% quota bars.
 - **Dependencies**: None
 - **Validator**: `npm run lint && npm test`
-- **Status**: IN_PROGRESS
+- **Status**: DONE
 
 ## [M2] In-Flight Tool Summary Streaming
 - **Purpose**: Enhance `ActiveToolInfo` formatting in `src/formatter.ts` to cleanly display live tool summaries and progressive queries (e.g. streaming web searches and task lifecycle actions introduced in 1.1.13).
