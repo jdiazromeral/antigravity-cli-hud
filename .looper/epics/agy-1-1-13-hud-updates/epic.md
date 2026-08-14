@@ -25,3 +25,9 @@ Integrate the new telemetry and engine capabilities from `agy` 1.1.13 into `anti
 - **Dependencies**: [M3]
 - **Validator**: `npm run lint && npm test && npm run build`
 - **Status**: PENDING
+
+## [M5] Ultra-Fast Incremental Step Counter
+- **Purpose**: Fix step counting in `src/parser.ts` by using a stat-cached incremental counter on `transcript_path` when `step_count` is absent in telemetry payload, upholding Rule 8 (<2ms render path budget).
+- **Dependencies**: [M4]
+- **Validator**: `npm run lint && npm test && npm run build`
+- **Status**: PENDING
