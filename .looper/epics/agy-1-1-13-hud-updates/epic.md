@@ -19,3 +19,9 @@ Integrate the new telemetry and engine capabilities from `agy` 1.1.13 into `anti
 - **Dependencies**: [M2]
 - **Validator**: `npm run lint && npm test && npm run build`
 - **Status**: PENDING
+
+## [M4] Looper Block Hierarchy & De-duplication
+- **Purpose**: Refactor Looper block formatting in `src/formatter.ts` into a clean hierarchical tree (grouping active missions under their parent epic) and eliminating redundant repository/epic name echoes.
+- **Dependencies**: [M3]
+- **Validator**: `npm run lint && npm test && npm run build`
+- **Status**: PENDING
