@@ -123,7 +123,117 @@ describe('parseStream', () => {
     expect(result.activeTool).toEqual({
       name: 'run_command',
       summary: 'git status',
-      status: 'running'
+      status: 'running',
+      query: undefined,
+      action: undefined
+    });
+  });
+
+  it('should parse progressive search_web query when query field is present', async () => {
+    const payload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'search_web', query: 'vitest mock os.homedir', status: 'running' }
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.activeTool).toEqual({
+      name: 'search_web',
+      summary: 'vitest mock os.homedir',
+      status: 'running',
+      query: 'vitest mock os.homedir',
+      action: undefined
+    });
+  });
+
+  it('should combine summary and query for search_web when both are present', async () => {
+    const payload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'search_web', summary: 'Searching the web', query: 'antigravity cli 1.1.13', status: 'running' }
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.activeTool).toEqual({
+      name: 'search_web',
+      summary: 'Searching the web: antigravity cli 1.1.13',
+      status: 'running',
+      query: 'antigravity cli 1.1.13',
+      action: undefined
+    });
+  });
+
+  it('should synthesize summaries for task actions (kill, status, list, send_input)', async () => {
+    const killPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', action: 'kill', taskId: 'task-123', status: 'running' }
+    };
+    let result = await parseStream(Readable.from([JSON.stringify(killPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Killed task task-123',
+      status: 'running',
+      query: undefined,
+      action: 'kill'
+    });
+
+    const checkPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', action: 'status', task_id: 'task-456', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(checkPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Checked task task-456',
+      status: 'running',
+      query: undefined,
+      action: 'status'
+    });
+
+    const listPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', action: 'list', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(listPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Listed tasks',
+      status: 'running',
+      query: undefined,
+      action: 'list'
+    });
+
+    const sendPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', action: 'send_input', taskId: 'task-789', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(sendPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Sent input to task task-789',
+      status: 'running',
+      query: undefined,
+      action: 'send_input'
+    });
+  });
+
+  it('should preserve explicit summary when present alongside action', async () => {
+    const payload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', summary: 'Killed task custom-999', action: 'kill', status: 'completed' }
+    };
+    const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Killed task custom-999',
+      status: 'completed',
+      query: undefined,
+      action: 'kill'
     });
   });
 

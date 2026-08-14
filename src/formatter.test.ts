@@ -461,6 +461,62 @@ describe('formatMetrics', () => {
       expect(out).toContain('[API Key]');
     });
   });
+
+  describe('activeTool formatting', () => {
+    it('formats activeTool with live summary and queries cleanly', () => {
+      const metrics = {
+        ...baseMetrics,
+        activeTool: { name: 'search_web', summary: 'vitest mock os.homedir', status: 'running' }
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('search_web (vitest mock os.homedir)');
+      expect(out).toContain('🛠️');
+    });
+
+    it('formats activeTool with failure or cancellation status badge', () => {
+      const failedMetrics = {
+        ...baseMetrics,
+        activeTool: { name: 'run_command', summary: 'npm test', status: 'failed' }
+      };
+      const failedOut = formatMetrics(failedMetrics);
+      expect(failedOut).toContain('run_command');
+      expect(failedOut).toContain('[failed]');
+
+      const killedMetrics = {
+        ...baseMetrics,
+        activeTool: { name: 'manage_task', summary: 'Killed task task-123', status: 'killed' }
+      };
+      const killedOut = formatMetrics(killedMetrics);
+      expect(killedOut).toContain('manage_task');
+      expect(killedOut).toContain('[killed]');
+    });
+
+    it('applies responsive truncation for long tool summaries on wide and narrow screens', () => {
+      const longQuery = 'Searching the web for the latest updates on Antigravity CLI 1.1.13 release notes and changes in TypeScript layout engine';
+      
+      // Wide terminal (>75 width) truncates at 60 chars
+      const wideMetrics = {
+        ...baseMetrics,
+        terminalWidth: 120,
+        activeTool: { name: 'search_web', summary: longQuery, status: 'running' }
+      };
+      const wideOut = formatMetrics(wideMetrics);
+      expect(wideOut).toContain('search_web');
+      expect(wideOut).toContain('Searching the web for the latest updates on Antigravity C...');
+      expect(wideOut).not.toContain(longQuery);
+
+      // Narrow terminal (<=75 width) truncates at 30 chars
+      const narrowMetrics = {
+        ...baseMetrics,
+        terminalWidth: 70,
+        activeTool: { name: 'search_web', summary: longQuery, status: 'running' }
+      };
+      const narrowOut = formatMetrics(narrowMetrics);
+      expect(narrowOut).toContain('search_web');
+      expect(narrowOut).toContain('Searching the web for lates...');
+      expect(narrowOut).not.toContain('Searching the web for the latest updates');
+    });
+  });
 });
 
 
