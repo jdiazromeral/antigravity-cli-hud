@@ -128,6 +128,10 @@ interface TranscriptCacheEntry {
 
 const transcriptStepCache = new Map<string, TranscriptCacheEntry>();
 
+function isSafeIdentifier(id: unknown): id is string {
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]+$/.test(id) && !id.includes('..') && !id.includes('/') && !id.includes('\\');
+}
+
 function countTranscriptSteps(filePath: string): number {
   try {
     const stat = fs.statSync(filePath);
@@ -139,9 +143,21 @@ function countTranscriptSteps(filePath: string): number {
       return cached.count;
     }
 
-    const content = fs.readFileSync(filePath, 'utf8');
-    // Count user turns specifically ("type":"USER_INPUT")
-    const userTurns = (content.match(/"type"\s*:\s*"USER_INPUT"/g) || []).length;
+    // Zero-disk DoS prevention: Cap memory read to 2MB on real-time render path
+    const MAX_READ_BYTES = 2 * 1024 * 1024;
+    let content = '';
+    if (stat.size > MAX_READ_BYTES) {
+      const fd = fs.openSync(filePath, 'r');
+      const buffer = Buffer.alloc(MAX_READ_BYTES);
+      fs.readSync(fd, buffer, 0, MAX_READ_BYTES, stat.size - MAX_READ_BYTES);
+      fs.closeSync(fd);
+      content = buffer.toString('utf8');
+    } else {
+      content = fs.readFileSync(filePath, 'utf8');
+    }
+
+    // Count user turns specifically ("type":"USER_INPUT" or "type":"USER_EXPLICIT")
+    const userTurns = (content.match(/"type"\s*:\s*"USER_(?:INPUT|EXPLICIT)"/g) || []).length;
 
     transcriptStepCache.set(filePath, {
       mtimeMs: stat.mtimeMs,
@@ -178,7 +194,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Missing required metrics in payload');
 
-  const conversationId = typeof parsed.conversation_id === 'string' ? parsed.conversation_id : (typeof parsed.session_id === 'string' ? parsed.session_id : undefined);
+  const rawConvId = typeof parsed.conversation_id === 'string' ? parsed.conversation_id : (typeof parsed.session_id === 'string' ? parsed.session_id : undefined);
+  const conversationId = isSafeIdentifier(rawConvId) ? rawConvId : undefined;
 
   const rawPlanTier = typeof parsed.plan_tier === 'string' ? parsed.plan_tier : '';
   const rawEmail = typeof parsed.email === 'string' ? parsed.email : '';
@@ -265,7 +282,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     return { percent, resetSeconds };
   };
 
-  const rawSessId = typeof parsed.session_id === 'string' ? parsed.session_id : (typeof parsed.conversation_id === 'string' ? parsed.conversation_id : '');
+  const rawSessId = isSafeIdentifier(parsed.session_id) ? parsed.session_id : (isSafeIdentifier(parsed.conversation_id) ? parsed.conversation_id : '');
   const sessName = rawSessId ? rawSessId.substring(0, 6) : 'Unknown';
   let modelName = (parsed.model && typeof parsed.model === 'object' && !Array.isArray(parsed.model) && typeof parsed.model.display_name === 'string') ? parsed.model.display_name : 'Unknown Model';
   if (modelName.length > 25) modelName = modelName.substring(0, 22) + '...';
@@ -738,6 +755,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       }
 
       for (const [blockKey, blockDef] of Object.entries(customBlocksConfig)) {
+        if (!isSafeIdentifier(blockKey)) continue;
         if (!blockDef || typeof blockDef !== 'object' || typeof blockDef.command !== 'string') continue;
         const cacheFile = path.join(os.homedir(), '.gemini', `hud_custom_${blockKey}.cache`);
         const metaFile = path.join(os.homedir(), '.gemini', `hud_custom_${blockKey}.meta`);
@@ -766,6 +784,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
             }
             fs.writeFileSync(metaFile, JSON.stringify({ timestamp: Date.now() }), { mode: 0o600 });
             const cacheTmp = `${cacheFile}.tmp`;
+            fs.writeFileSync(cacheTmp, '', { mode: 0o600 });
             const cmd = `(${blockDef.command}) > "${cacheTmp}" 2>/dev/null && mv "${cacheTmp}" "${cacheFile}"`;
             const subprocess = cp.spawn(cmd, {
               shell: true,
