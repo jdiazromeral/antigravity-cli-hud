@@ -932,6 +932,71 @@ describe('parseStream', () => {
         expect(result.artifacts).toContain('valid_artifact.md');
       });
     });
+
+    describe('Session Isolation for Looper & Git Telemetry', () => {
+      it('does not leak looper missions across different sessions sharing the same root cwd', async () => {
+        const rootWork = path.join(mockHome, 'workspace', 'work');
+        fs.mkdirSync(rootWork, { recursive: true });
+
+        // Simulate Session A writing a cached looper mission
+        const sessionA = 'session-alpha-111';
+        const sessionB = 'session-beta-222';
+
+        // Legacy/Session A cache file with authz-go mission
+        const legacyLooperCache = path.join(mockHome, '.gemini', 'hud_looper.cache');
+        fs.writeFileSync(legacyLooperCache, JSON.stringify({
+          cwd: rootWork,
+          conversationId: sessionA,
+          looperMissions: [{ repo: 'authz-go', epic: 'authz-go', mission: 'M4', status: 'PENDING' }],
+          timestamp: Date.now()
+        }), 'utf8');
+
+        // Session B runs at the same root cwd
+        const payloadB = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: sessionB,
+          cwd: rootWork
+        };
+
+        const resultB = await parseStream(Readable.from([JSON.stringify(payloadB)]));
+        expect(resultB.looperMissions).toEqual([]);
+        expect(resultB.activeSkills).not.toContain('looper');
+      });
+
+      it('restricts looper discovery at root cwd strictly to repos in session hud_context.json', async () => {
+        const rootWork = path.join(mockHome, 'workspace', 'work2');
+        const repoActive = path.join(rootWork, 'lab', 'active-app');
+        const repoUnrelated = path.join(rootWork, 'lab', 'unrelated-app');
+
+        // Create looper missions in both repos
+        const activeEpicDir = path.join(repoActive, '.looper', 'epics', 'active-epic');
+        fs.mkdirSync(activeEpicDir, { recursive: true });
+        fs.writeFileSync(path.join(activeEpicDir, 'M1_purpose.md'), 'status: IN_PROGRESS\nmax_iterations: 5\n', 'utf8');
+
+        const unrelatedEpicDir = path.join(repoUnrelated, '.looper', 'epics', 'unrelated-epic');
+        fs.mkdirSync(unrelatedEpicDir, { recursive: true });
+        fs.writeFileSync(path.join(unrelatedEpicDir, 'M9_purpose.md'), 'status: PENDING\nmax_iterations: 8\n', 'utf8');
+
+        const sessionId = 'session-gamma-333';
+        const brainDir = path.join(mockHome, '.gemini', 'antigravity-cli', 'brain', sessionId);
+        fs.mkdirSync(brainDir, { recursive: true });
+        fs.writeFileSync(path.join(brainDir, 'hud_context.json'), JSON.stringify(['lab/active-app']), 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: sessionId,
+          cwd: rootWork
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.looperMissions).toHaveLength(1);
+        expect(result.looperMissions?.[0].repo).toBe('active-app');
+        expect(result.looperMissions?.[0].mission).toBe('M1');
+        expect(result.activeSkills).toContain('looper');
+      });
+    });
   });
 });
 
