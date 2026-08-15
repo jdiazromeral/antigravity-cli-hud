@@ -854,6 +854,83 @@ describe('parseStream', () => {
         const result = await parseStream(Readable.from([JSON.stringify(payload)]));
         expect(result.customBlocks).toEqual({});
       });
+
+      it('ignores custom blocks with invalid or unsafe block keys', async () => {
+        const customConfig = {
+          customBlocks: {
+            'safe_block': { command: 'echo safe' },
+            '../traversal': { command: 'echo bad' },
+            'inject;rm -rf': { command: 'echo bad' },
+            'inject"quote': { command: 'echo bad' },
+            'with spaces': { command: 'echo bad' }
+          }
+        };
+        fs.writeFileSync(configFile, JSON.stringify(customConfig), 'utf8');
+
+        const cacheSafe = path.join(mockHome, '.gemini', 'hud_custom_safe_block.cache');
+        const metaSafe = path.join(mockHome, '.gemini', 'hud_custom_safe_block.meta');
+        fs.writeFileSync(cacheSafe, 'safe value', 'utf8');
+        fs.writeFileSync(metaSafe, JSON.stringify({ timestamp: Date.now() }), 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.customBlocks).toBeDefined();
+        expect(result.customBlocks?.['safe_block']).toBe('safe value');
+        expect(result.customBlocks?.['../traversal']).toBeUndefined();
+        expect(result.customBlocks?.['inject;rm -rf']).toBeUndefined();
+        expect(result.customBlocks?.['inject"quote']).toBeUndefined();
+        expect(result.customBlocks?.['with spaces']).toBeUndefined();
+      });
+    });
+
+    describe('Security Hardening & Path Traversal Protections', () => {
+      it('rejects path traversal in conversation_id for artifact lookup', async () => {
+        const externalDir = path.join(mockHome, 'external-secret-dir');
+        fs.mkdirSync(externalDir, { recursive: true });
+        fs.writeFileSync(path.join(externalDir, 'secret_artifact.md'), 'secret');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: '../../external-secret-dir'
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.artifacts).toEqual([]);
+        expect(result.conversationId).toBeUndefined();
+      });
+
+      it('rejects path traversal in session_id for context file loading', async () => {
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          session_id: '../../../etc/passwd'
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.conversationId).toBeUndefined();
+        expect(result.sessionName).toBe('Unknown');
+      });
+
+      it('allows valid safe conversation IDs', async () => {
+        const validId = '9630c763-fda0-4f71-aa15-dcd5ef14c4d3';
+        const brainDir = path.join(mockHome, '.gemini', 'antigravity-cli', 'brain', validId);
+        fs.mkdirSync(brainDir, { recursive: true });
+        fs.writeFileSync(path.join(brainDir, 'valid_artifact.md'), 'valid');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: validId
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.conversationId).toBe(validId);
+        expect(result.artifacts).toContain('valid_artifact.md');
+      });
     });
   });
 });

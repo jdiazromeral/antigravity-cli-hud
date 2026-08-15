@@ -29,4 +29,25 @@ describe('sync_installed_plugin script', () => {
     expect(fs.existsSync(path.join(tmpDir, 'package.json'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, 'plugin.json'))).toBe(true);
   });
+
+  it('should not dereference symlinks during sync to prevent external file copy', async () => {
+    const syncSourceDir = path.join(tmpDir, 'source');
+    const syncTargetDir = path.join(tmpDir, 'target');
+    const outsideSecret = path.join(tmpDir, 'secret.txt');
+
+    fs.mkdirSync(syncSourceDir, { recursive: true });
+    fs.writeFileSync(outsideSecret, 'SUPER_SECRET_CONTENT', 'utf-8');
+
+    // Create a symlink inside source pointing to the outside secret
+    fs.symlinkSync(outsideSecret, path.join(syncSourceDir, 'linked_secret.txt'));
+    fs.writeFileSync(path.join(syncSourceDir, 'package.json'), '{}');
+
+    const { syncPlugin } = await import('../scripts/sync_installed_plugin.js');
+    syncPlugin(syncSourceDir, syncTargetDir);
+
+    const targetLinkPath = path.join(syncTargetDir, 'linked_secret.txt');
+    expect(fs.existsSync(targetLinkPath)).toBe(true);
+    const lstat = fs.lstatSync(targetLinkPath);
+    expect(lstat.isSymbolicLink()).toBe(true);
+  });
 });
