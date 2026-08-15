@@ -31,7 +31,7 @@ export function syncPlugin(sourceDir = getSourceDir(), targetDir = getTargetDir(
     }
     const srcPath = path.join(sourceDir, entry);
     const destPath = path.join(targetDir, entry);
-    fs.cpSync(srcPath, destPath, { recursive: true, force: true, dereference: true });
+    fs.cpSync(srcPath, destPath, { recursive: true, force: true, dereference: false });
   }
 }
 
@@ -41,18 +41,28 @@ export function verifySync(sourceDir = getSourceDir(), targetDir = getTargetDir(
   }
 
   function compareRecursive(src, dest) {
-    const stat = fs.statSync(src);
-    if (!fs.existsSync(dest)) {
+    const lstat = fs.lstatSync(src);
+    if (!fs.existsSync(dest) && !fs.lstatSync(dest, { throwIfNoEntry: false })) {
       throw new Error(`Missing expected synced file/directory: ${dest}`);
     }
 
-    if (stat.isDirectory()) {
+    if (lstat.isSymbolicLink()) {
+      const destLstat = fs.lstatSync(dest);
+      if (!destLstat.isSymbolicLink()) {
+        throw new Error(`Expected symlink at ${dest}`);
+      }
+      const srcTarget = fs.readlinkSync(src);
+      const destTarget = fs.readlinkSync(dest);
+      if (srcTarget !== destTarget) {
+        throw new Error(`Symlink destination mismatch: ${dest}`);
+      }
+    } else if (lstat.isDirectory()) {
       const children = fs.readdirSync(src);
       for (const child of children) {
         if (EXCLUDE_LIST.has(child)) continue;
         compareRecursive(path.join(src, child), path.join(dest, child));
       }
-    } else if (stat.isFile()) {
+    } else if (lstat.isFile()) {
       const srcBuf = fs.readFileSync(src);
       const destBuf = fs.readFileSync(dest);
       if (!srcBuf.equals(destBuf)) {
