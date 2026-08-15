@@ -332,7 +332,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       const b = vcsObj.dirty ? `${vcsObj.branch}*` : vcsObj.branch;
       gitBranches.push({ name: path.basename(cwd), branch: b });
     } else {
-      const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
+      const sessionSuffix = conversationId ? `_${conversationId}` : '';
+      const gitCacheFile = path.join(os.homedir(), '.gemini', `hud_git${sessionSuffix}.cache`);
       let useCache = false;
 
     let previousCacheBranches: {name: string, branch: string}[] | null = null;
@@ -357,8 +358,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         const cacheRaw = fs.readFileSync(gitCacheFile, 'utf8');
         const cacheData = JSON.parse(cacheRaw);
         previousCacheBranches = cacheData.gitBranches || [];
-        // Use cache if it's less than 5 seconds old and cwd matches
-        if (cacheData.cwd === parsed.cwd && (Date.now() - cacheData.timestamp) < 5000) {
+        // Use cache if it's less than 5 seconds old, cwd matches, and session matches
+        if (cacheData.cwd === parsed.cwd && (!conversationId || cacheData.conversationId === conversationId) && (Date.now() - cacheData.timestamp) < 5000) {
           gitBranches = previousCacheBranches || [];
           useCache = true;
         }
@@ -399,6 +400,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       try {
         fs.writeFileSync(gitCacheFile, JSON.stringify({
           cwd: parsed.cwd,
+          conversationId,
           gitBranches,
           timestamp: Date.now()
         }), { mode: 0o600 });
@@ -410,7 +412,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   let looperMissions: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[] = [];
   let looperEpics: {repo: string, epic: string, total: number, done: number}[] = [];
   if (cwd) {
-    const looperCacheFile = path.join(os.homedir(), '.gemini', 'hud_looper.cache');
+    const sessionSuffix = conversationId ? `_${conversationId}` : '';
+    const looperCacheFile = path.join(os.homedir(), '.gemini', `hud_looper${sessionSuffix}.cache`);
     let useLooperCache = false;
     let prevLooperCache: any[] | null = null;
     let prevEpicsCache: any[] | null = null;
@@ -420,7 +423,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         const cData = JSON.parse(cRaw);
         prevLooperCache = cData.looperMissions || [];
         prevEpicsCache = cData.looperEpics || [];
-        if (cData.cwd === cwd && (Date.now() - cData.timestamp) < 5000) {
+        if (cData.cwd === cwd && (!conversationId || cData.conversationId === conversationId) && (Date.now() - cData.timestamp) < 5000) {
           looperMissions = prevLooperCache || [];
           looperEpics = prevEpicsCache || [];
           useLooperCache = true;
@@ -432,29 +435,23 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       try {
         const repoRoots: string[] = [];
         const targetDir = parsed.cwd;
-        try {
-          const root = cp.execSync('git rev-parse --show-toplevel', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
-          if (root) repoRoots.push(root);
-        } catch(e) {}
 
-        let currentDir = targetDir;
-        while (currentDir && currentDir !== '/') {
-           if (fs.existsSync(path.join(currentDir, '.looper'))) {
-              if (!repoRoots.includes(currentDir)) repoRoots.push(currentDir);
-              break;
-           }
-           const parent = path.dirname(currentDir);
-           if (parent === currentDir) break;
-           currentDir = parent;
-        }
-        
         if (activeWorkspaceRepos.length > 0) {
            for (const p of activeWorkspaceRepos) {
               if (!repoRoots.includes(p)) repoRoots.push(p);
            }
+        } else {
+          try {
+            const root = cp.execSync('git rev-parse --show-toplevel', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
+            if (root && fs.existsSync(path.join(root, '.looper'))) {
+              repoRoots.push(root);
+            }
+          } catch(e) {}
+
+          if (repoRoots.length === 0 && fs.existsSync(path.join(targetDir, '.looper'))) {
+            repoRoots.push(targetDir);
+          }
         }
-        
-        if (repoRoots.length === 0) repoRoots.push(targetDir);
 
         for (const r of repoRoots) {
           const repoName = path.basename(r);
@@ -545,6 +542,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       try {
         fs.writeFileSync(looperCacheFile, JSON.stringify({
           cwd: parsed.cwd,
+          conversationId,
           looperMissions,
           looperEpics,
           timestamp: Date.now()
