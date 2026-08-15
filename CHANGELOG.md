@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.1] - 2026-08-15
+
+### Security & Privacy Hardening
+- **Identifier Validation & Path Traversal Protections:** Added strict alphanumeric validation (`isSafeIdentifier`) on `conversation_id`, `session_id`, and `blockKey` to prevent directory traversal outside `~/.gemini/antigravity-cli/brain/`.
+- **Restricted Custom Block Permissions:** Pre-creates temporary cache files with `0o600` (user-only read/write) permissions, preventing sensitive command outputs from leaking via permissive shell umask redirection.
+- **Zero-Disk DoS Prevention:** Enforces a 2MB maximum read ceiling (`MAX_READ_BYTES`) in `countTranscriptSteps` to eliminate Node event-loop blocking and memory allocation crashes during real-time rendering on multi-megabyte agent logs.
+- **Precise Flag Detection:** Replaced naive substring matching in `hooks/status-line.sh` with word-bounded regex (`(^|[[:space:]])--dangerously-skip-permissions([[:space:]]|$)`) to prevent false-positive Danger Mode display when the flag name appears in prompts or arguments.
+- **Symlink Containment:** Disabled link dereferencing (`dereference: false`) in `scripts/sync_installed_plugin.js` to prevent accidental copying of external files.
+
+### Fixed
+- **Session-Scoped Caching & Context Isolation:** Scoped `hud_looper.cache` and `hud_git.cache` per session (`hud_looper_${conversationId}.cache`), preventing telemetry from leaking across concurrent or past sessions sharing the same root workspace `cwd`.
+- **Strict Repository Discovery:** Restricts Looper mission and epic discovery at root `cwd` strictly to repositories declared in the active session's `hud_context.json`.
+
+---
+
 ## [1.3.0] - 2026-08-14
 
 ### Added

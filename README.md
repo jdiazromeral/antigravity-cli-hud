@@ -37,6 +37,8 @@ This plugin was engineered with strict defensive paradigms and advanced layout a
 
 - **Declarative Custom Executable Blocks Engine**: Execute any external script or command directly from `~/.gemini/hud_config.json` with asynchronous background caching (<2ms render loop budget).
 - **Dynamic Matrix Engine**: Features a fully configurable JSON-driven grid system. You can freely re-arrange metrics (like Model, Workspace, Context, Quotas, and Custom Blocks) into any row or order based on terminal width. See [LAYOUT_ENGINE.md](LAYOUT_ENGINE.md) for full configuration specs.
+- **Session Context Isolation & Memory Scoping**: Completely isolates Looper missions and git telemetry per conversation ID (`~/.gemini/hud_looper_${conversationId}.cache`). When operating in a root multi-repo container, discovery is strictly bounded to the active session's `hud_context.json`.
+- **Security & Privacy Hardening**: Enforces identifier sanitization against path traversal, restricts custom block caches to `0o600` permissions, protects against symlink traversal, and caps synchronous transcript parsing to 2MB to prevent DoS latency.
 - **Incremental Stat-Cached Step Counter**: Instantaneous, stat-cached (`mtimeMs` <0.02ms) step counter on `transcript_path` maintaining live turn tracking even when telemetry omits step fields.
 - **Looper Hierarchical Tree**: Groups autonomous Looper missions hierarchically under their parent epic, eliminating redundant repository and epic echoes.
 - **Hysteresis Filtering & Strict Padding**: Mathematically absorbs micro-fluctuations in UI layout padding. By combining a 5-column hysteresis cache with strict 7-character string padding, it completely eliminates both horizontal and vertical UI bouncing during rapid state transitions.
