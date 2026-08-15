@@ -140,15 +140,15 @@ function countTranscriptSteps(filePath: string): number {
     }
 
     const content = fs.readFileSync(filePath, 'utf8');
-    const lines = content.split('\n').filter((line: string) => line.trim().length > 0);
-    const count = lines.length;
+    // Count user turns specifically ("type":"USER_INPUT")
+    const userTurns = (content.match(/"type"\s*:\s*"USER_INPUT"/g) || []).length;
 
     transcriptStepCache.set(filePath, {
       mtimeMs: stat.mtimeMs,
-      count
+      count: userTurns
     });
 
-    return count;
+    return userTurns;
   } catch (e) {
     return 0;
   }
