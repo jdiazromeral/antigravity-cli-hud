@@ -470,9 +470,17 @@ describe('parseStream', () => {
       fs.unlinkSync(tmpTranscript);
     });
 
-    it('should compute stepCount from transcript_path when step_count and step_index are absent', async () => {
+    it('should compute stepCount as user turns (USER_INPUT / USER_EXPLICIT) from transcript_path', async () => {
       const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}-count.jsonl`);
-      fs.writeFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"PLANNER_RESPONSE"}\n{"type":"USER_INPUT"}\n');
+      // 2 user turns with multiple tool and planner events
+      fs.writeFileSync(tmpTranscript, [
+        '{"type":"USER_INPUT","source":"USER_EXPLICIT"}',
+        '{"type":"PLANNER_RESPONSE","source":"MODEL"}',
+        '{"type":"RUN_COMMAND","source":"MODEL"}',
+        '{"type":"TOOL_RESULT","source":"SYSTEM"}',
+        '{"type":"USER_INPUT","source":"USER_EXPLICIT"}',
+        '{"type":"PLANNER_RESPONSE","source":"MODEL"}'
+      ].join('\n') + '\n');
 
       const payload = {
         agent_state: 'Working',
@@ -482,7 +490,8 @@ describe('parseStream', () => {
       const stream = Readable.from([JSON.stringify(payload)]);
       const result = await parseStream(stream);
 
-      expect(result.stepCount).toBe(3);
+      // Should be 2 user turns, NOT 6 raw lines
+      expect(result.stepCount).toBe(2);
       fs.unlinkSync(tmpTranscript);
     });
 
@@ -497,20 +506,19 @@ describe('parseStream', () => {
       };
 
       const result1 = await parseStream(Readable.from([JSON.stringify(payload)]));
-      expect(result1.stepCount).toBe(2);
+      expect(result1.stepCount).toBe(1);
 
       // Verify cached result returns the same value
       const result2 = await parseStream(Readable.from([JSON.stringify(payload)]));
-      expect(result2.stepCount).toBe(2);
+      expect(result2.stepCount).toBe(1);
 
-      // Update file with new mtime and more steps
-      // Wait slightly or update utimes to ensure mtime changes
+      // Update file with new mtime and more user turns
       const futureTime = new Date(Date.now() + 2000);
       fs.appendFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"PLANNER_RESPONSE"}\n');
       fs.utimesSync(tmpTranscript, futureTime, futureTime);
 
       const result3 = await parseStream(Readable.from([JSON.stringify(payload)]));
-      expect(result3.stepCount).toBe(4);
+      expect(result3.stepCount).toBe(2);
 
       fs.unlinkSync(tmpTranscript);
     });
