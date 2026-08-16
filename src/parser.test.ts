@@ -90,7 +90,9 @@ describe('parseStream', () => {
       effort: 'high',
       agentName: 'MyCustomAgent',
       editorMode: 'I',
-      credits: 1250
+      credits: 1250,
+      isApiKey: false,
+      customBlocks: {}
     });
   });
 
@@ -122,7 +124,117 @@ describe('parseStream', () => {
     expect(result.activeTool).toEqual({
       name: 'run_command',
       summary: 'git status',
-      status: 'running'
+      status: 'running',
+      query: undefined,
+      action: undefined
+    });
+  });
+
+  it('should parse progressive search_web query when query field is present', async () => {
+    const payload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'search_web', query: 'vitest mock os.homedir', status: 'running' }
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.activeTool).toEqual({
+      name: 'search_web',
+      summary: 'vitest mock os.homedir',
+      status: 'running',
+      query: 'vitest mock os.homedir',
+      action: undefined
+    });
+  });
+
+  it('should combine summary and query for search_web when both are present', async () => {
+    const payload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'search_web', summary: 'Searching the web', query: 'antigravity cli 1.1.13', status: 'running' }
+    };
+    const stream = Readable.from([JSON.stringify(payload)]);
+    const result = await parseStream(stream);
+    expect(result.activeTool).toEqual({
+      name: 'search_web',
+      summary: 'Searching the web: antigravity cli 1.1.13',
+      status: 'running',
+      query: 'antigravity cli 1.1.13',
+      action: undefined
+    });
+  });
+
+  it('should synthesize summaries for task actions (kill, status, list, send_input)', async () => {
+    const killPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', action: 'kill', taskId: 'task-123', status: 'running' }
+    };
+    let result = await parseStream(Readable.from([JSON.stringify(killPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Killed task task-123',
+      status: 'running',
+      query: undefined,
+      action: 'kill'
+    });
+
+    const checkPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', action: 'status', task_id: 'task-456', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(checkPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Checked task task-456',
+      status: 'running',
+      query: undefined,
+      action: 'status'
+    });
+
+    const listPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', action: 'list', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(listPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Listed tasks',
+      status: 'running',
+      query: undefined,
+      action: 'list'
+    });
+
+    const sendPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', action: 'send_input', taskId: 'task-789', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(sendPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Sent input to task task-789',
+      status: 'running',
+      query: undefined,
+      action: 'send_input'
+    });
+  });
+
+  it('should preserve explicit summary when present alongside action', async () => {
+    const payload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', summary: 'Killed task custom-999', action: 'kill', status: 'completed' }
+    };
+    const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Killed task custom-999',
+      status: 'completed',
+      query: undefined,
+      action: 'kill'
     });
   });
 
@@ -218,6 +330,7 @@ describe('parseStream', () => {
     expect(result.agentName).toBe('TARS');
     expect(result.executionMode).toBe('request-review');
     expect(result.editorMode).toBeUndefined();
+    expect(result.isApiKey).toBe(true);
     process.env.AGENT_NAME = oldAgent;
     process.env.AGY_AGENT_NAME = oldAgyAgent;
   });
@@ -338,7 +451,7 @@ describe('parseStream', () => {
       expect(result.stepCount).toBe(0);
     });
 
-    it('should not read transcript file to compute stepCount', async () => {
+    it('should not read transcript file if step_count is present', async () => {
       const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}.jsonl`);
       fs.writeFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"USER_INPUT"}\n{"type":"USER_INPUT"}\n');
       
@@ -354,6 +467,91 @@ describe('parseStream', () => {
       // stepCount should be 1 (from payload), not 3 (from transcript user turns)
       expect(result.stepCount).toBe(1);
       
+      fs.unlinkSync(tmpTranscript);
+    });
+
+    it('should compute stepCount as user turns (USER_INPUT / USER_EXPLICIT) from transcript_path', async () => {
+      const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}-count.jsonl`);
+      // 2 user turns with multiple tool and planner events
+      fs.writeFileSync(tmpTranscript, [
+        '{"type":"USER_INPUT","source":"USER_EXPLICIT"}',
+        '{"type":"PLANNER_RESPONSE","source":"MODEL"}',
+        '{"type":"RUN_COMMAND","source":"MODEL"}',
+        '{"type":"TOOL_RESULT","source":"SYSTEM"}',
+        '{"type":"USER_INPUT","source":"USER_EXPLICIT"}',
+        '{"type":"PLANNER_RESPONSE","source":"MODEL"}'
+      ].join('\n') + '\n');
+
+      const payload = {
+        agent_state: 'Working',
+        editor_mode: "N", credits: undefined,
+        transcript_path: tmpTranscript
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      // Should be 2 user turns, NOT 6 raw lines
+      expect(result.stepCount).toBe(2);
+      fs.unlinkSync(tmpTranscript);
+    });
+
+    it('should cache stepCount based on mtime and recompute when mtime changes', async () => {
+      const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}-cache.jsonl`);
+      fs.writeFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"PLANNER_RESPONSE"}\n');
+
+      const payload = {
+        agent_state: 'Working',
+        editor_mode: "N", credits: undefined,
+        transcript_path: tmpTranscript
+      };
+
+      const result1 = await parseStream(Readable.from([JSON.stringify(payload)]));
+      expect(result1.stepCount).toBe(1);
+
+      // Verify cached result returns the same value
+      const result2 = await parseStream(Readable.from([JSON.stringify(payload)]));
+      expect(result2.stepCount).toBe(1);
+
+      // Update file with new mtime and more user turns
+      const futureTime = new Date(Date.now() + 2000);
+      fs.appendFileSync(tmpTranscript, '{"type":"USER_INPUT"}\n{"type":"PLANNER_RESPONSE"}\n');
+      fs.utimesSync(tmpTranscript, futureTime, futureTime);
+
+      const result3 = await parseStream(Readable.from([JSON.stringify(payload)]));
+      expect(result3.stepCount).toBe(2);
+
+      fs.unlinkSync(tmpTranscript);
+    });
+
+    it('should compute stepCount from resolved transcript path via conversationId when transcript_path is omitted', async () => {
+      const convId = `test-conv-${Date.now()}`;
+      const brainDir = path.join(mockHome, '.gemini', 'antigravity-cli', 'brain', convId, '.system_generated', 'logs');
+      fs.mkdirSync(brainDir, { recursive: true });
+      const transcriptFile = path.join(brainDir, 'transcript.jsonl');
+      fs.writeFileSync(transcriptFile, '{"type":"USER_INPUT"}\n{"type":"USER_INPUT"}\n');
+
+      const payload = {
+        agent_state: 'Working',
+        conversation_id: convId
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.stepCount).toBe(2);
+    });
+
+    it('should fallback to 0 when transcript file is empty or corrupted', async () => {
+      const tmpTranscript = path.join(os.tmpdir(), `test-transcript-${Date.now()}-empty.jsonl`);
+      fs.writeFileSync(tmpTranscript, '');
+
+      const payload = {
+        agent_state: 'Working',
+        transcript_path: tmpTranscript
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+
+      expect(result.stepCount).toBe(0);
       fs.unlinkSync(tmpTranscript);
     });
   });
@@ -533,6 +731,273 @@ describe('parseStream', () => {
       expect(result.isSandboxed).toBe(false);
       expect(result.gitBranches).toEqual([]);
     });
+
+    describe('API key mode parsing', () => {
+      it('should parse direct GEMINI_API_KEY payload when is_api_key or api_key_mode is true', async () => {
+        const payload1 = {
+          agent_state: 'Working',
+          is_api_key: true,
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res1 = await parseStream(Readable.from([JSON.stringify(payload1)]));
+        expect(res1.isApiKey).toBe(true);
+
+        const payload2 = {
+          agent_state: 'Working',
+          api_key_mode: true,
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res2 = await parseStream(Readable.from([JSON.stringify(payload2)]));
+        expect(res2.isApiKey).toBe(true);
+      });
+
+      it('should detect API key mode when plan_tier or email indicates API key', async () => {
+        const payload1 = {
+          agent_state: 'Working',
+          plan_tier: 'API Key',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res1 = await parseStream(Readable.from([JSON.stringify(payload1)]));
+        expect(res1.isApiKey).toBe(true);
+
+        const payload2 = {
+          agent_state: 'Working',
+          email: '<api-key>',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res2 = await parseStream(Readable.from([JSON.stringify(payload2)]));
+        expect(res2.isApiKey).toBe(true);
+
+        const payload3 = {
+          agent_state: 'Working',
+          email: 'api_key',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res3 = await parseStream(Readable.from([JSON.stringify(payload3)]));
+        expect(res3.isApiKey).toBe(true);
+      });
+
+      it('should detect API key mode when quota is absent or null', async () => {
+        const payload1 = {
+          agent_state: 'Working',
+          quota: null,
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res1 = await parseStream(Readable.from([JSON.stringify(payload1)]));
+        expect(res1.isApiKey).toBe(true);
+
+        const payload2 = {
+          agent_state: 'Working',
+          quota: {},
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const res2 = await parseStream(Readable.from([JSON.stringify(payload2)]));
+        expect(res2.isApiKey).toBe(true);
+      });
+
+      it('should not detect API key mode when standard quota is present', async () => {
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          quota: {
+            'gemini-5h': { remaining_fraction: 0.8, reset_in_seconds: 3600 }
+          }
+        };
+        const res = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(res.isApiKey).toBe(false);
+      });
+    });
+
+    describe('Custom Executable Blocks', () => {
+      const configDir = path.join(mockHome, '.gemini');
+      const configFile = path.join(configDir, 'hud_config.json');
+
+      beforeEach(() => {
+        if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+      });
+
+      afterEach(() => {
+        if (fs.existsSync(configFile)) fs.unlinkSync(configFile);
+      });
+
+      it('reads cached custom block outputs into ParsedMetrics', async () => {
+        const customConfig = {
+          customBlocks: {
+            custom_1: {
+              title: 'Project',
+              command: 'echo "lab/test (main)"',
+              intervalMs: 5000
+            }
+          }
+        };
+        fs.writeFileSync(configFile, JSON.stringify(customConfig), 'utf8');
+
+        const cacheFile = path.join(mockHome, '.gemini', 'hud_custom_custom_1.cache');
+        const metaFile = path.join(mockHome, '.gemini', 'hud_custom_custom_1.meta');
+        fs.writeFileSync(cacheFile, 'lab/test (main)', 'utf8');
+        fs.writeFileSync(metaFile, JSON.stringify({ timestamp: Date.now() }), 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.customBlocks).toBeDefined();
+        expect(result.customBlocks?.custom_1).toBe('lab/test (main)');
+      });
+
+      it('returns empty customBlocks when no custom blocks are configured', async () => {
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.customBlocks).toEqual({});
+      });
+
+      it('ignores custom blocks with invalid or unsafe block keys', async () => {
+        const customConfig = {
+          customBlocks: {
+            'safe_block': { command: 'echo safe' },
+            '../traversal': { command: 'echo bad' },
+            'inject;rm -rf': { command: 'echo bad' },
+            'inject"quote': { command: 'echo bad' },
+            'with spaces': { command: 'echo bad' }
+          }
+        };
+        fs.writeFileSync(configFile, JSON.stringify(customConfig), 'utf8');
+
+        const cacheSafe = path.join(mockHome, '.gemini', 'hud_custom_safe_block.cache');
+        const metaSafe = path.join(mockHome, '.gemini', 'hud_custom_safe_block.meta');
+        fs.writeFileSync(cacheSafe, 'safe value', 'utf8');
+        fs.writeFileSync(metaSafe, JSON.stringify({ timestamp: Date.now() }), 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' }
+        };
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.customBlocks).toBeDefined();
+        expect(result.customBlocks?.['safe_block']).toBe('safe value');
+        expect(result.customBlocks?.['../traversal']).toBeUndefined();
+        expect(result.customBlocks?.['inject;rm -rf']).toBeUndefined();
+        expect(result.customBlocks?.['inject"quote']).toBeUndefined();
+        expect(result.customBlocks?.['with spaces']).toBeUndefined();
+      });
+    });
+
+    describe('Security Hardening & Path Traversal Protections', () => {
+      it('rejects path traversal in conversation_id for artifact lookup', async () => {
+        const externalDir = path.join(mockHome, 'external-secret-dir');
+        fs.mkdirSync(externalDir, { recursive: true });
+        fs.writeFileSync(path.join(externalDir, 'secret_artifact.md'), 'secret');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: '../../external-secret-dir'
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.artifacts).toEqual([]);
+        expect(result.conversationId).toBeUndefined();
+      });
+
+      it('rejects path traversal in session_id for context file loading', async () => {
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          session_id: '../../../etc/passwd'
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.conversationId).toBeUndefined();
+        expect(result.sessionName).toBe('Unknown');
+      });
+
+      it('allows valid safe conversation IDs', async () => {
+        const validId = '9630c763-fda0-4f71-aa15-dcd5ef14c4d3';
+        const brainDir = path.join(mockHome, '.gemini', 'antigravity-cli', 'brain', validId);
+        fs.mkdirSync(brainDir, { recursive: true });
+        fs.writeFileSync(path.join(brainDir, 'valid_artifact.md'), 'valid');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: validId
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.conversationId).toBe(validId);
+        expect(result.artifacts).toContain('valid_artifact.md');
+      });
+    });
+
+    describe('Session Isolation for Looper & Git Telemetry', () => {
+      it('does not leak looper missions across different sessions sharing the same root cwd', async () => {
+        const rootWork = path.join(mockHome, 'workspace', 'work');
+        fs.mkdirSync(rootWork, { recursive: true });
+
+        // Simulate Session A writing a cached looper mission
+        const sessionA = 'session-alpha-111';
+        const sessionB = 'session-beta-222';
+
+        // Legacy/Session A cache file with authz-go mission
+        const legacyLooperCache = path.join(mockHome, '.gemini', 'hud_looper.cache');
+        fs.writeFileSync(legacyLooperCache, JSON.stringify({
+          cwd: rootWork,
+          conversationId: sessionA,
+          looperMissions: [{ repo: 'authz-go', epic: 'authz-go', mission: 'M4', status: 'PENDING' }],
+          timestamp: Date.now()
+        }), 'utf8');
+
+        // Session B runs at the same root cwd
+        const payloadB = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: sessionB,
+          cwd: rootWork
+        };
+
+        const resultB = await parseStream(Readable.from([JSON.stringify(payloadB)]));
+        expect(resultB.looperMissions).toEqual([]);
+        expect(resultB.activeSkills).not.toContain('looper');
+      });
+
+      it('restricts looper discovery at root cwd strictly to repos in session hud_context.json', async () => {
+        const rootWork = path.join(mockHome, 'workspace', 'work2');
+        const repoActive = path.join(rootWork, 'lab', 'active-app');
+        const repoUnrelated = path.join(rootWork, 'lab', 'unrelated-app');
+
+        // Create looper missions in both repos
+        const activeEpicDir = path.join(repoActive, '.looper', 'epics', 'active-epic');
+        fs.mkdirSync(activeEpicDir, { recursive: true });
+        fs.writeFileSync(path.join(activeEpicDir, 'M1_purpose.md'), 'status: IN_PROGRESS\nmax_iterations: 5\n', 'utf8');
+
+        const unrelatedEpicDir = path.join(repoUnrelated, '.looper', 'epics', 'unrelated-epic');
+        fs.mkdirSync(unrelatedEpicDir, { recursive: true });
+        fs.writeFileSync(path.join(unrelatedEpicDir, 'M9_purpose.md'), 'status: PENDING\nmax_iterations: 8\n', 'utf8');
+
+        const sessionId = 'session-gamma-333';
+        const brainDir = path.join(mockHome, '.gemini', 'antigravity-cli', 'brain', sessionId);
+        fs.mkdirSync(brainDir, { recursive: true });
+        fs.writeFileSync(path.join(brainDir, 'hud_context.json'), JSON.stringify(['lab/active-app']), 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: sessionId,
+          cwd: rootWork
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.looperMissions).toHaveLength(1);
+        expect(result.looperMissions?.[0].repo).toBe('active-app');
+        expect(result.looperMissions?.[0].mission).toBe('M1');
+        expect(result.activeSkills).toContain('looper');
+      });
+    });
   });
 });
+
 

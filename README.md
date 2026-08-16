@@ -8,7 +8,7 @@ A production-grade, highly responsive terminal HUD for the Antigravity CLI. It d
 ▌ 🔵 [TARS] WORKING  |  🔵 plan  |  🤖 Gemini 3.6 Flash  |  Effort: 󰾆 high  |  🧠 Skills: looper & tdd & mapper
 │ 📂 acme-corp/work  |  🔓 Unsandboxed  |  ⚡ Cache: 120k  |  🎧 Ctx: ▰▰▰▰▱ 72% (54k/75k)
 │ 👟 Steps: ▰▰▰▰▱ 14/20  |  🕒 5h: ▰▰▱▱▱ 45% (01:00)  |  🕒 Weekly: ▰▰▰▰▱ 85% (2d 0h)
-│ ⚙️  Active Tasks: 3  |  👥 Subagents:  |  🛠️  run_command (git status)
+│ ⚙️  Active Tasks: 3  |  👥 Subagents:  |  🛠️  search_web (antigravity docs)
 │                             orchestrator [id:abc123] [working] (Epic Runner)
 │                               ↳ worker-1 [id:def678] [working] (Feature Dev)
 │                                 ↳ researcher [id:ghi112] [completed] (Context Finder)
@@ -17,9 +17,9 @@ A production-grade, highly responsive terminal HUD for the Antigravity CLI. It d
 │     architecture_review.md
 │     database_schema.md
 │ 🔄 Active Looper Missions:
-│     🎯 acme-corp/work - Epic: auth-v2 ▰▰▰▱▱ [3/5 DONE]
-│     • sample_faqs - setup/M1_setup [IN_PROGRESS Iteration 2/5]
-│     • auth-system - auth/epic_runner [DONE]
+│     🎯 Epic: auth-v2 ▰▰▰▱▱ [3/5 DONE]
+│        ↳ [M4] [IN_PROGRESS Iteration 2/5]
+│     🎯 [sample_faqs] setup ▰▰▰▰▰ [1/1 DONE]
 │ 🌱 Active Branches:
 │     acme-corp/work (feature/hud-nested-agents)
 │     acme-corp/service-b (main)
@@ -28,14 +28,19 @@ A production-grade, highly responsive terminal HUD for the Antigravity CLI. It d
 
 To run this demo in your terminal:
 ```bash
-node scripts/demo.js
+npm run demo
 ```
 
 ## Architecture & Features
 
 This plugin was engineered with strict defensive paradigms and advanced layout algorithms to guarantee zero-crash execution and a flawless visual experience:
 
-- **Dynamic Matrix Engine**: Features a fully configurable JSON-driven grid system. You can freely re-arrange metrics (like Model, Workspace, Context, and Quotas) into any row or order based on terminal width. See [LAYOUT_ENGINE.md](LAYOUT_ENGINE.md) for full configuration specs.
+- **Declarative Custom Executable Blocks Engine**: Execute any external script or command directly from `~/.gemini/hud_config.json` with asynchronous background caching (<2ms render loop budget).
+- **Dynamic Matrix Engine**: Features a fully configurable JSON-driven grid system. You can freely re-arrange metrics (like Model, Workspace, Context, Quotas, and Custom Blocks) into any row or order based on terminal width. See [LAYOUT_ENGINE.md](LAYOUT_ENGINE.md) for full configuration specs.
+- **Session Context Isolation & Memory Scoping**: Completely isolates Looper missions and git telemetry per conversation ID (`~/.gemini/hud_looper_${conversationId}.cache`). When operating in a root multi-repo container, discovery is strictly bounded to the active session's `hud_context.json`.
+- **Security & Privacy Hardening**: Enforces identifier sanitization against path traversal, restricts custom block caches to `0o600` permissions, protects against symlink traversal, and caps synchronous transcript parsing to 2MB to prevent DoS latency.
+- **Incremental Stat-Cached Step Counter**: Instantaneous, stat-cached (`mtimeMs` <0.02ms) step counter on `transcript_path` maintaining live turn tracking even when telemetry omits step fields.
+- **Looper Hierarchical Tree**: Groups autonomous Looper missions hierarchically under their parent epic, eliminating redundant repository and epic echoes.
 - **Hysteresis Filtering & Strict Padding**: Mathematically absorbs micro-fluctuations in UI layout padding. By combining a 5-column hysteresis cache with strict 7-character string padding, it completely eliminates both horizontal and vertical UI bouncing during rapid state transitions.
 - **Interactive Config Wizard**: Ships with a built-in AI skill (`/hud-config`) that allows you to chat with an agent to visually re-arrange your HUD matrix on the fly!
 - **Ironclad Execution**: Wrapped in global `try/catch` handlers with hardcoded fallback strings. Even if the incoming telemetry JSON payload is violently malformed, the plugin will NEVER crash the Antigravity session.
@@ -99,10 +104,16 @@ npm run demo
 
 For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
 
-### Latest Updates (v1.2.0)
+### Latest Updates (v1.3.0)
+- **Declarative Custom Executable Blocks Engine:** Define `customBlocks` in `~/.gemini/hud_config.json` to run external scripts asynchronously with background caching and zero render-loop blocking.
+- **Direct GEMINI_API_KEY & Null Quota Safety:** Automatically renders a `🔑 [API Key]` badge and omits broken 0% quota bars for API key auth modes.
+- **In-Flight Tool Summary Streaming:** Captures progressive query strings (e.g. `search_web`) and synthesized lifecycle actions (`Killed task X`, `Checked task X`) with responsive truncation.
+- **Looper Block Hierarchy & De-duplication:** Missions nest cleanly under their matching epics with tree indicators (`↳ [M1] [IN_PROGRESS]`), removing redundant repo/epic echoes.
+- **Incremental Stat-Cached Step Counter:** Fast `mtimeMs` (<0.02ms) stat-cached step counter on `transcript_path` resolving the `Steps: 0/20` bug.
+
+### Previous Updates (v1.2.0)
 - **Zero Disk I/O Real-Time Engine**: High-velocity statusline rendering (<2ms) parsing step counts and quotas directly in-memory from telemetry stream with zero disk thrashing.
 - **Declarative Runtime Configuration (`~/.gemini/hud_config.json`)**: Real-time layout customization without needing TypeScript recompilation.
-- **Pruned Lean Core**: Purged dead legacy subsystems and repo clutter, optimizing bundle size and test speed (<200ms).
 - **Vim Mode Badge**: Dynamic mode indicator (`[N]`, `[I]`, `[V]`) parsing Vim editing states directly from telemetry.
 - **AI Credits Layout Block**: Replaces standard quotas with a visual AI Credits balance block (``) when pay-as-you-go models are active.
 
@@ -119,11 +130,13 @@ Here are all the available blocks you can slot into your matrix:
 - **`sandbox`**: The file-system security boundary (🔒 Sandboxed or 🔓 Unsandboxed).
 - **`permissions`**: The Danger Mode indicator. Visually flags if the agent was granted recursive `AGY_SKIP_PERMISSIONS=1` access across the process tree.
 - **`workspace`**: The true repository name. Natively tracks AI session context via `hud_context.json` to ensure explicitly targeted directories are visible without polluting the view with unrelated subfolders!
-- **`looper`**: The Active Looper Missions block. Dynamically scans `.looper/epics/` in your active repositories to track autonomous task progress. Stacks line-by-line (`🔄 Active Looper Missions:`) and renders statuses with custom colors (e.g., `sample_faqs - auth-system/M1 [IN_PROGRESS]`). Automatically hides itself if no missions are active.
+- **`looper`**: The Active Looper Missions block. Dynamically scans `.looper/epics/` in active repositories and nests missions hierarchically under their parent epic (e.g., `🎯 Epic: auth-v2` -> `↳ [M1] [IN_PROGRESS]`). Automatically hides itself if no missions are active.
 - **`git`**: The Active Branches block. Dynamically stacks line-by-line (`🌱 Active Branches:`) to cleanly display multi-repo worktrees alongside their active branches.
 - **`artifacts`**: The Active Artifacts block. Dynamically stacks line-by-line (`📄 Artifacts:`) to list the `.md` files generated during the active AI session. Automatically hides itself if no artifacts exist.
 - **`transcript`**: A clickable shortcut link directly to your agent's active `transcript.jsonl` log file, making it easy to `tail -f` the brain logs.
-- **`tool`**: Active Tool Execution block (e.g. `🛠️ run_command (git status)`). Displays real-time tool calls streamed in telemetry; automatically culled when no tool is running.
+- **`tool`**: Active Tool Execution block (e.g. `🛠️ search_web (antigravity docs)`). Displays real-time tool calls and in-flight queries streamed in telemetry; automatically culled when no tool is running.
+- **`apiKey`**: Direct Gemini API key badge (`🔑 [API Key]`). Appears automatically when running with `GEMINI_API_KEY`.
+- **`custom_<id>`**: Custom Executable Block defined in `hud_config.json` under `customBlocks`. Executes shell scripts asynchronously and displays cached output.
 - **`ctx`**: Context window saturation limit. Shows percentage used and raw token count.
 - **`cache`**: Context window caching telemetry (`⚡ Cache: 70k`). Displays how many tokens were read from cache, allowing you to instantly visualize your cost savings. Automatically hides if 0.
 - **`credits`**: AI Credits block. Renders the active credit balance with a distinct Nerd Font icon. Automatically replaces `5h` and `weekly` quotas when pay-as-you-go models are active.

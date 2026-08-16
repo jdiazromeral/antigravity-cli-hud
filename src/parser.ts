@@ -16,7 +16,15 @@ export interface AntigravityPayload {
     "3p-5h"?: { remaining_fraction: number; reset_in_seconds?: number };
   };
   subagents?: Array<{ name: string; role: string; status: string; depth?: number; conversation_id?: string; log_uri?: string }>;
-  tool_info?: { name: string; summary?: string; status?: string };
+  tool_info?: {
+    name: string;
+    summary?: string;
+    status?: string;
+    query?: string;
+    action?: string;
+    taskId?: string;
+    task_id?: string;
+  };
   task_count?: number;
   sandbox?: { enabled: boolean };
   model?: { display_name: string };
@@ -43,6 +51,8 @@ export interface AntigravityPayload {
   credits?: { balance: number };
   dangerously_skip_permissions?: boolean;
   skip_permissions?: boolean;
+  is_api_key?: boolean;
+  api_key_mode?: boolean;
 }
 
 import * as fs from 'fs';
@@ -63,6 +73,8 @@ export interface ActiveToolInfo {
   name: string;
   summary?: string;
   status?: string;
+  query?: string;
+  action?: string;
 }
 
 export interface ParsedMetrics {
@@ -105,6 +117,57 @@ export interface ParsedMetrics {
   agentName: string;
   editorMode?: string;
   credits?: number;
+  isApiKey?: boolean;
+  customBlocks?: Record<string, string>;
+}
+
+interface TranscriptCacheEntry {
+  mtimeMs: number;
+  count: number;
+}
+
+const transcriptStepCache = new Map<string, TranscriptCacheEntry>();
+
+function isSafeIdentifier(id: unknown): id is string {
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]+$/.test(id) && !id.includes('..') && !id.includes('/') && !id.includes('\\');
+}
+
+function countTranscriptSteps(filePath: string): number {
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.size === 0) {
+      return 0;
+    }
+    const cached = transcriptStepCache.get(filePath);
+    if (cached && cached.mtimeMs === stat.mtimeMs) {
+      return cached.count;
+    }
+
+    // Zero-disk DoS prevention: Cap memory read to 2MB on real-time render path
+    const MAX_READ_BYTES = 2 * 1024 * 1024;
+    let content = '';
+    if (stat.size > MAX_READ_BYTES) {
+      const fd = fs.openSync(filePath, 'r');
+      const buffer = Buffer.alloc(MAX_READ_BYTES);
+      fs.readSync(fd, buffer, 0, MAX_READ_BYTES, stat.size - MAX_READ_BYTES);
+      fs.closeSync(fd);
+      content = buffer.toString('utf8');
+    } else {
+      content = fs.readFileSync(filePath, 'utf8');
+    }
+
+    // Count user turns specifically ("type":"USER_INPUT" or "type":"USER_EXPLICIT")
+    const userTurns = (content.match(/"type"\s*:\s*"USER_(?:INPUT|EXPLICIT)"/g) || []).length;
+
+    transcriptStepCache.set(filePath, {
+      mtimeMs: stat.mtimeMs,
+      count: userTurns
+    });
+
+    return userTurns;
+  } catch (e) {
+    return 0;
+  }
 }
 
 export async function parseStream(stream: NodeJS.ReadableStream): Promise<ParsedMetrics> {
@@ -131,9 +194,48 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Missing required metrics in payload');
 
-  const conversationId = typeof parsed.conversation_id === 'string' ? parsed.conversation_id : (typeof parsed.session_id === 'string' ? parsed.session_id : undefined);
+  const rawConvId = typeof parsed.conversation_id === 'string' ? parsed.conversation_id : (typeof parsed.session_id === 'string' ? parsed.session_id : undefined);
+  const conversationId = isSafeIdentifier(rawConvId) ? rawConvId : undefined;
+
+  const rawPlanTier = typeof parsed.plan_tier === 'string' ? parsed.plan_tier : '';
+  const rawEmail = typeof parsed.email === 'string' ? parsed.email : '';
+  const planTierLower = rawPlanTier.toLowerCase();
+  const emailLower = rawEmail.toLowerCase();
+
+  const hasApiKeyIndicator = !!(
+    parsed.is_api_key ||
+    parsed.api_key_mode ||
+    (parsed as any).is_api_key_mode ||
+    planTierLower.includes('api_key') ||
+    planTierLower.includes('api-key') ||
+    planTierLower.includes('api key') ||
+    planTierLower.includes('gemini_api_key') ||
+    emailLower.includes('api_key') ||
+    emailLower.includes('api-key') ||
+    emailLower.includes('api key') ||
+    emailLower.includes('gemini_api_key') ||
+    emailLower === '<api-key>'
+  );
+
+  let hasValidQuotaInPayload = false;
+  if (parsed.quota && typeof parsed.quota === 'object' && !Array.isArray(parsed.quota)) {
+    const quotaEntries = Object.values(parsed.quota);
+    for (const qVal of quotaEntries) {
+      if (qVal && typeof qVal === 'object' && !Array.isArray(qVal)) {
+        if (typeof (qVal as any).remaining_fraction === 'number' || typeof (qVal as any).reset_in_seconds === 'number') {
+          hasValidQuotaInPayload = true;
+          break;
+        }
+      }
+    }
+  }
+
+  const isApiKey = !!(hasApiKeyIndicator || (!hasValidQuotaInPayload && !parsed.credits));
 
   const getQuotaObj = (key: string) => {
+    if (isApiKey) {
+      return { percent: 0, resetSeconds: 0 };
+    }
     let q: any;
     if (parsed.quota && typeof parsed.quota === 'object' && !Array.isArray(parsed.quota)) {
       q = (parsed.quota as Record<string, any>)[key];
@@ -180,7 +282,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     return { percent, resetSeconds };
   };
 
-  const rawSessId = typeof parsed.session_id === 'string' ? parsed.session_id : (typeof parsed.conversation_id === 'string' ? parsed.conversation_id : '');
+  const rawSessId = isSafeIdentifier(parsed.session_id) ? parsed.session_id : (isSafeIdentifier(parsed.conversation_id) ? parsed.conversation_id : '');
   const sessName = rawSessId ? rawSessId.substring(0, 6) : 'Unknown';
   let modelName = (parsed.model && typeof parsed.model === 'object' && !Array.isArray(parsed.model) && typeof parsed.model.display_name === 'string') ? parsed.model.display_name : 'Unknown Model';
   if (modelName.length > 25) modelName = modelName.substring(0, 22) + '...';
@@ -230,7 +332,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       const b = vcsObj.dirty ? `${vcsObj.branch}*` : vcsObj.branch;
       gitBranches.push({ name: path.basename(cwd), branch: b });
     } else {
-      const gitCacheFile = path.join(os.homedir(), '.gemini', 'hud_git.cache');
+      const sessionSuffix = conversationId ? `_${conversationId}` : '';
+      const gitCacheFile = path.join(os.homedir(), '.gemini', `hud_git${sessionSuffix}.cache`);
       let useCache = false;
 
     let previousCacheBranches: {name: string, branch: string}[] | null = null;
@@ -255,8 +358,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         const cacheRaw = fs.readFileSync(gitCacheFile, 'utf8');
         const cacheData = JSON.parse(cacheRaw);
         previousCacheBranches = cacheData.gitBranches || [];
-        // Use cache if it's less than 5 seconds old and cwd matches
-        if (cacheData.cwd === parsed.cwd && (Date.now() - cacheData.timestamp) < 5000) {
+        // Use cache if it's less than 5 seconds old, cwd matches, and session matches
+        if (cacheData.cwd === parsed.cwd && (!conversationId || cacheData.conversationId === conversationId) && (Date.now() - cacheData.timestamp) < 5000) {
           gitBranches = previousCacheBranches || [];
           useCache = true;
         }
@@ -297,6 +400,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       try {
         fs.writeFileSync(gitCacheFile, JSON.stringify({
           cwd: parsed.cwd,
+          conversationId,
           gitBranches,
           timestamp: Date.now()
         }), { mode: 0o600 });
@@ -308,7 +412,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   let looperMissions: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[] = [];
   let looperEpics: {repo: string, epic: string, total: number, done: number}[] = [];
   if (cwd) {
-    const looperCacheFile = path.join(os.homedir(), '.gemini', 'hud_looper.cache');
+    const sessionSuffix = conversationId ? `_${conversationId}` : '';
+    const looperCacheFile = path.join(os.homedir(), '.gemini', `hud_looper${sessionSuffix}.cache`);
     let useLooperCache = false;
     let prevLooperCache: any[] | null = null;
     let prevEpicsCache: any[] | null = null;
@@ -318,7 +423,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         const cData = JSON.parse(cRaw);
         prevLooperCache = cData.looperMissions || [];
         prevEpicsCache = cData.looperEpics || [];
-        if (cData.cwd === cwd && (Date.now() - cData.timestamp) < 5000) {
+        if (cData.cwd === cwd && (!conversationId || cData.conversationId === conversationId) && (Date.now() - cData.timestamp) < 5000) {
           looperMissions = prevLooperCache || [];
           looperEpics = prevEpicsCache || [];
           useLooperCache = true;
@@ -330,29 +435,23 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       try {
         const repoRoots: string[] = [];
         const targetDir = parsed.cwd;
-        try {
-          const root = cp.execSync('git rev-parse --show-toplevel', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
-          if (root) repoRoots.push(root);
-        } catch(e) {}
 
-        let currentDir = targetDir;
-        while (currentDir && currentDir !== '/') {
-           if (fs.existsSync(path.join(currentDir, '.looper'))) {
-              if (!repoRoots.includes(currentDir)) repoRoots.push(currentDir);
-              break;
-           }
-           const parent = path.dirname(currentDir);
-           if (parent === currentDir) break;
-           currentDir = parent;
-        }
-        
         if (activeWorkspaceRepos.length > 0) {
            for (const p of activeWorkspaceRepos) {
               if (!repoRoots.includes(p)) repoRoots.push(p);
            }
+        } else {
+          try {
+            const root = cp.execSync('git rev-parse --show-toplevel', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
+            if (root && fs.existsSync(path.join(root, '.looper'))) {
+              repoRoots.push(root);
+            }
+          } catch(e) {}
+
+          if (repoRoots.length === 0 && fs.existsSync(path.join(targetDir, '.looper'))) {
+            repoRoots.push(targetDir);
+          }
         }
-        
-        if (repoRoots.length === 0) repoRoots.push(targetDir);
 
         for (const r of repoRoots) {
           const repoName = path.basename(r);
@@ -443,6 +542,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       try {
         fs.writeFileSync(looperCacheFile, JSON.stringify({
           cwd: parsed.cwd,
+          conversationId,
           looperMissions,
           looperEpics,
           timestamp: Date.now()
@@ -498,15 +598,48 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const toolInfoObj = (parsed.tool_info && typeof parsed.tool_info === 'object' && !Array.isArray(parsed.tool_info) && typeof parsed.tool_info.name === 'string') ? parsed.tool_info : undefined;
 
-  const activeTool: ActiveToolInfo | undefined = toolInfoObj ? {
-    name: toolInfoObj.name,
-    summary: typeof toolInfoObj.summary === 'string' ? toolInfoObj.summary : undefined,
-    status: typeof toolInfoObj.status === 'string' ? toolInfoObj.status : undefined
-  } : undefined;
+  let activeTool: ActiveToolInfo | undefined = undefined;
+  if (toolInfoObj) {
+    let summary = typeof toolInfoObj.summary === 'string' && toolInfoObj.summary.trim() ? toolInfoObj.summary.trim() : undefined;
+    const query = typeof toolInfoObj.query === 'string' && toolInfoObj.query.trim() ? toolInfoObj.query.trim() : undefined;
+    const action = typeof toolInfoObj.action === 'string' && toolInfoObj.action.trim() ? toolInfoObj.action.trim() : undefined;
+    const taskId = (typeof toolInfoObj.taskId === 'string' && toolInfoObj.taskId.trim())
+      ? toolInfoObj.taskId.trim()
+      : ((typeof toolInfoObj.task_id === 'string' && toolInfoObj.task_id.trim()) ? toolInfoObj.task_id.trim() : undefined);
+
+    if (!summary) {
+      if (query) {
+        summary = query;
+      } else if (action) {
+        const actLower = action.toLowerCase();
+        if (actLower === 'kill') {
+          summary = taskId ? `Killed task ${taskId}` : 'Killed task';
+        } else if (actLower === 'status' || actLower === 'check') {
+          summary = taskId ? `Checked task ${taskId}` : 'Checked task';
+        } else if (actLower === 'list') {
+          summary = 'Listed tasks';
+        } else if (actLower === 'send_input') {
+          summary = taskId ? `Sent input to task ${taskId}` : 'Sent input to task';
+        } else {
+          summary = taskId ? `${action} task ${taskId}` : action;
+        }
+      }
+    } else if (query && !summary.includes(query)) {
+      summary = `${summary}: ${query}`;
+    }
+
+    activeTool = {
+      name: toolInfoObj.name,
+      summary,
+      status: typeof toolInfoObj.status === 'string' ? toolInfoObj.status : undefined,
+      query,
+      action
+    };
+  }
 
   const skillsSet = new Set<string>();
-  if (toolInfoObj && typeof toolInfoObj.summary === 'string') {
-    const skillMatch = toolInfoObj.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
+  if (activeTool && typeof activeTool.summary === 'string') {
+    const skillMatch = activeTool.summary.match(/skills\/([a-zA-Z0-9_-]+)\/SKILL\.md/i);
     if (skillMatch && skillMatch[1]) {
       skillsSet.add(skillMatch[1]);
     }
@@ -551,7 +684,6 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     });
   }
 
-  const stepCount = typeof parsed.step_count === 'number' ? parsed.step_count : (typeof parsed.step_index === 'number' ? parsed.step_index : 0);
   let resolvedTranscriptPath = typeof parsed.transcript_path === 'string' ? parsed.transcript_path : undefined;
   if (resolvedTranscriptPath) {
     if (!fs.existsSync(resolvedTranscriptPath)) {
@@ -570,6 +702,15 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     } else if (fs.existsSync(candidate2)) {
       resolvedTranscriptPath = candidate2;
     }
+  }
+
+  let stepCount = 0;
+  if (typeof parsed.step_count === 'number') {
+    stepCount = parsed.step_count;
+  } else if (typeof parsed.step_index === 'number') {
+    stepCount = parsed.step_index;
+  } else if (resolvedTranscriptPath && fs.existsSync(resolvedTranscriptPath)) {
+    stepCount = countTranscriptSteps(resolvedTranscriptPath);
   }
 
   const envMaxSteps = process.env.AGY_MAX_STEPS ? parseInt(process.env.AGY_MAX_STEPS, 10) : undefined;
@@ -592,6 +733,70 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const isSandboxed = !!(parsed.sandbox && typeof parsed.sandbox === 'object' && !Array.isArray(parsed.sandbox) && parsed.sandbox.enabled);
 
+  const customBlocks: Record<string, string> = {};
+  const hudConfigFile = path.join(os.homedir(), '.gemini', 'hud_config.json');
+  if (fs.existsSync(hudConfigFile)) {
+    try {
+      const configRaw = fs.readFileSync(hudConfigFile, 'utf8');
+      const configParsed = JSON.parse(configRaw);
+      const customBlocksConfig: Record<string, { title?: string; command: string; intervalMs?: number }> = {};
+      
+      if (configParsed && typeof configParsed === 'object' && !Array.isArray(configParsed)) {
+        if (configParsed.customBlocks && typeof configParsed.customBlocks === 'object' && !Array.isArray(configParsed.customBlocks)) {
+          Object.assign(customBlocksConfig, configParsed.customBlocks);
+        }
+        for (const [k, v] of Object.entries(configParsed)) {
+          if (v && typeof v === 'object' && !Array.isArray(v) && typeof (v as any).command === 'string' && k !== 'customBlocks' && k !== 'budget' && k !== 'breakpoints' && k !== 'layouts') {
+            customBlocksConfig[k] = v as any;
+          }
+        }
+      }
+
+      for (const [blockKey, blockDef] of Object.entries(customBlocksConfig)) {
+        if (!isSafeIdentifier(blockKey)) continue;
+        if (!blockDef || typeof blockDef !== 'object' || typeof blockDef.command !== 'string') continue;
+        const cacheFile = path.join(os.homedir(), '.gemini', `hud_custom_${blockKey}.cache`);
+        const metaFile = path.join(os.homedir(), '.gemini', `hud_custom_${blockKey}.meta`);
+        
+        if (fs.existsSync(cacheFile)) {
+          try {
+            customBlocks[blockKey] = fs.readFileSync(cacheFile, 'utf8').trim();
+          } catch (e) {}
+        }
+
+        const intervalMs = typeof blockDef.intervalMs === 'number' && blockDef.intervalMs > 0 ? blockDef.intervalMs : 5000;
+        let isStale = true;
+        try {
+          if (fs.existsSync(metaFile)) {
+            const metaStat = fs.statSync(metaFile);
+            if (Date.now() - metaStat.mtimeMs < intervalMs) {
+              isStale = false;
+            }
+          }
+        } catch (e) {}
+
+        if (isStale) {
+          try {
+            if (!fs.existsSync(path.dirname(metaFile))) {
+              fs.mkdirSync(path.dirname(metaFile), { recursive: true });
+            }
+            fs.writeFileSync(metaFile, JSON.stringify({ timestamp: Date.now() }), { mode: 0o600 });
+            const cacheTmp = `${cacheFile}.tmp`;
+            fs.writeFileSync(cacheTmp, '', { mode: 0o600 });
+            const cmd = `(${blockDef.command}) > "${cacheTmp}" 2>/dev/null && mv "${cacheTmp}" "${cacheFile}"`;
+            const subprocess = cp.spawn(cmd, {
+              shell: true,
+              cwd: parsed.cwd || process.cwd(),
+              detached: true,
+              stdio: 'ignore'
+            });
+            subprocess.unref();
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+  }
+
   return {
     agentState: (typeof parsed.agent_state === 'string' ? parsed.agent_state : 'UNKNOWN').toUpperCase(),
     contextUsage,
@@ -613,7 +818,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     isSandboxed,
     version: typeof parsed.version === 'string' ? parsed.version : 'unknown',
     email: typeof parsed.email === 'string' ? parsed.email : 'unknown',
-    planTier: typeof parsed.plan_tier === 'string' ? parsed.plan_tier : 'Unknown Tier',
+    planTier: typeof parsed.plan_tier === 'string' ? parsed.plan_tier : (hasApiKeyIndicator ? 'API Key' : 'Unknown Tier'),
     terminalWidth: termWidth,
     skipPermissions: process.env.AGY_SKIP_PERMISSIONS === 'true' || !!parsed.dangerously_skip_permissions || !!parsed.skip_permissions,
     gitBranches,
@@ -631,6 +836,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     effort,
     agentName,
     editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
-    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined
+    credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined,
+    isApiKey,
+    customBlocks
   };
 }

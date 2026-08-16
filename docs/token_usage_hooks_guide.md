@@ -76,6 +76,12 @@ To attach the token evaluator hook to your Antigravity CLI session:
            "command": "/path/to/antigravity-cli-hud/scripts/token_eval_hook.py PreInvocation"
          }
        ],
+       "PostInvocation": [
+         {
+           "type": "command",
+           "command": "/path/to/antigravity-cli-hud/scripts/token_eval_hook.py PostInvocation"
+         }
+       ],
        "Stop": [
          {
            "type": "command",
