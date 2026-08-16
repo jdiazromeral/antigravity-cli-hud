@@ -715,7 +715,7 @@ describe('formatMetrics', () => {
       expect(out).not.toContain('work - hud-updates/M3');
     });
 
-    it('renders standalone missions cleanly when not matched to any active epic', () => {
+    it('renders standalone missions cleanly with repo/epic context when not matched to any active epic', () => {
       const metrics: ParsedMetrics = {
         ...baseMetrics,
         looperEpics: [],
@@ -724,9 +724,8 @@ describe('formatMetrics', () => {
         ]
       };
       const out = formatMetrics(metrics);
-      expect(out).toContain('• [M1]');
+      expect(out).toContain('• [sample_faqs ➔ faq-sync] [M1]');
       expect(out).toContain('IN_PROGRESS Iteration 1/5');
-      expect(out).not.toContain('sample_faqs - faq-sync/M1');
     });
 
     it('formats failed and blocked missions with reason suffix in tree and standalone', () => {
@@ -745,7 +744,7 @@ describe('formatMetrics', () => {
       expect(out).toContain('my-epic');
       expect(out).toContain('↳ [M1]');
       expect(out).toContain('FAILED - npm test failed');
-      expect(out).toContain('• [M2]');
+      expect(out).toContain('• [other-repo ➔ other-epic] [M2]');
       expect(out).toContain('BLOCKED - deps missing');
     });
   });

@@ -495,7 +495,16 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
         suffix = ` - ${m.reason}`;
       }
       
-      looperStrs.push(`• [${m.mission}] [${statusColor}${m.status}${suffix}${colors.reset}]`);
+      let prefix = '';
+      if (m.repo && m.epic) {
+        prefix = m.repo === m.epic ? `[${m.epic}] ` : `[${m.repo} ➔ ${m.epic}] `;
+      } else if (m.epic) {
+        prefix = `[${m.epic}] `;
+      } else if (m.repo) {
+        prefix = `[${m.repo}] `;
+      }
+      
+      looperStrs.push(`• ${prefix}[${m.mission}] [${statusColor}${m.status}${suffix}${colors.reset}]`);
     }
   }
   const chunkedLooper = calculateStackedChunks(looperStrs, 5);
