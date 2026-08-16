@@ -1,6 +1,6 @@
 ---
-built_at_commit: 0770f6ebf080781fd9d002565c69a7420415af3a
-built_at: 2026-08-09T15:58:00Z
+built_at_commit: e7685deb138dc7dbe394d2d7a3c3a4ff85e1972e
+built_at: 2026-08-15T14:40:00Z
 ---
 
 # Codebase map: antigravity-cli-hud
