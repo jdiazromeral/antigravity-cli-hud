@@ -1,11 +1,30 @@
-import { formatMetrics, ParsedMetrics } from '../src/formatter.js';
+import { formatMetrics, ParsedMetrics, HudConfig } from '../src/formatter.js';
+
+// Parse CLI flags
+const args = process.argv.slice(2);
+let themeOverride: string | undefined = undefined;
+let styleOverride: string | undefined = undefined;
+let linksOverride: boolean | undefined = undefined;
+let widthOverride: number | undefined = undefined;
+
+for (const arg of args) {
+  if (arg.startsWith('--theme=')) {
+    themeOverride = arg.split('=')[1];
+  } else if (arg.startsWith('--style=')) {
+    styleOverride = arg.split('=')[1];
+  } else if (arg.startsWith('--links=')) {
+    linksOverride = arg.split('=')[1] === 'true';
+  } else if (arg.startsWith('--width=')) {
+    widthOverride = parseInt(arg.split('=')[1], 10);
+  }
+}
 
 const mockMetrics: ParsedMetrics = {
   agentState: 'WORKING',
   agentName: 'TARS',
   executionMode: 'plan',
   effort: 'high',
-  activeSkills: ['looper', 'tdd', 'mapper'],
+  activeSkills: ['looper', 'tdd', 'rules'],
   model: 'Gemini 3.6 Flash',
   isSandboxed: false,
   skipPermissions: false,
@@ -24,9 +43,18 @@ const mockMetrics: ParsedMetrics = {
   taskCount: 3,
   activeTool: {
     name: 'run_command',
-    summary: 'git status',
+    summary: 'npm test',
     status: 'running'
   },
+  toolElapsedSeconds: 8,
+  mcpServers: ['github', 'postgres', 'chrome'],
+  mcpConfigPath: `${process.env.HOME || '/Users/user'}/.gemini/config/mcp_config.json`,
+  activeRules: [
+    { name: 'AGENTS.md', path: '/workspace/AGENTS.md', scope: 'project' },
+    { name: 'GEMINI.md', path: '/workspace/GEMINI.md', scope: 'global' }
+  ],
+  activePlugins: ['hud', 'looper'],
+  sessionElapsedSeconds: 862,
   subagents: [
     { name: 'orchestrator', role: 'Epic Runner', status: 'working', depth: 0, conversationId: 'abc12345' },
     { name: 'worker-1', role: 'Feature Dev', status: 'working', depth: 1, conversationId: 'def67890' },
@@ -34,30 +62,36 @@ const mockMetrics: ParsedMetrics = {
     { name: 'reviewer', role: 'Code Review', status: 'working', depth: 1, conversationId: 'jkl44556' }
   ],
   artifacts: [
-    'architecture_review.md',
-    'database_schema.md'
+    'v1.4_hud_implementation_plan.md',
+    'walkthrough.md'
   ],
   artifactCount: 2,
   conversationId: 'ad266f1f-75f3-44dd-b073-c93a1bedc277',
   looperEpics: [
-    { repo: 'acme-corp/work', epic: 'auth-v2', total: 5, done: 3 }
+    { repo: 'acme-corp/work', epic: 'hud-v1.4.0', total: 4, done: 3 }
   ],
   looperMissions: [
-    { repo: 'sample_faqs', epic: 'setup', mission: 'M1_setup', status: 'IN_PROGRESS', iteration: 2, maxIterations: 5 },
-    { repo: 'auth-system', epic: 'auth', mission: 'epic_runner', status: 'DONE' }
+    { repo: 'acme-corp/work', epic: 'hud-v1.4.0', mission: 'theming_engine', status: 'IN_PROGRESS', iteration: 2, maxIterations: 5 }
   ],
   gitBranches: [
-    { name: 'acme-corp/work', branch: 'feature/hud-nested-agents' },
+    { name: 'acme-corp/work', branch: 'feat/hud-v1.4.0*' },
     { name: 'acme-corp/service-b', branch: 'main' }
   ],
+  gitStats: { added: 42, deleted: 10, filesModified: 3, ahead: 1, behind: 0 },
   transcriptPath: `${process.env.HOME || '/Users/user'}/.gemini/antigravity-cli/brain/ad266f1f-75f3-44dd-b073-c93a1bedc277/.system_generated/logs/transcript.jsonl`,
   sessionName: 'ad266f1f-75f3-44dd-b073-c93a1bedc277',
-  version: '2.4.0',
+  version: '1.4.0',
   email: 'developer@example.com',
   planTier: 'Pro',
-  terminalWidth: 140,
+  terminalWidth: widthOverride || process.stdout.columns || 140,
   exceeds200k: false
 };
 
-const out = formatMetrics(mockMetrics, process.stdout.columns || 140);
+const configOverride: HudConfig = {};
+if (themeOverride) configOverride.theme = themeOverride;
+if (styleOverride) configOverride.style = styleOverride;
+if (linksOverride !== undefined) configOverride.clickableLinks = linksOverride;
+
+const out = formatMetrics(mockMetrics, mockMetrics.terminalWidth, configOverride);
 console.log(out);
+

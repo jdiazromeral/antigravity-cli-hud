@@ -29,25 +29,46 @@ When the user invokes this skill:
    - `'cache'`: Context window prompt cache read tokens (e.g., `⚡ Cache: 70k`)
    - `'5h'`: 5-hour rolling quota saturation & reset countdown timer
    - `'weekly'`: Weekly rolling quota saturation & reset countdown timer
+   - `'mcp'`: Active MCP Tool Servers block (e.g., `🔌 MCP: 3 active` with Cmd+Clickable config link)
+   - `'rules'`: Active Rules counter block (e.g., `📜 Rules: 3 active`)
+   - `'plugins'`: Active Loaded Plugins block (e.g., `🧩 Plugins: hud, looper`)
+   - `'session_time'`: Session Elapsed Wall-Clock Timer (e.g., `⏱️ 14m 22s`)
    - `'tasks'`: Active background task count (e.g., `⚙️ Active Tasks: 1`)
-   - `'tool'`: Active Tool Execution block (e.g., `🛠️ run_command (git status)`). Auto-culls when idle.
+   - `'tool'`: Active Tool Execution block with live elapsed timer (e.g., `🛠️ run_command (git status) [⏱️ 8s]`). Auto-culls when idle.
    - `'subagents'`: Active parallel subagents list with tree nesting (Stacked block, MUST be the last item on a row or on its own row)
    - `'looper'`: Active Looper Missions block (Stacked block, MUST be the last item on a row or on its own row)
-   - `'artifacts'`: Active session artifacts list (Stacked block, MUST be the last item on a row or on its own row)
-   - `'git'`: Active Branches list across workspace worktrees (Stacked block, MUST be the last item on a row or on its own row)
+   - `'artifacts'`: Active session artifacts list with direct Cmd+Clickable links (Stacked block, MUST be the last item on a row or on its own row)
+   - `'git'`: Active Branches list with diff stats (e.g., `🌱 feat* (+42/-10, 3 files) [↑1 ↓0]`) across workspace worktrees (Stacked block, MUST be the last item on a row or on its own row)
    - `'transcript'`: Clickable shortcut link to active brain log (`📜 tail -f ...`)
    - `'version'`: Antigravity CLI version
    - `'email'`: User's authenticated email address
    - `'plan'`: User's billing tier
 
 3. **Interactive Configuration**:
-   Ask the user how they would like to configure their `large`, `medium`, and `small` breakpoints row-by-row, or suggest applying a predefined preset:
-   - *Standard* (Default): 4-row organized statusline (Row 1: Identity/Skills, Row 2: Workspace/Cache/Ctx, Row 3: Steps/Quotas, Row 4: Tasks/Subagents/Tools).
-   - *Minimalist*: Only State, Model, Workspace, Git, and Steps.
-   - *Full Telemetry*: All 23 blocks enabled across dedicated lines.
+   Ask the user how they would like to customize their HUD:
+   - **Color Theme (`"theme"`)**:
+     - `"default"`: Standard balanced ANSI
+     - `"catppuccin"`: Catppuccin Mocha TrueColor RGB
+     - `"tokyo-night"`: Tokyo Night TrueColor RGB
+     - `"dracula"`: Dracula TrueColor RGB
+     - `"nord"`: Arctic Nord TrueColor RGB
+     - `"solarized"`: Solarized TrueColor RGB
+     - `"monochrome"`: Clean high-contrast monochrome
+   - **Separator Style (`"style"`)**:
+     - `"modern"` (Default): Standard UTF-8 vertical bar `▌` and ` | ` dividers (compatible with all fonts)
+     - `"powerline"`: Powerline arrow dividers `` / `` *(Requires Nerd Font)*
+     - `"bubble"`: Rounded pill badges `` / `` *(Requires Nerd Font)*
+     - `"minimal"`: Clean whitespace and subtle bullet points ` • `
+   - **Interactive Terminal Hyperlinks (`"clickableLinks"`)**:
+     - `true` (Default): Cmd+Clickable OSC 8 hyperlinks on transcript, artifacts, rules, MCP config, and git branches.
+     - `false`: Plain text output without OSC 8 terminal sequences.
+   - **Predefined Presets**:
+     - *Standard* (Default): 4-row organized statusline.
+     - *Minimalist*: Only State, Model, Workspace, Git, and Steps.
+     - *Full Telemetry*: All telemetry blocks enabled across dedicated lines.
 
    **Auto-Hide Feature**:
-   Ask if they want to enable `autoHideEmptyBlocks` (Boolean, defaults to true) to collapse empty blocks (`tasks`, `subagents`, `tool`, `artifacts`, `git`, `looper`, `skill`, `cache`).
+   Ask if they want to enable `autoHideEmptyBlocks` (Boolean, defaults to true) to collapse empty blocks (`tasks`, `subagents`, `tool`, `artifacts`, `git`, `looper`, `skill`, `cache`, `mcp`, `rules`, `plugins`).
 
    **Budget Ceilings**:
    Ask if they want to customize `budget` limits (`maxSteps` defaults to 20). Context soft degradation limit defaults to 200,000 tokens (or `AGY_SOFT_CONTEXT_TOKENS`) and model physical max capacity defaults to `context_window_size` / 1,048,576 tokens (or `AGY_MAX_CONTEXT_TOKENS`).

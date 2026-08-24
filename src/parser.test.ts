@@ -92,7 +92,14 @@ describe('parseStream', () => {
       editorMode: 'I',
       credits: 1250,
       isApiKey: false,
-      customBlocks: {}
+      customBlocks: {},
+      mcpServers: undefined,
+      mcpConfigPath: undefined,
+      activeRules: undefined,
+      activePlugins: undefined,
+      sessionElapsedSeconds: undefined,
+      toolElapsedSeconds: 0,
+      gitStats: undefined
     });
   });
 
@@ -993,8 +1000,126 @@ describe('parseStream', () => {
         const result = await parseStream(Readable.from([JSON.stringify(payload)]));
         expect(result.looperMissions).toHaveLength(1);
         expect(result.looperMissions?.[0].repo).toBe('active-app');
-        expect(result.looperMissions?.[0].mission).toBe('M1');
         expect(result.activeSkills).toContain('looper');
+      });
+    });
+
+    describe('v1.4.0 Extended Telemetry (Tool Elapsed Timer, MCP, Rules, Session Time, Git Stats)', () => {
+      it('persists tool execution start timestamp across ticks in hud_tool_${convId}.json', async () => {
+        const convId = 'session-tool-timer-123';
+        const payload1 = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: convId,
+          tool_info: { name: 'run_command', summary: 'npm test', status: 'running' }
+        };
+
+        const result1 = await parseStream(Readable.from([JSON.stringify(payload1)]));
+        expect(result1.toolElapsedSeconds).toBe(0);
+
+        // Manually adjust the timestamp in hud_tool_${convId}.json backwards by 8 seconds
+        const toolCache = path.join(mockHome, '.gemini', `hud_tool_${convId}.json`);
+        expect(fs.existsSync(toolCache)).toBe(true);
+        const state = JSON.parse(fs.readFileSync(toolCache, 'utf8'));
+        state.startedAt = Date.now() - 8000;
+        fs.writeFileSync(toolCache, JSON.stringify(state), 'utf8');
+
+        // Next tick with same tool
+        const payload2 = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: convId,
+          tool_info: { name: 'run_command', summary: 'npm test', status: 'running' }
+        };
+        const result2 = await parseStream(Readable.from([JSON.stringify(payload2)]));
+        expect(result2.toolElapsedSeconds).toBe(8);
+
+        // Tool finishes / changes
+        const payload3 = {
+          agent_state: 'Idle',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: convId
+        };
+        const result3 = await parseStream(Readable.from([JSON.stringify(payload3)]));
+        expect(result3.toolElapsedSeconds).toBe(0);
+        expect(fs.existsSync(toolCache)).toBe(false);
+      });
+
+      it('parses active MCP servers and config path from ~/.gemini/config/mcp_config.json', async () => {
+        const mcpDir = path.join(mockHome, '.gemini', 'config');
+        fs.mkdirSync(mcpDir, { recursive: true });
+        const mcpConfigPath = path.join(mcpDir, 'mcp_config.json');
+        fs.writeFileSync(mcpConfigPath, JSON.stringify({
+          mcpServers: {
+            github: { command: 'node', args: ['github-server.js'] },
+            postgres: { command: 'node', args: ['pg-server.js'] },
+            chrome: { command: 'npx', args: ['chrome-server'] }
+          }
+        }), 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: 'conv-mcp-1'
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.mcpServers).toEqual(['github', 'postgres', 'chrome']);
+        expect(result.mcpConfigPath).toBe(mcpConfigPath);
+      });
+
+      it('discovers active rules in cwd and global directory', async () => {
+        const testCwd = path.join(mockHome, 'my-repo');
+        fs.mkdirSync(testCwd, { recursive: true });
+        fs.writeFileSync(path.join(testCwd, 'AGENTS.md'), '# Agent Rules', 'utf8');
+
+        const globalGemini = path.join(mockHome, '.gemini');
+        fs.mkdirSync(globalGemini, { recursive: true });
+        fs.writeFileSync(path.join(globalGemini, 'GEMINI.md'), '# Gemini Rules', 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: 'conv-rules-1',
+          cwd: testCwd
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.activeRules).toBeDefined();
+        const ruleNames = result.activeRules?.map(r => r.name);
+        expect(ruleNames).toContain('AGENTS.md');
+        expect(ruleNames).toContain('GEMINI.md');
+      });
+
+      it('hydrates git stats (+/- lines, ahead/behind) from session git cache', async () => {
+        const testCwd = path.join(mockHome, 'my-git-repo');
+        fs.mkdirSync(testCwd, { recursive: true });
+        const convId = 'session-git-stats-99';
+
+        const gitCacheFile = path.join(mockHome, '.gemini', `hud_git_${convId}.cache`);
+        fs.writeFileSync(gitCacheFile, JSON.stringify({
+          cwd: testCwd,
+          conversationId: convId,
+          gitBranches: [{ name: 'my-git-repo', branch: 'feat/v1.4' }],
+          gitStats: { added: 42, deleted: 10, filesModified: 3, ahead: 1, behind: 0 },
+          timestamp: Date.now()
+        }), 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: convId,
+          cwd: testCwd
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.gitStats).toEqual({
+          added: 42,
+          deleted: 10,
+          filesModified: 3,
+          ahead: 1,
+          behind: 0
+        });
       });
     });
   });

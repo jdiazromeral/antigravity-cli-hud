@@ -1,5 +1,8 @@
 {
   "name": "hud",
-  "hooks": ["status-line"],
-  "skills": ["skills/hud-config"]
+  "hooks": ["status-line", "title"],
+  "skills": [
+    "skills/hud-config",
+    "skills/rules"
+  ]
 }

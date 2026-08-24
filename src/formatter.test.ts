@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig } from './formatter';
+import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig, stripAnsi, formatOsc8Link, THEMES, STYLES } from './formatter';
 import { ParsedMetrics } from './parser';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -265,7 +265,7 @@ describe('formatMetrics', () => {
     it('formats transcript path with tail -f hint when present', () => {
       const metrics = { ...baseMetrics, transcriptPath: `${os.homedir()}/.gemini/antigravity-cli/transcript_123.txt` };
       const out = formatMetrics(metrics);
-      expect(out).toContain('📜 tail -f ~/.gemini/antigravity-cli/transcript_123.txt');
+      expect(stripAnsi(out)).toContain('📜 tail -f ~/.gemini/antigravity-cli/transcript_123.txt');
     });
 
     it('does not display transcript block when missing', () => {
@@ -748,7 +748,174 @@ describe('formatMetrics', () => {
       expect(out).toContain('BLOCKED - deps missing');
     });
   });
+
+    describe('OSC 8 Hyperlinks & stripAnsi hardening', () => {
+    it('strips both SGR and OSC 8 sequences cleanly without skewing visible character counts', () => {
+      const rawText = '\x1b]8;;file:///Users/javidiaz/workspace/code/AGENTS.md\x1b\\AGENTS.md\x1b]8;;\x1b\\';
+      const styledText = `\x1b[32m${rawText}\x1b[0m`;
+      const stripped = stripAnsi(styledText);
+      expect(stripped).toBe('AGENTS.md');
+      expect(stripped.length).toBe(9);
+    });
+
+    it('formats OSC 8 links with URL encoding for paths with spaces and special characters', () => {
+      const link = formatOsc8Link('/Users/javi/My Workspace/file#1.md', 'file#1.md', true);
+      expect(link).toContain('\x1b]8;;file:///Users/javi/My%20Workspace/file%231.md\x1b\\file#1.md\x1b]8;;\x1b\\');
+    });
+
+    it('returns raw text when clickableLinks is false or url is empty', () => {
+      expect(formatOsc8Link('/path/to/file.md', 'file.md', false)).toBe('file.md');
+      expect(formatOsc8Link('', 'file.md', true)).toBe('file.md');
+    });
+
+    it('renders Cmd+Clickable OSC 8 links on transcript, artifacts, mcp, and git blocks by default', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        transcriptPath: '/Users/javidiaz/.gemini/transcript.jsonl',
+        artifacts: ['plan.md', 'walkthrough.md'],
+        conversationId: 'conv123',
+        mcpConfigPath: '/Users/javidiaz/.gemini/config/mcp_config.json',
+        mcpServers: ['github', 'chrome'],
+        gitBranches: [{ name: 'work', branch: 'feat/hud*' }]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('\x1b]8;;file:///Users/javidiaz/.gemini/transcript.jsonl\x1b\\');
+      expect(out).toContain('\x1b]8;;file://');
+      expect(out).toContain('plan.md');
+      expect(out).toContain('walkthrough.md');
+    });
+  });
+
+  describe('Theming Engine (TrueColor RGB palettes)', () => {
+    it('exports all 7 theme presets in THEMES dictionary', () => {
+      expect(THEMES).toBeDefined();
+      expect(THEMES['default']).toBeDefined();
+      expect(THEMES['catppuccin']).toBeDefined();
+      expect(THEMES['tokyo-night']).toBeDefined();
+      expect(THEMES['dracula']).toBeDefined();
+      expect(THEMES['nord']).toBeDefined();
+      expect(THEMES['solarized']).toBeDefined();
+      expect(THEMES['monochrome']).toBeDefined();
+    });
+
+    it('renders TrueColor 24-bit RGB codes when catppuccin theme is selected', () => {
+      const configOverride = { theme: 'catppuccin' as const };
+      const out = formatMetrics(baseMetrics, 120, configOverride as any);
+      // Catppuccin Blue #89b4fa -> 137;180;250 or Catppuccin Mocha colors
+      expect(out).toContain('\x1b[38;2;');
+    });
+
+    it('renders clean bold monochrome styling when monochrome theme is selected', () => {
+      const configOverride = { theme: 'monochrome' as const };
+      const out = formatMetrics(baseMetrics, 120, configOverride as any);
+      expect(out).toBeDefined();
+    });
+  });
+
+  describe('Separator Styles Engine', () => {
+    it('exports all 4 style configurations in STYLES dictionary', () => {
+      expect(STYLES).toBeDefined();
+      expect(STYLES['modern']).toBeDefined();
+      expect(STYLES['powerline']).toBeDefined();
+      expect(STYLES['bubble']).toBeDefined();
+      expect(STYLES['minimal']).toBeDefined();
+    });
+
+    it('renders powerline arrows when powerline style is configured', () => {
+      const configOverride = { style: 'powerline' as const };
+      const out = formatMetrics(baseMetrics, 120, configOverride as any);
+      expect(out).toContain('');
+    });
+
+    it('renders bubble pill badges when bubble style is configured', () => {
+      const configOverride = { style: 'bubble' as const };
+      const out = formatMetrics(baseMetrics, 120, configOverride as any);
+      expect(out).toContain('');
+    });
+
+    it('renders clean spaces and bullets when minimal style is configured', () => {
+      const configOverride = { style: 'minimal' as const };
+      const out = formatMetrics(baseMetrics, 120, configOverride as any);
+      expect(out).not.toContain('▌');
+    });
+  });
+
+  describe('New Telemetry Blocks (mcp, rules, session_time, enriched tool & git)', () => {
+    it('renders MCP telemetry block with active servers and clickable config link', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        mcpServers: ['github', 'chrome', 'postgres'],
+        mcpConfigPath: '/Users/javidiaz/.gemini/config/mcp_config.json'
+      };
+      const configOverride = {
+        layouts: {
+          large: [['state', 'mcp']],
+          medium: [['state', 'mcp']],
+          small: [['state', 'mcp']]
+        }
+      };
+      const out = formatMetrics(metrics, 140, configOverride);
+      expect(out).toContain('🔌 MCP:');
+      expect(out).toContain('3 active');
+      expect(out).toContain('mcp_config.json');
+    });
+
+    it('renders active rules count in rules block', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        activeRules: [
+          { name: 'AGENTS.md', path: '/Users/javidiaz/workspace/AGENTS.md', scope: 'project' },
+          { name: 'GEMINI.md', path: '/Users/javidiaz/.gemini/GEMINI.md', scope: 'global' }
+        ]
+      };
+      const configOverride = {
+        layouts: {
+          large: [['state', 'rules']],
+          medium: [['state', 'rules']],
+          small: [['state', 'rules']]
+        }
+      };
+      const out = formatMetrics(metrics, 140, configOverride);
+      expect(out).toContain('📜 Rules:');
+      expect(out).toContain('2 active');
+    });
+
+    it('renders session elapsed wall-clock timer in session_time block', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        sessionElapsedSeconds: 862 // 14m 22s
+      };
+      const configOverride = {
+        layouts: {
+          large: [['state', 'session_time']],
+          medium: [['state', 'session_time']],
+          small: [['state', 'session_time']]
+        }
+      };
+      const out = formatMetrics(metrics, 140, configOverride);
+      expect(stripAnsi(out)).toContain('⏱️ 14m 22s');
+    });
+
+    it('renders tool elapsed execution timer when toolElapsedSeconds is provided', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        activeTool: { name: 'run_command', summary: 'npm test', status: 'running' },
+        toolElapsedSeconds: 8
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('run_command (npm test) [⏱️ 8s]');
+    });
+
+    it('renders git diff weight and ahead/behind counts when gitStats is provided', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        gitBranches: [{ name: 'work', branch: 'feat/hud*' }],
+        gitStats: { added: 42, deleted: 10, filesModified: 3, ahead: 1, behind: 0 }
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('feat/hud*');
+      expect(out).toContain('+42/-10, 3 files');
+      expect(out).toContain('↑1 ↓0');
+    });
+  });
 });
-
-
-

@@ -77,6 +77,20 @@ export interface ActiveToolInfo {
   action?: string;
 }
 
+export interface ActiveRuleInfo {
+  name: string;
+  path: string;
+  scope: 'project' | 'workspace' | 'global';
+}
+
+export interface GitStats {
+  added: number;
+  deleted: number;
+  filesModified: number;
+  ahead: number;
+  behind: number;
+}
+
 export interface ParsedMetrics {
   agentState: string;
   contextUsage: number;
@@ -119,6 +133,14 @@ export interface ParsedMetrics {
   credits?: number;
   isApiKey?: boolean;
   customBlocks?: Record<string, string>;
+  mcpServers?: string[];
+  mcpConfigPath?: string;
+  activeRules?: ActiveRuleInfo[];
+  activePlugins?: string[];
+  sessionElapsedSeconds?: number;
+  toolElapsedSeconds?: number;
+  gitStats?: GitStats;
+  clickableLinks?: boolean;
 }
 
 interface TranscriptCacheEntry {
@@ -324,6 +346,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const vcsObj = (parsed.vcs && typeof parsed.vcs === 'object' && !Array.isArray(parsed.vcs)) ? parsed.vcs : undefined;
 
   let gitBranches: {name: string, branch: string}[] = [];
+  let gitStats: GitStats | undefined = undefined;
 
   const activeWorkspaceRepos: string[] = [];
   
@@ -358,6 +381,9 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         const cacheRaw = fs.readFileSync(gitCacheFile, 'utf8');
         const cacheData = JSON.parse(cacheRaw);
         previousCacheBranches = cacheData.gitBranches || [];
+        if (cacheData.gitStats) {
+          gitStats = cacheData.gitStats;
+        }
         // Use cache if it's less than 5 seconds old, cwd matches, and session matches
         if (cacheData.cwd === parsed.cwd && (!conversationId || cacheData.conversationId === conversationId) && (Date.now() - cacheData.timestamp) < 5000) {
           gitBranches = previousCacheBranches || [];
@@ -402,6 +428,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           cwd: parsed.cwd,
           conversationId,
           gitBranches,
+          gitStats,
           timestamp: Date.now()
         }), { mode: 0o600 });
       } catch (e) {}
@@ -797,6 +824,107 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     } catch (e) {}
   }
 
+  // 1. Tool Elapsed Timer persistence
+  let toolElapsedSeconds = 0;
+  if (conversationId) {
+    const toolCacheFile = path.join(os.homedir(), '.gemini', `hud_tool_${conversationId}.json`);
+    if (activeTool && activeTool.name) {
+      try {
+        const now = Date.now();
+        if (fs.existsSync(toolCacheFile)) {
+          const cachedState = JSON.parse(fs.readFileSync(toolCacheFile, 'utf8'));
+          if (cachedState.toolName === activeTool.name && cachedState.action === activeTool.action && cachedState.query === activeTool.query) {
+            toolElapsedSeconds = Math.max(0, Math.round((now - cachedState.startedAt) / 1000));
+          } else {
+            fs.writeFileSync(toolCacheFile, JSON.stringify({
+              toolName: activeTool.name,
+              action: activeTool.action,
+              query: activeTool.query,
+              startedAt: now
+            }), { mode: 0o600 });
+          }
+        } else {
+          fs.writeFileSync(toolCacheFile, JSON.stringify({
+            toolName: activeTool.name,
+            action: activeTool.action,
+            query: activeTool.query,
+            startedAt: now
+          }), { mode: 0o600 });
+        }
+      } catch (e) {}
+    } else {
+      if (fs.existsSync(toolCacheFile)) {
+        try { fs.unlinkSync(toolCacheFile); } catch (e) {}
+      }
+    }
+  }
+
+  // 2. MCP Server Configuration Reader
+  let mcpServers: string[] | undefined = undefined;
+  let mcpConfigPath: string | undefined = undefined;
+  const mcpFile = path.join(os.homedir(), '.gemini', 'config', 'mcp_config.json');
+  if (fs.existsSync(mcpFile)) {
+    mcpConfigPath = mcpFile;
+    try {
+      const mcpContent = fs.readFileSync(mcpFile, 'utf8');
+      const mcpParsed = JSON.parse(mcpContent);
+      if (mcpParsed && mcpParsed.mcpServers && typeof mcpParsed.mcpServers === 'object' && !Array.isArray(mcpParsed.mcpServers)) {
+        mcpServers = Object.keys(mcpParsed.mcpServers);
+      }
+    } catch (e) {}
+  }
+
+  // 3. Active Rules Discovery
+  const activeRules: ActiveRuleInfo[] = [];
+  const checkedRuleFiles = new Set<string>();
+
+  if (cwd) {
+    const projectAgents = path.join(cwd, 'AGENTS.md');
+    if (fs.existsSync(projectAgents) && !checkedRuleFiles.has(projectAgents)) {
+      activeRules.push({ name: 'AGENTS.md', path: projectAgents, scope: 'project' });
+      checkedRuleFiles.add(projectAgents);
+    }
+    const projectGemini = path.join(cwd, 'GEMINI.md');
+    if (fs.existsSync(projectGemini) && !checkedRuleFiles.has(projectGemini)) {
+      activeRules.push({ name: 'GEMINI.md', path: projectGemini, scope: 'project' });
+      checkedRuleFiles.add(projectGemini);
+    }
+  }
+
+  const globalAgents = path.join(os.homedir(), '.gemini', 'AGENTS.md');
+  if (fs.existsSync(globalAgents) && !checkedRuleFiles.has(globalAgents)) {
+    activeRules.push({ name: 'AGENTS.md', path: globalAgents, scope: 'global' });
+    checkedRuleFiles.add(globalAgents);
+  }
+  const globalGemini = path.join(os.homedir(), '.gemini', 'GEMINI.md');
+  if (fs.existsSync(globalGemini) && !checkedRuleFiles.has(globalGemini)) {
+    activeRules.push({ name: 'GEMINI.md', path: globalGemini, scope: 'global' });
+    checkedRuleFiles.add(globalGemini);
+  }
+
+  // 4. Active Plugins Discovery
+  let activePlugins: string[] | undefined = undefined;
+  const pluginsDir = path.join(os.homedir(), '.gemini', 'config', 'plugins');
+  if (fs.existsSync(pluginsDir)) {
+    try {
+      const entries = fs.readdirSync(pluginsDir, { withFileTypes: true });
+      const names = entries.filter(e => e.isDirectory() && !e.name.startsWith('.')).map(e => e.name);
+      if (names.length > 0) activePlugins = names;
+    } catch (e) {}
+  }
+
+  // 5. Session Elapsed Seconds
+  let sessionElapsedSeconds: number | undefined = undefined;
+  if (resolvedTranscriptPath && fs.existsSync(resolvedTranscriptPath)) {
+    try {
+      const stat = fs.statSync(resolvedTranscriptPath);
+      const birthtime = stat.birthtimeMs || stat.ctimeMs || stat.mtimeMs;
+      if (birthtime > 0) {
+        sessionElapsedSeconds = Math.max(0, Math.round((Date.now() - birthtime) / 1000));
+      }
+    } catch (e) {}
+  }
+
   return {
     agentState: (typeof parsed.agent_state === 'string' ? parsed.agent_state : 'UNKNOWN').toUpperCase(),
     contextUsage,
@@ -838,6 +966,13 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
     credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined,
     isApiKey,
-    customBlocks
+    customBlocks,
+    mcpServers,
+    mcpConfigPath,
+    activeRules: activeRules.length > 0 ? activeRules : undefined,
+    activePlugins,
+    sessionElapsedSeconds,
+    toolElapsedSeconds,
+    gitStats
   };
 }

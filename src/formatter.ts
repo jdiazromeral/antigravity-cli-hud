@@ -3,23 +3,183 @@ import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const colors = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  red: '\x1b[31m',
-  gray: '\x1b[90m',
+export interface HudThemeColors {
+  reset: string;
+  bold: string;
+  dim: string;
+  accent: string;
+  green: string;
+  yellow: string;
+  blue: string;
+  cyan: string;
+  red: string;
+  magenta: string;
+  gray: string;
+  text: string;
+}
+
+export const THEMES: Record<string, HudThemeColors> = {
+  'default': {
+    reset: '\x1b[0m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    accent: '\x1b[36m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    cyan: '\x1b[36m',
+    red: '\x1b[31m',
+    magenta: '\x1b[35m',
+    gray: '\x1b[90m',
+    text: '\x1b[37m'
+  },
+  'catppuccin': {
+    reset: '\x1b[0m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    accent: '\x1b[38;2;137;180;250m', // Blue #89b4fa
+    green: '\x1b[38;2;166;227;161m',  // Green #a6e3a1
+    yellow: '\x1b[38;2;249;226;175m', // Yellow #f9e2af
+    blue: '\x1b[38;2;137;180;250m',   // Blue #89b4fa
+    cyan: '\x1b[38;2;148;226;213m',   // Teal #94e2d5
+    red: '\x1b[38;2;243;139;168m',    // Red #f38ba8
+    magenta: '\x1b[38;2;203;166;247m',// Mauve #cba6f7
+    gray: '\x1b[38;2;108;112;134m',   // Overlay0 #6c7086
+    text: '\x1b[38;2;205;214;244m'    // Text #cdd6f4
+  },
+  'tokyo-night': {
+    reset: '\x1b[0m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    accent: '\x1b[38;2;122;162;247m', // #7aa2f7
+    green: '\x1b[38;2;158;206;106m',  // #9ece6a
+    yellow: '\x1b[38;2;224;175;104m', // #e0af68
+    blue: '\x1b[38;2;122;162;247m',   // #7aa2f7
+    cyan: '\x1b[38;2;125;207;255m',   // #7dcfff
+    red: '\x1b[38;2;247;118;142m',    // #f7768e
+    magenta: '\x1b[38;2;187;154;247m',// #bb9af7
+    gray: '\x1b[38;2;86;95;137m',     // #565f89
+    text: '\x1b[38;2;192;202;245m'    // #c0caf5
+  },
+  'dracula': {
+    reset: '\x1b[0m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    accent: '\x1b[38;2;189;147;249m', // Purple #bd93f9
+    green: '\x1b[38;2;80;250;123m',   // Green #50fa7b
+    yellow: '\x1b[38;2;241;250;140m', // Yellow #f1fa8c
+    blue: '\x1b[38;2;98;114;164m',    // Blue #6272a4
+    cyan: '\x1b[38;2;139;233;253m',   // Cyan #8be9fd
+    red: '\x1b[38;2;255;85;85m',      // Red #ff5555
+    magenta: '\x1b[38;2;255;121;198m',// Pink #ff79c6
+    gray: '\x1b[38;2;98;114;164m',    // Comment #6272a4
+    text: '\x1b[38;2;248;248;242m'    // Foreground #f8f8f2
+  },
+  'nord': {
+    reset: '\x1b[0m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    accent: '\x1b[38;2;136;192;208m', // Frost #88c0d0
+    green: '\x1b[38;2;163;190;140m',  // Aurora green #a3be8c
+    yellow: '\x1b[38;2;235;203;139m', // Aurora yellow #ebcb8b
+    blue: '\x1b[38;2;129;161;193m',   // Frost blue #81a1c1
+    cyan: '\x1b[38;2;143;188;187m',   // Frost teal #8fbcbb
+    red: '\x1b[38;2;191;97;106m',     // Aurora red #bf616a
+    magenta: '\x1b[38;2;180;142;173m',// Aurora purple #b48ead
+    gray: '\x1b[38;2;76;86;106m',     // Polar night #4c566a
+    text: '\x1b[38;2;236;239;244m'    // Snow storm #eceff4
+  },
+  'solarized': {
+    reset: '\x1b[0m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    accent: '\x1b[38;2;38;139;210m',  // Blue #268bd2
+    green: '\x1b[38;2;133;153;0m',    // Green #859900
+    yellow: '\x1b[38;2;181;137;0m',   // Yellow #b58900
+    blue: '\x1b[38;2;38;139;210m',    // Blue #268bd2
+    cyan: '\x1b[38;2;42;161;152m',    // Cyan #2aa198
+    red: '\x1b[38;2;220;50;47m',      // Red #dc322f
+    magenta: '\x1b[38;2;211;54;130m', // Magenta #d33682
+    gray: '\x1b[38;2;101;123;131m',   // Base00 #657b83
+    text: '\x1b[38;2;131;148;150m'    // Base0 #839496
+  },
+  'monochrome': {
+    reset: '\x1b[0m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    accent: '\x1b[1m',
+    green: '\x1b[37m',
+    yellow: '\x1b[37m',
+    blue: '\x1b[37m',
+    cyan: '\x1b[37m',
+    red: '\x1b[1m\x1b[37m',
+    magenta: '\x1b[37m',
+    gray: '\x1b[90m',
+    text: '\x1b[37m'
+  }
 };
+
+export interface HudStyleConfig {
+  accentBar: string;
+  guideLine: string;
+  divider: string;
+  bullet: string;
+}
+
+export const STYLES: Record<string, HudStyleConfig> = {
+  'modern': {
+    accentBar: '▌',
+    guideLine: '│',
+    divider: '  |  ',
+    bullet: '  •  '
+  },
+  'powerline': {
+    accentBar: '',
+    guideLine: '│',
+    divider: '  ',
+    bullet: '  '
+  },
+  'bubble': {
+    accentBar: '█',
+    guideLine: '│',
+    divider: '   ',
+    bullet: ' • '
+  },
+  'minimal': {
+    accentBar: ' ',
+    guideLine: ' ',
+    divider: '   ',
+    bullet: ' • '
+  }
+};
+
+export function stripAnsi(str: string): string {
+  return str
+    .replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, '') // Strip OSC 8 opening URL tags
+    .replace(/\x1b\]8;;\x1b\\/g, '')         // Strip OSC 8 closing delimiters
+    .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');  // Strip standard ANSI SGR codes
+}
+
+export function formatOsc8Link(filePath: string, displayText: string, enabled: boolean = true): string {
+  if (!enabled || !filePath) return displayText;
+  let fileUrl = filePath;
+  if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://') && !fileUrl.startsWith('file://')) {
+    const normalized = path.resolve(filePath).replace(/\\/g, '/');
+    const encodedPath = normalized.split('/').map(encodeURIComponent).join('/');
+    fileUrl = `file://${encodedPath}`;
+  } else if (fileUrl.startsWith('file://')) {
+    const pathPart = fileUrl.slice(7);
+    const encodedPath = pathPart.split('/').map(encodeURIComponent).join('/');
+    fileUrl = `file://${encodedPath}`;
+  }
+  return `\x1b]8;;${fileUrl}\x1b\\${displayText}\x1b]8;;\x1b\\`;
+}
 
 // ============================================================================
 // HUD LAYOUT CONFIGURATION
 // Default layout matrix and budget ceilings.
 // Custom overrides can be placed in ~/.gemini/hud_config.json
-// Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'tool', 'transcript'
+// Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'tool', 'transcript', 'mcp', 'rules', 'plugins', 'session_time'
 // ============================================================================
 export interface CustomBlockConfig {
   title?: string;
@@ -45,6 +205,9 @@ export interface HudLayoutsConfig {
 }
 
 export interface HudConfig {
+  theme?: string;
+  style?: string;
+  clickableLinks?: boolean;
   autoHideEmptyBlocks?: boolean;
   budget?: HudBudgetConfig;
   breakpoints?: HudBreakpointsConfig;
@@ -53,13 +216,19 @@ export interface HudConfig {
 }
 
 export const DEFAULT_HUD_CONFIG: {
+  theme: string;
+  style: string;
+  clickableLinks: boolean;
   autoHideEmptyBlocks: boolean;
   budget: { maxSteps: number; maxContextTokens?: number };
   breakpoints: { large: number; medium: number; small: number };
   layouts: { large: string[][]; medium: string[][]; small: string[][] };
   customBlocks?: Record<string, CustomBlockConfig>;
 } = {
-  // Whether to dynamically hide 'tasks' and 'subagents' blocks from the UI when their count is 0
+  theme: 'default',
+  style: 'modern',
+  clickableLinks: true,
+  // Whether to dynamically hide empty blocks from the UI when inactive
   autoHideEmptyBlocks: true,
   // Budget ceiling defaults
   budget: {
@@ -118,13 +287,16 @@ export function loadHudConfig(customPath?: string): typeof DEFAULT_HUD_CONFIG {
       const userConfig = JSON.parse(raw);
       const userCustomBlocks: Record<string, CustomBlockConfig> = { ...(userConfig.customBlocks || {}) };
       for (const [k, v] of Object.entries(userConfig)) {
-        if (v && typeof v === 'object' && !Array.isArray(v) && typeof (v as any).command === 'string' && k !== 'customBlocks' && k !== 'budget' && k !== 'breakpoints' && k !== 'layouts') {
+        if (v && typeof v === 'object' && !Array.isArray(v) && typeof (v as any).command === 'string' && k !== 'customBlocks' && k !== 'budget' && k !== 'breakpoints' && k !== 'layouts' && k !== 'theme' && k !== 'style' && k !== 'clickableLinks') {
           userCustomBlocks[k] = v as CustomBlockConfig;
         }
       }
       return {
         ...DEFAULT_HUD_CONFIG,
         ...userConfig,
+        theme: userConfig.theme || DEFAULT_HUD_CONFIG.theme,
+        style: userConfig.style || DEFAULT_HUD_CONFIG.style,
+        clickableLinks: userConfig.clickableLinks !== undefined ? !!userConfig.clickableLinks : DEFAULT_HUD_CONFIG.clickableLinks,
         budget: {
           ...DEFAULT_HUD_CONFIG.budget,
           ...(userConfig.budget || {})
@@ -163,6 +335,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
   const hudConfig = configOverride ? {
     ...DEFAULT_HUD_CONFIG,
     ...configOverride,
+    theme: configOverride.theme || DEFAULT_HUD_CONFIG.theme,
+    style: configOverride.style || DEFAULT_HUD_CONFIG.style,
+    clickableLinks: configOverride.clickableLinks !== undefined ? !!configOverride.clickableLinks : DEFAULT_HUD_CONFIG.clickableLinks,
     budget: {
       ...DEFAULT_HUD_CONFIG.budget,
       ...(configOverride.budget || {})
@@ -181,6 +356,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
       ...(configOverride.customBlocks || {})
     }
   } : loadHudConfig();
+
+  const colors = THEMES[hudConfig.theme || 'default'] || THEMES['default'];
+  const styleConfig = STYLES[hudConfig.style || 'modern'] || STYLES['modern'];
+  const clickableLinks = hudConfig.clickableLinks !== false && metrics.clickableLinks !== false;
 
   // 1. Calculate Blocks Independently
   const paddedState = metrics.agentState.padEnd(7, ' ');
@@ -209,7 +388,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     return `${tokens}`;
   };
 
-  // Format quota values
+  // Format quota and elapsed values
   const formatTime = (sec: number) => {
     if (sec <= 0) return '00:00';
     const d = Math.floor(sec / 86400);
@@ -217,6 +396,16 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     const m = Math.floor((sec % 3600) / 60);
     if (d > 0) return `${d}d ${h}h`;
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  const formatElapsed = (sec: number) => {
+    if (sec <= 0) return '0s';
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
   };
 
   const qWColor = getThresholdColor(metrics.quotaWeekly);
@@ -345,14 +534,36 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
           statusBadge = ` ${colors.yellow}[${metrics.activeTool.status}]${colors.reset}${colors.cyan}`;
         }
       }
-      return `🛠️  ${colors.cyan}${toolName}${statusBadge}${summaryPart}${colors.reset}`;
+      const durationPart = (metrics.toolElapsedSeconds !== undefined && metrics.toolElapsedSeconds > 0)
+        ? ` [⏱️ ${metrics.toolElapsedSeconds}s]`
+        : '';
+      return `🛠️  ${colors.cyan}${toolName}${statusBadge}${summaryPart}${durationPart}${colors.reset}`;
     })(),
+    mcp: (() => {
+      if (!metrics.mcpServers || metrics.mcpServers.length === 0) return '';
+      const configPath = metrics.mcpConfigPath || path.join(os.homedir(), '.gemini', 'config', 'mcp_config.json');
+      const countLabel = `${metrics.mcpServers.length} active`;
+      const linked = formatOsc8Link(configPath, countLabel, clickableLinks);
+      return `🔌 MCP: ${colors.cyan}${linked}${colors.reset}`;
+    })(),
+    rules: (() => {
+      if (!metrics.activeRules || metrics.activeRules.length === 0) return '';
+      const countLabel = `${metrics.activeRules.length} active`;
+      return `📜 Rules: ${colors.cyan}${countLabel}${colors.reset}`;
+    })(),
+    plugins: (() => {
+      if (!metrics.activePlugins || metrics.activePlugins.length === 0) return '';
+      return `🧩 Plugins: ${colors.cyan}${metrics.activePlugins.join(', ')}${colors.reset}`;
+    })(),
+    session_time: (metrics.sessionElapsedSeconds !== undefined && metrics.sessionElapsedSeconds > 0)
+      ? `⏱️ ${colors.cyan}${formatElapsed(metrics.sessionElapsedSeconds)}${colors.reset}`
+      : '',
     version: `📦 v${metrics.version}`,
     email: `📧 ${colors.dim}${metrics.email}${colors.reset}`,
     plan: (metrics.isApiKey || (metrics.planTier && metrics.planTier.toLowerCase().includes('api')))
       ? `${colors.yellow}🔑 [API Key]${colors.reset}`
       : (metrics.planTier.startsWith('GE-') || metrics.planTier.includes('Enterprise') ? `🏢 ${metrics.planTier}` : `💎 ${metrics.planTier}`),
-    transcript: metrics.transcriptPath ? `📜 tail -f ${metrics.transcriptPath.replace(os.homedir(), '~')}` : ''
+    transcript: metrics.transcriptPath ? `📜 ${formatOsc8Link(metrics.transcriptPath, `tail -f ${metrics.transcriptPath.replace(os.homedir(), '~')}`, clickableLinks)}` : ''
   };
 
   if (hudConfig.customBlocks) {
@@ -447,10 +658,33 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
   });
   const chunkedSubagents = calculateStackedChunks(subStrs, 3);
 
-  const gitStrs = (metrics.gitBranches || []).map(g => `${g.name} (${colors.cyan}${g.branch}${colors.reset})`);
+  const gitStrs = (metrics.gitBranches || []).map(g => {
+    let statsStr = '';
+    if (metrics.gitStats) {
+      const parts: string[] = [];
+      if (metrics.gitStats.added > 0 || metrics.gitStats.deleted > 0 || metrics.gitStats.filesModified > 0) {
+        parts.push(`+${metrics.gitStats.added}/-${metrics.gitStats.deleted}, ${metrics.gitStats.filesModified} files`);
+      }
+      if (metrics.gitStats.ahead > 0 || metrics.gitStats.behind > 0) {
+        parts.push(`↑${metrics.gitStats.ahead} ↓${metrics.gitStats.behind}`);
+      }
+      if (parts.length > 0) {
+        statsStr = ` (${parts.join(' ')})`;
+      }
+    }
+    const linkedName = formatOsc8Link(path.resolve(metrics.workspace || '.'), g.name, clickableLinks);
+    return `${linkedName} (${colors.cyan}${g.branch}${colors.reset})${statsStr}`;
+  });
   const chunkedGit = calculateStackedChunks(gitStrs, 5);
   
-  const artStrs = (metrics.artifacts || []).map(a => `${colors.yellow}${a}${colors.reset}`);
+  const artStrs = (metrics.artifacts || []).map(a => {
+    let aPath = a;
+    if (metrics.conversationId) {
+      aPath = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', metrics.conversationId, a);
+    }
+    const linked = formatOsc8Link(aPath, a, clickableLinks);
+    return `${colors.yellow}${linked}${colors.reset}`;
+  });
   const chunkedArtifacts = calculateStackedChunks(artStrs, 5);
 
   const looperStrs: string[] = [];
@@ -563,7 +797,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     });
   }
 
-  // Dynamic Culling: Hide tasks and subagents when they are inactive to prevent clutter
+  // Dynamic Culling: Hide empty blocks when they are inactive to prevent clutter
   if (hudConfig.autoHideEmptyBlocks) {
     if (metrics.taskCount === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'tasks'));
@@ -591,6 +825,18 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     }
     if (!metrics.transcriptPath) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'transcript'));
+    }
+    if (!metrics.mcpServers || metrics.mcpServers.length === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'mcp'));
+    }
+    if (!metrics.activeRules || metrics.activeRules.length === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'rules'));
+    }
+    if (!metrics.activePlugins || metrics.activePlugins.length === 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'plugins'));
+    }
+    if (metrics.sessionElapsedSeconds === undefined || metrics.sessionElapsedSeconds <= 0) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'session_time'));
     }
     if (!metrics.isApiKey) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'apiKey'));
@@ -657,16 +903,15 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
       const beforeStack = rowKeys.slice(0, stackedIdx).map(k => blocks[k]).filter(Boolean);
       const afterStack = rowKeys.slice(stackedIdx + 1).map(k => blocks[k]).filter(Boolean);
       
-      const beforeStr = beforeStack.length > 0 ? beforeStack.join('  |  ') + '  |  ' : '';
-      const afterStr = afterStack.length > 0 ? '  |  ' + afterStack.join('  |  ') : '';
+      const beforeStr = beforeStack.length > 0 ? beforeStack.join(styleConfig.divider) + styleConfig.divider : '';
+      const afterStr = afterStack.length > 0 ? styleConfig.divider + afterStack.join(styleConfig.divider) : '';
 
-      // Calculate visual padding to align wrapped lines under the title
-      const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+      // Calculate visual padding to align wrapped lines under the title using hardened stripAnsi
       const padLen = stripAnsi(beforeStr).length + 4; // indent 4 spaces relative to the title
       const padding = ' '.repeat(Math.max(0, padLen));
 
       for (let i = 0; i < chunks.length; i++) {
-        const stackItemStr = chunks[i].join('  •  ');
+        const stackItemStr = chunks[i].join(styleConfig.bullet);
         
         let rowContent = '';
         if (i === 0) {
@@ -686,7 +931,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
       }
     } else {
       const renderedItems = rowKeys.map(k => blocks[k]).filter(Boolean);
-      finalLines.push(renderedItems.join('  |  '));
+      finalLines.push(renderedItems.join(styleConfig.divider));
     }
   }
 
@@ -695,9 +940,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
 
   for (let i = 0; i < finalLines.length; i++) {
     if (i === 0) {
-      finalLines[0] = `${accentColor}▌${colors.reset} ${finalLines[0]}`;
+      finalLines[0] = `${accentColor}${styleConfig.accentBar}${colors.reset} ${finalLines[0]}`;
     } else {
-      finalLines[i] = `${colors.dim}│${colors.reset} ${finalLines[i]}`;
+      finalLines[i] = `${colors.dim}${styleConfig.guideLine}${colors.reset} ${finalLines[i]}`;
     }
   }
 

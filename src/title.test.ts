@@ -1,20 +1,5 @@
 import { describe, it, expect } from 'vitest';
-
-function formatTitle(metrics: { workspace: string; gitBranches?: { name: string; branch: string }[]; model: string; agentState: string }): string {
-  let gitPart = '';
-  if (metrics.gitBranches && metrics.gitBranches.length > 0) {
-    if (metrics.gitBranches.length === 1) {
-      const single = metrics.gitBranches[0];
-      const label = single.name === metrics.workspace ? single.branch : `${single.name}:${single.branch}`;
-      gitPart = `(${label}) `;
-    } else {
-      const labels = metrics.gitBranches.map((g: any) => `${g.name}:${g.branch}`).join(' & ');
-      gitPart = `(${labels}) `;
-    }
-  }
-  const statePart = metrics.agentState === 'IDLE' ? '🟢 IDLE' : (metrics.agentState === 'WAITING' ? '🟡 WAITING' : `🔵 ${metrics.agentState}`);
-  return `agy - ${metrics.workspace} ${gitPart}[${metrics.model}] ${statePart}`;
-}
+import { formatTitle } from './title';
 
 describe('title formatting', () => {
   it('formats title without git branches when clean', () => {
@@ -58,5 +43,18 @@ describe('title formatting', () => {
       agentState: 'IDLE'
     });
     expect(title).toBe('agy - work (sample_faqs:feat/auth & antigravity-cli-hud:fix/scoping) [Gemini 3.6 Flash] 🟢 IDLE');
+  });
+
+  it('formats title with active tool and step progress when working', () => {
+    const title = formatTitle({
+      workspace: 'work',
+      gitBranches: [{ name: 'work', branch: 'main' }],
+      model: 'Gemini 3.6 Flash',
+      agentState: 'WORKING',
+      activeTool: { name: 'vitest' },
+      stepCount: 14,
+      maxSteps: 20
+    });
+    expect(title).toBe('[🛠️ vitest] agy - work (main) [Gemini 3.6 Flash] [👟 14/20] 🔵 WORKING');
   });
 });
