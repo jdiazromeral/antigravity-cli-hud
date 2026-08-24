@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Hyperlink URI Encoding:** Encoded path segments with `encodeURIComponent` to prevent broken `file://` hyperlinks when workspace directories contain spaces or `#` characters.
 - **Accurate Branch Hyperlinks & Plain-Text Fallback:** Tracks verified absolute filesystem paths for git branches, opening the exact directory on Cmd+Click when present on disk and falling back cleanly to plain text with zero broken links.
 
+### Tooling & Build Engine
+- **TypeScript 7.0 in Go:** Upgraded core compiler to native multi-threaded Go (`typescript@7.0.2`), adding `npm run typecheck` (`tsc --noEmit` runs in ~0.3s).
+- **Native Rust Linter (`oxlint`):** Migrated from Node-bound ESLint to `oxlint` (runs in 5ms across the entire test & source tree with 0 errors).
+- **Strict Typing & Module Syntax:** Enforced `verbatimModuleSyntax`, `exactOptionalPropertyTypes`, and `noUncheckedIndexedAccess`.
+
 ---
 
 ## [1.3.1] - 2026-08-15

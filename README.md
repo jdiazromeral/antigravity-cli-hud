@@ -106,16 +106,23 @@ To revert back to the default minimal status line:
 
 ## Development & Testing
 
-This project maintains a robust, highly mocked unit test suite powered by `vitest` to ensure the responsive mathematical layout and payload parser never regress.
+This project maintains a high-velocity, strictly typed test and verification pipeline powered by **TypeScript 7 (Go)**, **Oxlint (Rust)**, and **Vitest**:
 
-To run the test suite:
 ```bash
+# Run unit & E2E invariant test suite
 npm run test
-```
 
-To generate a fully-populated mock HUD UI in your terminal:
-```bash
+# Run instant type-checking via native Go TypeScript 7
+npm run typecheck
+
+# Run instant native linting via Oxlint
+npm run lint
+
+# Generate a fully-populated mock HUD UI in your terminal
 npm run demo
+
+# Build production bundle and sync directly to ~/.gemini/config/plugins/hud
+npm run sync
 ```
 
 ## 🚀 What's New
@@ -123,6 +130,7 @@ npm run demo
 For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
 
 ### Latest Updates (v1.4.0)
+- **TypeScript 7 in Go & Oxlint Tooling:** Upgraded compiler toolchain to native multi-threaded TypeScript 7 (`tsc --noEmit` in ~0.3s) and Rust-based `oxlint` (5ms).
 - **TrueColor 24-Bit Theming Engine:** 7 built-in color themes (`default`, `catppuccin`, `tokyo-night`, `dracula`, `nord`, `solarized`, `monochrome`).
 - **Nerd Font Separator Styles:** 4 styling presets (`modern`, `powerline` arrows ``, `bubble` pills ``/``, and `minimal` ` • `).
 - **Interactive OSC 8 Terminal Hyperlinks:** Hardened terminal hyperlinks with verified absolute path resolution and plain-text fallback on transcripts, artifacts, MCP configs, rules, and git branches.
