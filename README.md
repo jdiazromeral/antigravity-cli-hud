@@ -125,7 +125,7 @@ For full release history and version details, see the **[CHANGELOG.md](CHANGELOG
 ### Latest Updates (v1.4.0)
 - **TrueColor 24-Bit Theming Engine:** 7 built-in color themes (`default`, `catppuccin`, `tokyo-night`, `dracula`, `nord`, `solarized`, `monochrome`).
 - **Nerd Font Separator Styles:** 4 styling presets (`modern`, `powerline` arrows ``, `bubble` pills ``/``, and `minimal` ` • `).
-- **Interactive OSC 8 Terminal Hyperlinks:** Hardened terminal hyperlinks with URL sanitization on transcripts, artifacts, MCP configs, rules, and git branches.
+- **Interactive OSC 8 Terminal Hyperlinks:** Hardened terminal hyperlinks with verified absolute path resolution and plain-text fallback on transcripts, artifacts, MCP configs, rules, and git branches.
 - **Stateful In-Flight Tool Execution Timer:** Solved ephemeral hook state loss by caching start timestamps in `~/.gemini/hud_tool_${conversationId}.json` (`🛠️ run_command (npm test) [⏱️ 8s]`).
 - **Extended Telemetry Blocks:** Active MCP servers (`🔌 MCP: 3 active`), active rules (`📜 Rules: 2 active`), plugins (`🧩 Plugins`), session elapsed time (`⏱️ 14m 22s`), and git diff weight (`+42/-10, 3 files ↑1 ↓0`).
 - **Windows PowerShell Support:** Added `hooks/status-line.ps1` with native UTF-8 console output encoding.

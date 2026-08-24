@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **OSC 8 Regex Width Bug:** Extended `stripAnsi` in `src/formatter.ts` to strip both SGR and OSC 8 sequences, preventing skewed column width calculations and unintended line wrapping.
 - **Hyperlink URI Encoding:** Encoded path segments with `encodeURIComponent` to prevent broken `file://` hyperlinks when workspace directories contain spaces or `#` characters.
+- **Accurate Branch Hyperlinks & Plain-Text Fallback:** Tracks verified absolute filesystem paths for git branches, opening the exact directory on Cmd+Click when present on disk and falling back cleanly to plain text with zero broken links.
 
 ---
 
