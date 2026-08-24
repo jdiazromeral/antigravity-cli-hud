@@ -1,9 +1,19 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig, stripAnsi, formatOsc8Link, THEMES, STYLES } from './formatter';
 import { ParsedMetrics } from './parser';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const mockHome = path.join(os.tmpdir(), `tmp-formatter-${Math.random().toString(36).substring(2)}`);
+
+vi.mock('os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('os')>();
+  return {
+    ...actual,
+    homedir: () => mockHome,
+  };
+});
 
 describe('formatMetrics', () => {
   const baseMetrics: ParsedMetrics = {
@@ -769,6 +779,7 @@ describe('formatMetrics', () => {
     });
 
     it('renders Cmd+Clickable OSC 8 links on transcript, artifacts, mcp, and git blocks by default', () => {
+      const tempDir = os.tmpdir();
       const metrics: ParsedMetrics = {
         ...baseMetrics,
         transcriptPath: '/Users/javidiaz/.gemini/transcript.jsonl',
@@ -776,13 +787,24 @@ describe('formatMetrics', () => {
         conversationId: 'conv123',
         mcpConfigPath: '/Users/javidiaz/.gemini/config/mcp_config.json',
         mcpServers: ['github', 'chrome'],
-        gitBranches: [{ name: 'work', branch: 'feat/hud*' }]
+        gitBranches: [{ name: 'work', branch: 'feat/hud*', path: tempDir }]
       };
       const out = formatMetrics(metrics);
       expect(out).toContain('\x1b]8;;file:///Users/javidiaz/.gemini/transcript.jsonl\x1b\\');
       expect(out).toContain('\x1b]8;;file://');
       expect(out).toContain('plan.md');
       expect(out).toContain('walkthrough.md');
+      expect(out).toContain(`\x1b]8;;file://${tempDir}\x1b\\work\x1b]8;;\x1b\\`);
+    });
+
+    it('renders plain text without broken hyperlinks when git branch path does not exist on disk', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        gitBranches: [{ name: 'fake-repo', branch: 'main', path: '/non/existent/path/never/here' }]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).not.toContain('\x1b]8;;file:///non/existent/path');
+      expect(stripAnsi(out)).toContain('fake-repo (main)');
     });
   });
 

@@ -115,7 +115,7 @@ export interface ParsedMetrics {
   email: string;
   planTier: string;
   skipPermissions: boolean;
-  gitBranches: { name: string, branch: string }[];
+  gitBranches: { name: string, branch: string, path?: string }[];
   artifactCount: number;
   conversationId?: string;
   artifacts?: string[];
@@ -345,7 +345,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const cwd = typeof parsed.cwd === 'string' ? parsed.cwd : undefined;
   const vcsObj = (parsed.vcs && typeof parsed.vcs === 'object' && !Array.isArray(parsed.vcs)) ? parsed.vcs : undefined;
 
-  let gitBranches: {name: string, branch: string}[] = [];
+  let gitBranches: {name: string, branch: string, path?: string}[] = [];
   let gitStats: GitStats | undefined = undefined;
 
   const activeWorkspaceRepos: string[] = [];
@@ -353,13 +353,13 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   if (cwd) {
     if (vcsObj && typeof vcsObj.branch === 'string') {
       const b = vcsObj.dirty ? `${vcsObj.branch}*` : vcsObj.branch;
-      gitBranches.push({ name: path.basename(cwd), branch: b });
+      gitBranches.push({ name: path.basename(cwd), branch: b, path: cwd });
     } else {
       const sessionSuffix = conversationId ? `_${conversationId}` : '';
       const gitCacheFile = path.join(os.homedir(), '.gemini', `hud_git${sessionSuffix}.cache`);
       let useCache = false;
 
-    let previousCacheBranches: {name: string, branch: string}[] | null = null;
+    let previousCacheBranches: {name: string, branch: string, path?: string}[] | null = null;
 
     if (conversationId) {
        const sessionContextFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain', conversationId, 'hud_context.json');
@@ -403,7 +403,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           const gitCommonDir = cp.execSync('git rev-parse --git-common-dir', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
           if (gitCommonDir) {
             const r = path.basename(path.dirname(path.resolve(targetDir, gitCommonDir)));
-            gitBranches.push({ name: r, branch: b });
+            gitBranches.push({ name: r, branch: b, path: path.resolve(targetDir) });
           }
         } catch (e) {
           // If not inside a git repo, use the activeWorkspaceRepos
@@ -413,7 +413,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                  const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
                  const cDir = cp.execSync('git rev-parse --git-common-dir', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
                  const r = path.basename(path.dirname(path.resolve(p, cDir)));
-                 gitBranches.push({ name: r, branch: b });
+                 gitBranches.push({ name: r, branch: b, path: path.resolve(p) });
                } catch(err) {}
             }
           }

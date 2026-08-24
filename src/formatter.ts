@@ -672,7 +672,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
         statsStr = ` (${parts.join(' ')})`;
       }
     }
-    const linkedName = formatOsc8Link(path.resolve(metrics.workspace || '.'), g.name, clickableLinks);
+    const resolvedPath = g.path || (metrics.workspace && path.isAbsolute(metrics.workspace) ? metrics.workspace : undefined);
+    const linkedName = (clickableLinks && resolvedPath && fs.existsSync(resolvedPath))
+      ? formatOsc8Link(resolvedPath, g.name, true)
+      : g.name;
     return `${linkedName} (${colors.cyan}${g.branch}${colors.reset})${statsStr}`;
   });
   const chunkedGit = calculateStackedChunks(gitStrs, 5);

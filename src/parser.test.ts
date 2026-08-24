@@ -296,19 +296,18 @@ describe('parseStream', () => {
     };
     const stream = Readable.from([JSON.stringify(payload)]);
     const result = await parseStream(stream);
-    expect(result.gitBranches).toEqual([{ name: 'project', branch: 'feature-branch*' }]);
+    expect(result.gitBranches).toEqual([{ name: 'project', branch: 'feature-branch*', path: '/path/to/project' }]);
   });
 
   it('should not append * if not dirty', async () => {
     const payload: AntigravityPayload = {
-      agent_state: 'Idle',
-      editor_mode: "N", credits: undefined,
+      agent_state: 'idle',
       cwd: '/path/to/project',
       vcs: { branch: 'main', dirty: false }
     };
     const stream = Readable.from([JSON.stringify(payload)]);
     const result = await parseStream(stream);
-    expect(result.gitBranches).toEqual([{ name: 'project', branch: 'main' }]);
+    expect(result.gitBranches).toEqual([{ name: 'project', branch: 'main', path: '/path/to/project' }]);
   });
 
   it('should handle invalid JSON gracefully by throwing an error', async () => {
