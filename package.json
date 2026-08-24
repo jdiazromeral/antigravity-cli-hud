@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
-    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --deny-warnings",
     "demo": "esbuild scripts/demo.ts --bundle --platform=node --format=esm --outfile=scripts/demo.js && node scripts/demo.js",
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js && esbuild src/title.ts --bundle --platform=node --format=esm --outfile=dist/title.js",
     "sync": "npm run build && node scripts/sync_installed_plugin.js"
@@ -18,13 +19,10 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.3",
     "esbuild": "^0.28.1",
-    "eslint": "^10.5.0",
-    "globals": "^17.6.0",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.0",
+    "oxlint": "^1.79.0",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.8"
   }
 }

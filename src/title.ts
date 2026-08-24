@@ -1,9 +1,9 @@
-import { parseStream, ParsedMetrics } from './parser.js';
+import { parseStream, type ParsedMetrics } from './parser.js';
 
 export function formatTitle(metrics: Partial<ParsedMetrics> & { workspace: string; model: string; agentState: string }): string {
   let gitPart = '';
   if (metrics.gitBranches && metrics.gitBranches.length > 0) {
-    if (metrics.gitBranches.length === 1) {
+    if (metrics.gitBranches.length === 1 && metrics.gitBranches[0]) {
       const single = metrics.gitBranches[0];
       const label = single.name === metrics.workspace ? single.branch : `${single.name}:${single.branch}`;
       gitPart = `(${label}) `;

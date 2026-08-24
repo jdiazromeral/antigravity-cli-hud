@@ -3,7 +3,7 @@ import { Readable } from 'stream';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { parseStream, AntigravityPayload } from './parser.js';
+import { parseStream, type AntigravityPayload } from './parser.js';
 
 const mockHome = path.join(os.tmpdir(), `tmp-dir-${Math.random().toString(36).substring(2)}`);
 
@@ -19,7 +19,6 @@ describe('parseStream', () => {
   it('should parse valid JSON payload and extract metrics', async () => {
     const payload: AntigravityPayload = {
       agent_state: 'Thinking',
-      editor_mode: "N", credits: undefined,
       context_window: {
         total_input_tokens: 45000,
         used_percentage: 45,
@@ -715,7 +714,6 @@ describe('parseStream', () => {
     it('should gracefully handle malformed credits payload', async () => {
       const payload = {
         agent_state: 'Idle',
-        editor_mode: "N", credits: undefined,
         credits: 'invalid-credits-string' as unknown as { balance: number }
       };
       const stream = Readable.from([JSON.stringify(payload)]);
@@ -727,7 +725,6 @@ describe('parseStream', () => {
     it('should handle malformed sandbox and vcs objects', async () => {
       const payload = {
         agent_state: 'Idle',
-        editor_mode: "N", credits: undefined,
         sandbox: 'not-an-object' as unknown as AntigravityPayload['sandbox'],
         vcs: 12345 as unknown as AntigravityPayload['vcs']
       };
@@ -998,7 +995,7 @@ describe('parseStream', () => {
 
         const result = await parseStream(Readable.from([JSON.stringify(payload)]));
         expect(result.looperMissions).toHaveLength(1);
-        expect(result.looperMissions?.[0].repo).toBe('active-app');
+        expect(result.looperMissions?.[0]?.repo).toBe('active-app');
         expect(result.activeSkills).toContain('looper');
       });
     });

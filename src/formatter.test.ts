@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig, stripAnsi, formatOsc8Link, THEMES, STYLES } from './formatter';
-import { ParsedMetrics } from './parser';
+import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig, stripAnsi, formatOsc8Link, THEMES, STYLES } from './formatter.js';
+import type { ParsedMetrics } from './parser.js';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';

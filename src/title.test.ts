@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTitle } from './title';
+import { formatTitle } from './title.js';
 
 describe('title formatting', () => {
   it('formats title without git branches when clean', () => {

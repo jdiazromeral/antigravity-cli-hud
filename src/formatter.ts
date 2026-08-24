@@ -1,4 +1,4 @@
-import { ParsedMetrics } from './parser.js';
+import type { ParsedMetrics } from './parser.js';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -357,8 +357,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     }
   } : loadHudConfig();
 
-  const colors = THEMES[hudConfig.theme || 'default'] || THEMES['default'];
-  const styleConfig = STYLES[hudConfig.style || 'modern'] || STYLES['modern'];
+  const defaultTheme = THEMES['default']!;
+  const defaultStyle = STYLES['modern']!;
+  const colors: HudThemeColors = (hudConfig.theme && THEMES[hudConfig.theme]) ? THEMES[hudConfig.theme]! : defaultTheme;
+  const styleConfig: HudStyleConfig = (hudConfig.style && STYLES[hudConfig.style]) ? STYLES[hudConfig.style]! : defaultStyle;
   const clickableLinks = hudConfig.clickableLinks !== false && metrics.clickableLinks !== false;
 
   // 1. Calculate Blocks Independently
@@ -504,7 +506,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     permissions: metrics.skipPermissions ? `${colors.red}☢️ Danger Mode${colors.reset}` : '',
     workspace: `📂 ${colors.blue}${metrics.workspace}${colors.reset}`,
     steps: stepStr,
-    git: metrics.gitBranch ? `🌱 ${colors.cyan}${metrics.gitBranch}${colors.reset}` : '',
+    git: (metrics.gitBranches && metrics.gitBranches.length > 0 && metrics.gitBranches[0]) ? `🌱 ${colors.cyan}${metrics.gitBranches[0].branch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
     ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${softPct}%${colors.reset} (${ratioStr})${exceedWarning}`,
     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
@@ -872,9 +874,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
   // 3. Matrix Builder
   const finalLines: string[] = [];
   
-  for (let rowIndex = 0; rowIndex < activeLayout.length; rowIndex++) {
-    const rowKeys = activeLayout[rowIndex];
-    
+  for (const rowKeys of activeLayout) {
     const stackableKeys = ['subagents', 'git', 'artifacts', 'looper'];
     const stackedKey = stackableKeys.find(k => rowKeys.includes(k));
     
@@ -914,11 +914,14 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
       const padding = ' '.repeat(Math.max(0, padLen));
 
       for (let i = 0; i < chunks.length; i++) {
-        const stackItemStr = chunks[i].join(styleConfig.bullet);
+        const chunk = chunks[i];
+        if (!chunk) continue;
+        const stackItemStr = chunk.join(styleConfig.bullet);
         
         let rowContent = '';
         if (i === 0) {
-           if (chunks[0].length === 0 || !chunks[0][0]) {
+           const firstChunk = chunks[0];
+           if (!firstChunk || firstChunk.length === 0 || !firstChunk[0]) {
              rowContent = `${beforeStr}${emptyTitle}${afterStr}`;
              finalLines.push(rowContent);
            } else {
@@ -942,10 +945,13 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
   const accentColor = metrics.agentState === 'IDLE' ? colors.green : (metrics.agentState === 'WAITING' ? colors.yellow : colors.cyan);
 
   for (let i = 0; i < finalLines.length; i++) {
-    if (i === 0) {
-      finalLines[0] = `${accentColor}${styleConfig.accentBar}${colors.reset} ${finalLines[0]}`;
-    } else {
-      finalLines[i] = `${colors.dim}${styleConfig.guideLine}${colors.reset} ${finalLines[i]}`;
+    const line = finalLines[i];
+    if (line !== undefined) {
+      if (i === 0) {
+        finalLines[0] = `${accentColor}${styleConfig.accentBar}${colors.reset} ${line}`;
+      } else {
+        finalLines[i] = `${colors.dim}${styleConfig.guideLine}${colors.reset} ${line}`;
+      }
     }
   }
 

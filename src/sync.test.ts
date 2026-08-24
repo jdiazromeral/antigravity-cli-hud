@@ -40,8 +40,7 @@ describe('sync_installed_plugin script', () => {
 
     // Create a symlink inside source pointing to the outside secret
     fs.symlinkSync(outsideSecret, path.join(syncSourceDir, 'linked_secret.txt'));
-    fs.writeFileSync(path.join(syncSourceDir, 'package.json'), '{}');
-
+    // @ts-expect-error script is plain JS
     const { syncPlugin } = await import('../scripts/sync_installed_plugin.js');
     syncPlugin(syncSourceDir, syncTargetDir);
 

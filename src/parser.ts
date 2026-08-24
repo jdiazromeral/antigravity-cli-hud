@@ -1,58 +1,58 @@
 export interface AntigravityPayload {
   agent_state: string;
-  conversation_id: string;
+  conversation_id?: string | undefined;
   context_window?: {
     used_percentage: number;
     total_input_tokens: number;
-    context_window_size?: number;
+    context_window_size?: number | undefined;
     current_usage?: {
       cache_read_input_tokens: number;
-    };
-  };
+    } | undefined;
+  } | undefined;
   quota?: {
-    "gemini-weekly"?: { remaining_fraction: number; reset_in_seconds?: number };
-    "gemini-5h"?: { remaining_fraction: number; reset_in_seconds?: number };
-    "3p-weekly"?: { remaining_fraction: number; reset_in_seconds?: number };
-    "3p-5h"?: { remaining_fraction: number; reset_in_seconds?: number };
-  };
-  subagents?: Array<{ name: string; role: string; status: string; depth?: number; conversation_id?: string; log_uri?: string }>;
+    "gemini-weekly"?: { remaining_fraction: number; reset_in_seconds?: number | undefined } | undefined;
+    "gemini-5h"?: { remaining_fraction: number; reset_in_seconds?: number | undefined } | undefined;
+    "3p-weekly"?: { remaining_fraction: number; reset_in_seconds?: number | undefined } | undefined;
+    "3p-5h"?: { remaining_fraction: number; reset_in_seconds?: number | undefined } | undefined;
+  } | undefined;
+  subagents?: Array<{ name: string; role: string; status: string; depth?: number | undefined; conversation_id?: string | undefined; log_uri?: string | undefined }> | undefined;
   tool_info?: {
     name: string;
-    summary?: string;
-    status?: string;
-    query?: string;
-    action?: string;
-    taskId?: string;
-    task_id?: string;
-  };
-  task_count?: number;
-  sandbox?: { enabled: boolean };
-  model?: { display_name: string };
-  workspace?: { project_dir: string };
-  exceeds_200k_tokens?: boolean;
-  version?: string;
-  email?: string;
-  plan_tier?: string;
-  terminal_width?: number;
-  session_id?: string;
-  cwd?: string;
-  artifact_count?: number;
-  artifacts?: unknown[];
-  vcs?: { branch?: string; dirty?: boolean };
-  transcript_path?: string;
-  effort?: string;
-  mode?: string;
-  agent?: string;
-  step_count?: number;
-  step_index?: number;
-  max_steps?: number;
-  max_context_tokens?: number;
-  editor_mode?: string;
-  credits?: { balance: number };
-  dangerously_skip_permissions?: boolean;
-  skip_permissions?: boolean;
-  is_api_key?: boolean;
-  api_key_mode?: boolean;
+    summary?: string | undefined;
+    status?: string | undefined;
+    query?: string | undefined;
+    action?: string | undefined;
+    taskId?: string | undefined;
+    task_id?: string | undefined;
+  } | undefined;
+  task_count?: number | undefined;
+  sandbox?: { enabled: boolean } | undefined;
+  model?: { display_name: string } | undefined;
+  workspace?: { project_dir: string } | undefined;
+  exceeds_200k_tokens?: boolean | undefined;
+  version?: string | undefined;
+  email?: string | undefined;
+  plan_tier?: string | undefined;
+  terminal_width?: number | undefined;
+  session_id?: string | undefined;
+  cwd?: string | undefined;
+  artifact_count?: number | undefined;
+  artifacts?: unknown[] | undefined;
+  vcs?: { branch?: string | undefined; dirty?: boolean | undefined } | undefined;
+  transcript_path?: string | undefined;
+  effort?: string | undefined;
+  mode?: string | undefined;
+  agent?: string | undefined;
+  step_count?: number | undefined;
+  step_index?: number | undefined;
+  max_steps?: number | undefined;
+  max_context_tokens?: number | undefined;
+  editor_mode?: string | undefined;
+  credits?: { balance: number } | undefined;
+  dangerously_skip_permissions?: boolean | undefined;
+  skip_permissions?: boolean | undefined;
+  is_api_key?: boolean | undefined;
+  api_key_mode?: boolean | undefined;
 }
 
 import * as fs from 'fs';
@@ -64,17 +64,17 @@ export interface SubagentInfo {
   name: string;
   role: string;
   status: string;
-  depth?: number;
-  conversationId?: string;
-  logUri?: string;
+  depth?: number | undefined;
+  conversationId?: string | undefined;
+  logUri?: string | undefined;
 }
 
 export interface ActiveToolInfo {
   name: string;
-  summary?: string;
-  status?: string;
-  query?: string;
-  action?: string;
+  summary?: string | undefined;
+  status?: string | undefined;
+  query?: string | undefined;
+  action?: string | undefined;
 }
 
 export interface ActiveRuleInfo {
@@ -103,7 +103,7 @@ export interface ParsedMetrics {
   quota5hResetSeconds: number;
   quotaType: string;
   subagents: SubagentInfo[];
-  activeTool?: ActiveToolInfo;
+  activeTool?: ActiveToolInfo | undefined;
   activeSkills: string[];
   taskCount: number;
   sessionName: string;
@@ -115,32 +115,32 @@ export interface ParsedMetrics {
   email: string;
   planTier: string;
   skipPermissions: boolean;
-  gitBranches: { name: string, branch: string, path?: string }[];
+  gitBranches: { name: string, branch: string, path?: string | undefined }[];
   artifactCount: number;
-  conversationId?: string;
-  artifacts?: string[];
-  looperMissions?: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[];
-  looperEpics?: {repo: string, epic: string, total: number, done: number}[];
+  conversationId?: string | undefined;
+  artifacts?: string[] | undefined;
+  looperMissions?: {repo: string, epic: string, mission: string, status: string, iteration?: number | undefined, maxIterations?: number | undefined, reason?: string | undefined}[] | undefined;
+  looperEpics?: {repo: string, epic: string, total: number, done: number}[] | undefined;
   stepCount: number;
   maxSteps: number;
   maxContextTokens: number;
-  contextWindowSize?: number;
+  contextWindowSize?: number | undefined;
   executionMode: string;
-  transcriptPath?: string;
+  transcriptPath?: string | undefined;
   effort: string;
   agentName: string;
-  editorMode?: string;
-  credits?: number;
-  isApiKey?: boolean;
-  customBlocks?: Record<string, string>;
-  mcpServers?: string[];
-  mcpConfigPath?: string;
-  activeRules?: ActiveRuleInfo[];
-  activePlugins?: string[];
-  sessionElapsedSeconds?: number;
-  toolElapsedSeconds?: number;
-  gitStats?: GitStats;
-  clickableLinks?: boolean;
+  editorMode?: string | undefined;
+  credits?: number | undefined;
+  isApiKey?: boolean | undefined;
+  customBlocks?: Record<string, string> | undefined;
+  mcpServers?: string[] | undefined;
+  mcpConfigPath?: string | undefined;
+  activeRules?: ActiveRuleInfo[] | undefined;
+  activePlugins?: string[] | undefined;
+  sessionElapsedSeconds?: number | undefined;
+  toolElapsedSeconds?: number | undefined;
+  gitStats?: GitStats | undefined;
+  clickableLinks?: boolean | undefined;
 }
 
 interface TranscriptCacheEntry {
@@ -395,26 +395,28 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     if (!useCache) {
       try {
         const targetDir = parsed.cwd;
-        // Check if current dir is a git repo
-        try {
-          cp.execSync('git rev-parse --is-inside-work-tree', { cwd: targetDir, stdio: 'ignore', timeout: 200 });
-          // If it is, just use it
-          const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
-          const gitCommonDir = cp.execSync('git rev-parse --git-common-dir', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
-          if (gitCommonDir) {
-            const r = path.basename(path.dirname(path.resolve(targetDir, gitCommonDir)));
-            gitBranches.push({ name: r, branch: b, path: path.resolve(targetDir) });
-          }
-        } catch (e) {
-          // If not inside a git repo, use the activeWorkspaceRepos
-          if (activeWorkspaceRepos.length > 0) {
-            for (const p of activeWorkspaceRepos) {
-               try {
-                 const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
-                 const cDir = cp.execSync('git rev-parse --git-common-dir', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
-                 const r = path.basename(path.dirname(path.resolve(p, cDir)));
-                 gitBranches.push({ name: r, branch: b, path: path.resolve(p) });
-               } catch(err) {}
+        if (targetDir) {
+          // Check if current dir is a git repo
+          try {
+            cp.execSync('git rev-parse --is-inside-work-tree', { cwd: targetDir, stdio: 'ignore', timeout: 200 });
+            // If it is, just use it
+            const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
+            const gitCommonDir = cp.execSync('git rev-parse --git-common-dir', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
+            if (gitCommonDir) {
+              const r = path.basename(path.dirname(path.resolve(targetDir, gitCommonDir)));
+              gitBranches.push({ name: r, branch: b, path: path.resolve(targetDir) });
+            }
+          } catch (e) {
+            // If not inside a git repo, use the activeWorkspaceRepos
+            if (activeWorkspaceRepos.length > 0) {
+              for (const p of activeWorkspaceRepos) {
+                 try {
+                   const b = cp.execSync('git rev-parse --abbrev-ref HEAD', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
+                   const cDir = cp.execSync('git rev-parse --git-common-dir', { cwd: p, stdio: 'pipe', timeout: 200 }).toString().trim();
+                   const r = path.basename(path.dirname(path.resolve(p, cDir)));
+                   gitBranches.push({ name: r, branch: b, path: path.resolve(p) });
+                 } catch(err) {}
+              }
             }
           }
         }
@@ -436,7 +438,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
-  let looperMissions: {repo: string, epic: string, mission: string, status: string, iteration?: number, maxIterations?: number, reason?: string}[] = [];
+  let looperMissions: {repo: string, epic: string, mission: string, status: string, iteration?: number | undefined, maxIterations?: number | undefined, reason?: string | undefined}[] = [];
   let looperEpics: {repo: string, epic: string, total: number, done: number}[] = [];
   if (cwd) {
     const sessionSuffix = conversationId ? `_${conversationId}` : '';
@@ -467,7 +469,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
            for (const p of activeWorkspaceRepos) {
               if (!repoRoots.includes(p)) repoRoots.push(p);
            }
-        } else {
+        } else if (targetDir) {
           try {
             const root = cp.execSync('git rev-parse --show-toplevel', { cwd: targetDir, stdio: 'pipe', timeout: 200 }).toString().trim();
             if (root && fs.existsSync(path.join(root, '.looper'))) {
@@ -511,28 +513,28 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
                       const status = statusMatch[1];
                       
                       const maxMatch = content.match(/^max_iterations:\s*(\d+)/m);
-                      const maxIterations = maxMatch ? parseInt(maxMatch[1], 10) : 8;
+                      const maxIterations = maxMatch && maxMatch[1] ? parseInt(maxMatch[1], 10) : 8;
                       
                       let iteration = 0;
-                      let reason = undefined;
+                      let reason: string | undefined = undefined;
                       
                       const recordsPath = path.join(epicPath, 'records');
                       if (fs.existsSync(recordsPath)) {
                         try {
                           const recordFiles = fs.readdirSync(recordsPath).filter((rf: string) => rf.startsWith(missionId + '_') && rf.endsWith('_record_file.md'));
-                          if (recordFiles.length > 0) {
+                          if (recordFiles.length > 0 && recordFiles[recordFiles.length - 1]) {
                             recordFiles.sort();
-                            const lastRecordFile = recordFiles[recordFiles.length - 1];
+                            const lastRecordFile = recordFiles[recordFiles.length - 1]!;
                             const recordContent = fs.readFileSync(path.join(recordsPath, lastRecordFile), 'utf8');
                             iteration = (recordContent.match(/^## Iteration/gm) || []).length;
                             
                             if (status === 'BLOCKED' || status === 'FAILED') {
                                const verdictMatch = recordContent.match(/-\s+Verdict:\s*(.*)/i);
                                const validatorMatch = recordContent.match(/-\s+Validator:\s*(.*)/i);
-                               if (verdictMatch && verdictMatch[1].toLowerCase().includes('blocked')) {
+                               if (verdictMatch && verdictMatch[1] && verdictMatch[1].toLowerCase().includes('blocked')) {
                                  const r = verdictMatch[1].match(/blocked\((.*?)\)/i);
                                  if (r && r[1]) reason = r[1].trim();
-                               } else if (validatorMatch && validatorMatch[1].toLowerCase().includes('fail')) {
+                               } else if (validatorMatch && validatorMatch[1] && validatorMatch[1].toLowerCase().includes('fail')) {
                                  let raw = validatorMatch[1].replace(/fail/i, '').trim();
                                  if (raw.startsWith('(')) raw = raw.substring(1);
                                  if (raw.endsWith(')')) raw = raw.substring(0, raw.length - 1);
@@ -568,13 +570,29 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
       try {
         fs.writeFileSync(looperCacheFile, JSON.stringify({
-          cwd: parsed.cwd,
+          cwd,
           conversationId,
           looperMissions,
           looperEpics,
           timestamp: Date.now()
         }), { mode: 0o600 });
       } catch(e) {}
+    }
+  }
+
+  let executionMode = typeof parsed.mode === 'string' ? parsed.mode : 'request-review';
+  if (!parsed.mode) {
+    try {
+      const settingsFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'settings.json');
+      if (fs.existsSync(settingsFile)) {
+        const settingsContent = fs.readFileSync(settingsFile, 'utf8');
+        const settingsParsed = JSON.parse(settingsContent);
+        if (settingsParsed && typeof settingsParsed.mode === 'string') {
+          executionMode = settingsParsed.mode;
+        }
+      }
+    } catch (e) {
+      // Ignore errors and default to request-review
     }
   }
   
@@ -594,23 +612,6 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
           }
         }
       } catch(e) {}
-    }
-  }
-
-  let executionMode = parsed.mode;
-  if (!executionMode) {
-    executionMode = 'request-review';
-    try {
-      const settingsFile = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'settings.json');
-      if (fs.existsSync(settingsFile)) {
-        const settingsContent = fs.readFileSync(settingsFile, 'utf8');
-        const settingsParsed = JSON.parse(settingsContent);
-        if (settingsParsed.mode) {
-          executionMode = settingsParsed.mode;
-        }
-      }
-    } catch (e) {
-      // Ignore errors and default to request-review
     }
   }
 

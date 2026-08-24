@@ -1,4 +1,5 @@
-import { formatMetrics, ParsedMetrics, HudConfig } from '../src/formatter.js';
+import { formatMetrics, type HudConfig } from '../src/formatter.js';
+import type { ParsedMetrics } from '../src/parser.js';
 
 // Parse CLI flags
 const args = process.argv.slice(2);
@@ -15,7 +16,8 @@ for (const arg of args) {
   } else if (arg.startsWith('--links=')) {
     linksOverride = arg.split('=')[1] === 'true';
   } else if (arg.startsWith('--width=')) {
-    widthOverride = parseInt(arg.split('=')[1], 10);
+    const val = arg.split('=')[1];
+    if (val) widthOverride = parseInt(val, 10);
   }
 }
 
