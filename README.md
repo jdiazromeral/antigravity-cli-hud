@@ -5,46 +5,55 @@
 A production-grade, highly responsive terminal HUD for the Antigravity CLI. It dynamically monitors your agent state, token context, quota buckets, and active subagents in real-time.
 
 ```text
-▌ 🔵 [TARS] WORKING  |  🔵 plan  |  🤖 Gemini 3.6 Flash  |  Effort: 󰾆 high  |  🧠 Skills: looper & tdd & mapper
-│ 📂 acme-corp/work  |  🔓 Unsandboxed  |  ⚡ Cache: 120k  |  🎧 Ctx: ▰▰▰▰▱ 72% (54k/75k)
+```text
+▌ 🔵 [TARS] WORKING  |  🔵 plan  |  🤖 Gemini 3.6 Flash  |  Effort: 󰾆 high  |  🧠 Skills: looper & tdd & rules  |  📦 v1.4.0  |  💎 Pro
+│ 📂 acme-corp/work  |  🔓 Unsandboxed  |  ⚡ Cache: 120k  |  🎧 Ctx: ▰▰▰▰▱ 72% (54k/75k max)
 │ 👟 Steps: ▰▰▰▰▱ 14/20  |  🕒 5h: ▰▰▱▱▱ 45% (01:00)  |  🕒 Weekly: ▰▰▰▰▱ 85% (2d 0h)
-│ ⚙️  Active Tasks: 3  |  👥 Subagents:  |  🛠️  search_web (antigravity docs)
+│ ⚙️  Active Tasks: 3  |  👥 Subagents:  |  🛠️  run_command (npm test) [⏱️ 8s]
 │                             orchestrator [id:abc123] [working] (Epic Runner)
 │                               ↳ worker-1 [id:def678] [working] (Feature Dev)
 │                                 ↳ researcher [id:ghi112] [completed] (Context Finder)
 │                             ...and 1 more hidden
 │ 📄 Artifacts (open ~/.gemini/antigravity-cli/brain/ad266f1f*):
-│     architecture_review.md
-│     database_schema.md
+│     v1.4_hud_implementation_plan.md
+│     walkthrough.md
 │ 🔄 Active Looper Missions:
-│     🎯 Epic: auth-v2 ▰▰▰▱▱ [3/5 DONE]
-│        ↳ [M4] [IN_PROGRESS Iteration 2/5]
-│     🎯 [sample_faqs] setup ▰▰▰▰▰ [1/1 DONE]
+│     🎯 [acme-corp/work] hud-v1.4.0 ▰▰▰▰▱ [3/4 DONE]
+│        ↳ [theming_engine] [IN_PROGRESS Iteration 2/5]
 │ 🌱 Active Branches:
-│     acme-corp/work (feature/hud-nested-agents)
-│     acme-corp/service-b (main)
+│     acme-corp/work (feat/hud-v1.4.0*) (+42/-10, 3 files ↑1 ↓0)
+│     acme-corp/service-b (main) (+42/-10, 3 files ↑1 ↓0)
 │ 📜 tail -f ~/.gemini/antigravity-cli/brain/ad266f1f-75f3-44dd-b073-c93a1bedc277/.system_generated/logs/transcript.jsonl
 ```
 
-To run this demo in your terminal:
+To run this demo in your terminal (with optional theme/style flags):
 ```bash
 npm run demo
+# Or test specific themes and separator styles:
+node scripts/demo.js --theme=catppuccin --style=powerline
+node scripts/demo.js --theme=tokyo-night --style=bubble
+node scripts/demo.js --theme=monochrome --style=minimal
 ```
 
 ## Architecture & Features
 
 This plugin was engineered with strict defensive paradigms and advanced layout algorithms to guarantee zero-crash execution and a flawless visual experience:
 
+- **TrueColor 24-Bit Theming Engine**: Choose from 7 built-in theme presets (`default`, `catppuccin`, `tokyo-night`, `dracula`, `nord`, `solarized`, `monochrome`) via `~/.gemini/hud_config.json`.
+- **Nerd Font Separator Styles**: 4 interchangeable layout styles (`modern` UTF-8 bar, `powerline` chevron arrows ``, `bubble` rounded pills ``/``, and `minimal` whitespace/bullets).
+- **Hardened OSC 8 Terminal Hyperlinks**: Cmd+Clickable hyperlinks on transcript paths, artifacts, MCP configs, rules, and git branches, with zero-width regex strip ANSI hardening.
+- **Stateful In-Flight Tool Execution Timer**: Tracks live elapsed wall-clock seconds for active tools (`🛠️ run_command (npm test) [⏱️ 8s]`) persisted across ephemeral hook process ticks via `~/.gemini/hud_tool_${conversationId}.json`.
+- **Extended Developer Telemetry**: Live status blocks for active MCP servers (`🔌 MCP: 3 active`), active rules (`📜 Rules: 2 active`), loaded plugins (`🧩 Plugins: hud, looper`), session wall-clock timer (`⏱️ 14m 22s`), and git diff weight (`+42/-10, 3 files ↑1 ↓0`).
+- **Windows PowerShell Support**: Native UTF-8 PowerShell hook wrapper `hooks/status-line.ps1` for cross-platform support.
+- **Dynamic Terminal Title Hook**: Displays active tool, workspace, git branch, model, and turn step budget in your terminal window title (`hooks/title.sh`).
 - **Declarative Custom Executable Blocks Engine**: Execute any external script or command directly from `~/.gemini/hud_config.json` with asynchronous background caching (<2ms render loop budget).
 - **Dynamic Matrix Engine**: Features a fully configurable JSON-driven grid system. You can freely re-arrange metrics (like Model, Workspace, Context, Quotas, and Custom Blocks) into any row or order based on terminal width. See [LAYOUT_ENGINE.md](LAYOUT_ENGINE.md) for full configuration specs.
 - **Session Context Isolation & Memory Scoping**: Completely isolates Looper missions and git telemetry per conversation ID (`~/.gemini/hud_looper_${conversationId}.cache`). When operating in a root multi-repo container, discovery is strictly bounded to the active session's `hud_context.json`.
 - **Security & Privacy Hardening**: Enforces identifier sanitization against path traversal, restricts custom block caches to `0o600` permissions, protects against symlink traversal, and caps synchronous transcript parsing to 2MB to prevent DoS latency.
-- **Incremental Stat-Cached Step Counter**: Instantaneous, stat-cached (`mtimeMs` <0.02ms) step counter on `transcript_path` maintaining live turn tracking even when telemetry omits step fields.
 - **Looper Hierarchical Tree**: Groups autonomous Looper missions hierarchically under their parent epic, eliminating redundant repository and epic echoes.
 - **Hysteresis Filtering & Strict Padding**: Mathematically absorbs micro-fluctuations in UI layout padding. By combining a 5-column hysteresis cache with strict 7-character string padding, it completely eliminates both horizontal and vertical UI bouncing during rapid state transitions.
-- **Interactive Config Wizard**: Ships with a built-in AI skill (`/hud-config`) that allows you to chat with an agent to visually re-arrange your HUD matrix on the fly!
-- **Ironclad Execution**: Wrapped in global `try/catch` handlers with hardcoded fallback strings. Even if the incoming telemetry JSON payload is violently malformed, the plugin will NEVER crash the Antigravity session.
-- **High-Performance Build**: Hand-written in TypeScript and bundled via `esbuild` into a single, dependency-free ECMAScript Module (`dist/index.js`) that executes in **~1ms**.
+- **Interactive Config & Inspection Skills**: Ships with built-in AI skills: `/hud:hud-config` (runtime layout & theme wizard) and `/hud:rules` (active workspace rules inspector).
+- **High-Performance Build**: Hand-written in TypeScript and bundled via `esbuild` into single ECMAScript Modules (`dist/index.js`, `dist/title.js`) that execute in **~1ms**.
 
 ## Installation
 
@@ -60,11 +69,15 @@ agy plugin install .
 
 ## Configuration
 
-To customize exactly what information appears on your HUD (and in what order), simply invoke the built-in configuration skill directly inside an active Antigravity chat session:
+To customize your HUD theme, separator style, matrix layout, or budget ceilings, invoke the configuration skill directly inside an active Antigravity chat session:
 
 > `/hud:hud-config`
 
-The AI will interactively guide you through customizing your layouts for Small, Medium, and Large terminal widths, and automatically recompile the binary for you!
+The AI will interactively guide you through selecting a theme (e.g. Catppuccin, Tokyo Night, Dracula, Nord), choosing a separator style (Modern, Powerline, Bubble, Minimal), and arranging your statusline rows without requiring recompilation!
+
+To inspect active workspace rules and tactical mandates:
+
+> `/hud:rules`
 
 ## Usage
 
@@ -72,6 +85,11 @@ To activate the HUD inside an active Antigravity chat session, run the following
 
 ```bash
 /statusline ~/.gemini/config/plugins/hud/hooks/status-line.sh
+```
+
+*(On Windows PowerShell)*:
+```powershell
+/statusline ~/.gemini/config/plugins/hud/hooks/status-line.ps1
 ```
 
 To activate the dynamic Terminal Title hook:
@@ -95,7 +113,7 @@ To run the test suite:
 npm run test
 ```
 
-To generate a fully-populated mock HUD UI in your terminal (useful for taking screenshots):
+To generate a fully-populated mock HUD UI in your terminal:
 ```bash
 npm run demo
 ```
@@ -104,12 +122,15 @@ npm run demo
 
 For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
 
-### Latest Updates (v1.3.0)
-- **Declarative Custom Executable Blocks Engine:** Define `customBlocks` in `~/.gemini/hud_config.json` to run external scripts asynchronously with background caching and zero render-loop blocking.
-- **Direct GEMINI_API_KEY & Null Quota Safety:** Automatically renders a `🔑 [API Key]` badge and omits broken 0% quota bars for API key auth modes.
-- **In-Flight Tool Summary Streaming:** Captures progressive query strings (e.g. `search_web`) and synthesized lifecycle actions (`Killed task X`, `Checked task X`) with responsive truncation.
-- **Looper Block Hierarchy & De-duplication:** Missions nest cleanly under their matching epics with tree indicators (`↳ [M1] [IN_PROGRESS]`), removing redundant repo/epic echoes.
-- **Incremental Stat-Cached Step Counter:** Fast `mtimeMs` (<0.02ms) stat-cached step counter on `transcript_path` resolving the `Steps: 0/20` bug.
+### Latest Updates (v1.4.0)
+- **TrueColor 24-Bit Theming Engine:** 7 built-in color themes (`default`, `catppuccin`, `tokyo-night`, `dracula`, `nord`, `solarized`, `monochrome`).
+- **Nerd Font Separator Styles:** 4 styling presets (`modern`, `powerline` arrows ``, `bubble` pills ``/``, and `minimal` ` • `).
+- **Interactive OSC 8 Terminal Hyperlinks:** Hardened terminal hyperlinks with URL sanitization on transcripts, artifacts, MCP configs, rules, and git branches.
+- **Stateful In-Flight Tool Execution Timer:** Solved ephemeral hook state loss by caching start timestamps in `~/.gemini/hud_tool_${conversationId}.json` (`🛠️ run_command (npm test) [⏱️ 8s]`).
+- **Extended Telemetry Blocks:** Active MCP servers (`🔌 MCP: 3 active`), active rules (`📜 Rules: 2 active`), plugins (`🧩 Plugins`), session elapsed time (`⏱️ 14m 22s`), and git diff weight (`+42/-10, 3 files ↑1 ↓0`).
+- **Windows PowerShell Support:** Added `hooks/status-line.ps1` with native UTF-8 console output encoding.
+- **Dynamic Terminal Title Progress:** Terminal window title displays in-flight tool and step counter (`[🛠️ run_command] agy - work (main) [Gemini 3.6 Flash] [👟 14/20] 🔵 WORKING`).
+- **Rules Inspector Skill:** Added `/hud:rules` for scanning and summarizing active behavioral mandates.
 
 ### Previous Updates (v1.2.0)
 - **Zero Disk I/O Real-Time Engine**: High-velocity statusline rendering (<2ms) parsing step counts and quotas directly in-memory from telemetry stream with zero disk thrashing.
@@ -134,7 +155,11 @@ Here are all the available blocks you can slot into your matrix:
 - **`git`**: The Active Branches block. Dynamically stacks line-by-line (`🌱 Active Branches:`) to cleanly display multi-repo worktrees alongside their active branches.
 - **`artifacts`**: The Active Artifacts block. Dynamically stacks line-by-line (`📄 Artifacts:`) to list the `.md` files generated during the active AI session. Automatically hides itself if no artifacts exist.
 - **`transcript`**: A clickable shortcut link directly to your agent's active `transcript.jsonl` log file, making it easy to `tail -f` the brain logs.
-- **`tool`**: Active Tool Execution block (e.g. `🛠️ search_web (antigravity docs)`). Displays real-time tool calls and in-flight queries streamed in telemetry; automatically culled when no tool is running.
+- **`mcp`**: Active MCP Tool Servers block (e.g., `🔌 MCP: 3 active`). Renders with a clickable shortcut link to your `~/.gemini/config/mcp_config.json`.
+- **`rules`**: Active Rules counter block (e.g., `📜 Rules: 2 active`). Scans workspace and global behavioral instructions.
+- **`plugins`**: Active Plugins block (e.g., `🧩 Plugins: hud, looper`). Lists currently mounted CLI plugins.
+- **`session_time`**: Session Elapsed Wall-Clock Timer (e.g., `⏱️ 14m 22s`). Displays the duration of the current session.
+- **`tool`**: Active Tool Execution block with live elapsed timer (e.g. `🛠️ run_command (npm test) [⏱️ 8s]`). Displays real-time tool calls and in-flight queries streamed in telemetry; automatically culled when no tool is running.
 - **`apiKey`**: Direct Gemini API key badge (`🔑 [API Key]`). Appears automatically when running with `GEMINI_API_KEY`.
 - **`custom_<id>`**: Custom Executable Block defined in `hud_config.json` under `customBlocks`. Executes shell scripts asynchronously and displays cached output.
 - **`ctx`**: Context window saturation limit. Shows percentage used and raw token count.

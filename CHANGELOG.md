@@ -5,6 +5,22 @@ All notable changes to the **Antigravity HUD Plugin** will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-24
+
+### Added
+- **TrueColor 24-Bit Theming Engine:** 7 built-in themes (`default`, `catppuccin`, `tokyo-night`, `dracula`, `nord`, `solarized`, `monochrome`) configured via `"theme"` in `~/.gemini/hud_config.json`.
+- **Nerd Font Separator Styles:** 4 interchangeable layout styles (`modern` UTF-8 bar, `powerline` chevron arrows ``, `bubble` rounded pills ``/``, and `minimal` whitespace/bullets) configured via `"style"` in `~/.gemini/hud_config.json`.
+- **Interactive OSC 8 Terminal Hyperlinks:** Cmd+Clickable terminal hyperlinks on transcript paths, artifacts, MCP config, rules, and git branches, with zero-width regex strip ANSI hardening.
+- **Stateful In-Flight Tool Execution Timer:** Caches tool execution start timestamps across ephemeral hook process ticks via `~/.gemini/hud_tool_${conversationId}.json` to display live elapsed seconds (`🛠️ run_command (npm test) [⏱️ 8s]`).
+- **Extended Developer Telemetry Blocks:** Added `mcp` (active tool servers), `rules` (active behavioral mandates), `plugins` (loaded CLI plugins), `session_time` (wall-clock elapsed timer), and enriched `git` diff statistics (`+42/-10, 3 files ↑1 ↓0`).
+- **Windows PowerShell Support:** Added native UTF-8 PowerShell hook wrapper `hooks/status-line.ps1`.
+- **Dynamic Terminal Title Progress:** Terminal window title dynamically displays active tool name and step progress (`[🛠️ run_command] agy - work (main) [Gemini 3.6 Flash] [👟 14/20] 🔵 WORKING`).
+- **Rules Inspector Skill:** Added `/hud:rules` for scanning and summarizing active behavioral mandates.
+
+### Fixed
+- **OSC 8 Regex Width Bug:** Extended `stripAnsi` in `src/formatter.ts` to strip both SGR and OSC 8 sequences, preventing skewed column width calculations and unintended line wrapping.
+- **Hyperlink URI Encoding:** Encoded path segments with `encodeURIComponent` to prevent broken `file://` hyperlinks when workspace directories contain spaces or `#` characters.
+
 ---
 
 ## [1.3.1] - 2026-08-15
