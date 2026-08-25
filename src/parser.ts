@@ -53,6 +53,33 @@ export interface AntigravityPayload {
   skip_permissions?: boolean | undefined;
   is_api_key?: boolean | undefined;
   api_key_mode?: boolean | undefined;
+  is_api_key_mode?: boolean | undefined;
+}
+
+export function formatToolActionSummary(toolName: string, action: string, taskId?: string): string {
+  const actLower = action.toLowerCase();
+  const isSubagent = toolName.toLowerCase() === 'manage_subagents';
+  const entitySingular = isSubagent ? 'subagent' : 'task';
+  const entityPlural = isSubagent ? 'subagents' : 'tasks';
+
+  switch (actLower) {
+    case 'kill':
+      return taskId ? `Killed ${entitySingular} ${taskId}` : `Killed ${entitySingular}`;
+    case 'kill_all':
+      return `Killed all ${entityPlural}`;
+    case 'list':
+      return `Listed ${entityPlural}`;
+    case 'status':
+    case 'check':
+      return taskId ? `Checked ${entitySingular} ${taskId}` : `Checked ${entitySingular}`;
+    case 'send_input':
+      return taskId ? `Sent input to ${entitySingular} ${taskId}` : `Sent input to ${entitySingular}`;
+    default:
+      if (isSubagent) {
+        return taskId ? `${action} subagent ${taskId}` : `${action} subagents`;
+      }
+      return taskId ? `${action} task ${taskId}` : action;
+  }
 }
 
 import * as fs from 'fs';
@@ -227,7 +254,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const hasApiKeyIndicator = !!(
     parsed.is_api_key ||
     parsed.api_key_mode ||
-    (parsed as any).is_api_key_mode ||
+    parsed.is_api_key_mode ||
     planTierLower.includes('api_key') ||
     planTierLower.includes('api-key') ||
     planTierLower.includes('api key') ||
@@ -639,33 +666,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
       if (query) {
         summary = query;
       } else if (action) {
-        const actLower = action.toLowerCase();
-        const toolNameLower = (toolInfoObj.name || '').toLowerCase();
-        if (toolNameLower === 'manage_subagents') {
-          if (actLower === 'kill') {
-            summary = taskId ? `Killed subagent ${taskId}` : 'Killed subagent';
-          } else if (actLower === 'kill_all') {
-            summary = 'Killed all subagents';
-          } else if (actLower === 'list') {
-            summary = 'Listed subagents';
-          } else {
-            summary = taskId ? `${action} subagent ${taskId}` : `${action} subagents`;
-          }
-        } else {
-          if (actLower === 'kill') {
-            summary = taskId ? `Killed task ${taskId}` : 'Killed task';
-          } else if (actLower === 'kill_all') {
-            summary = 'Killed all tasks';
-          } else if (actLower === 'status' || actLower === 'check') {
-            summary = taskId ? `Checked task ${taskId}` : 'Checked task';
-          } else if (actLower === 'list') {
-            summary = 'Listed tasks';
-          } else if (actLower === 'send_input') {
-            summary = taskId ? `Sent input to task ${taskId}` : 'Sent input to task';
-          } else {
-            summary = taskId ? `${action} task ${taskId}` : action;
-          }
-        }
+        summary = formatToolActionSummary(toolInfoObj.name || '', action, taskId);
       }
     } else if (query && !summary.includes(query)) {
       summary = `${summary}: ${query}`;

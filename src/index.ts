@@ -1,4 +1,4 @@
-export { parseStream } from './parser.js';
+export { parseStream, formatToolActionSummary } from './parser.js';
 export type { ParsedMetrics, AntigravityPayload, SubagentInfo } from './parser.js';
 export { formatMetrics, HUD_CONFIG, SKILL_ICONS } from './formatter.js';
 export type { CustomBlockConfig, HudConfig } from './formatter.js';

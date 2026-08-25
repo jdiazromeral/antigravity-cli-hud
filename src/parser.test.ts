@@ -3,7 +3,7 @@ import { Readable } from 'stream';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { parseStream, type AntigravityPayload } from './parser.js';
+import { parseStream, formatToolActionSummary, type AntigravityPayload } from './parser.js';
 
 const mockHome = path.join(os.tmpdir(), `tmp-dir-${Math.random().toString(36).substring(2)}`);
 
@@ -297,6 +297,31 @@ describe('parseStream', () => {
       status: 'completed',
       query: undefined,
       action: 'kill'
+    });
+  });
+
+  describe('formatToolActionSummary helper', () => {
+    it('formats manage_subagents actions correctly', () => {
+      expect(formatToolActionSummary('manage_subagents', 'kill', 'sub-123')).toBe('Killed subagent sub-123');
+      expect(formatToolActionSummary('manage_subagents', 'kill')).toBe('Killed subagent');
+      expect(formatToolActionSummary('manage_subagents', 'kill_all')).toBe('Killed all subagents');
+      expect(formatToolActionSummary('manage_subagents', 'list')).toBe('Listed subagents');
+      expect(formatToolActionSummary('manage_subagents', 'status', 'sub-456')).toBe('Checked subagent sub-456');
+      expect(formatToolActionSummary('manage_subagents', 'send_input', 'sub-456')).toBe('Sent input to subagent sub-456');
+      expect(formatToolActionSummary('manage_subagents', 'restart', 'sub-789')).toBe('restart subagent sub-789');
+      expect(formatToolActionSummary('manage_subagents', 'restart')).toBe('restart subagents');
+    });
+
+    it('formats manage_task and generic task manager actions correctly', () => {
+      expect(formatToolActionSummary('manage_task', 'kill', 'task-1')).toBe('Killed task task-1');
+      expect(formatToolActionSummary('manage_task', 'kill')).toBe('Killed task');
+      expect(formatToolActionSummary('manage_task', 'kill_all')).toBe('Killed all tasks');
+      expect(formatToolActionSummary('manage_task', 'list')).toBe('Listed tasks');
+      expect(formatToolActionSummary('manage_task', 'status', 'task-2')).toBe('Checked task task-2');
+      expect(formatToolActionSummary('manage_task', 'check', 'task-3')).toBe('Checked task task-3');
+      expect(formatToolActionSummary('manage_task', 'send_input', 'task-4')).toBe('Sent input to task task-4');
+      expect(formatToolActionSummary('manage_task', 'pause', 'task-5')).toBe('pause task task-5');
+      expect(formatToolActionSummary('manage_task', 'pause')).toBe('pause');
     });
   });
 

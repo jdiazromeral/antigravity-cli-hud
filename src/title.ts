@@ -8,7 +8,7 @@ export function formatTitle(metrics: Partial<ParsedMetrics> & { workspace: strin
       const label = single.name === metrics.workspace ? single.branch : `${single.name}:${single.branch}`;
       gitPart = `(${label}) `;
     } else {
-      const labels = metrics.gitBranches.map((g: any) => `${g.name}:${g.branch}`).join(' & ');
+      const labels = metrics.gitBranches.map((g: { name: string; branch: string }) => `${g.name}:${g.branch}`).join(' & ');
       gitPart = `(${labels}) `;
     }
   }
