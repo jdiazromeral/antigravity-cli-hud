@@ -21,7 +21,7 @@ When the user invokes this skill:
    - `'state'`: Core Agent State (🟢 IDLE, 🟡 WAITING, 🔵 WORKING)
    - `'mode'`: Active CLI execution mode (🟡 request-review, 🟢 accept-edits, 🔵 plan)
    - `'effort'`: Reasoning effort tier (󰾆 low, normal, high, epic)
-   - `'skill'`: Active single or multi-skill block (e.g., `🧠 Skill: looper` or `🧠 Skills: looper & tdd & mapper`)
+   - `'skill'`: Active single or multi-skill block with visual icon branding (e.g., `🧠 Skill: 🔄 looper` or `🧠 Skills: 🔄 looper & 🧪 tdd & 🎛️ hud-config`)
    - `'model'`: Active AI model (e.g., `🤖 Gemini 3.6 Flash`)
    - `'sandbox'`: Security boundary (🔒 Sandboxed or 🔓 Unsandboxed)
    - `'permissions'`: Danger mode indicator (☢️ Danger Mode when recursive root permissions granted)
@@ -31,6 +31,8 @@ When the user invokes this skill:
    - `'cache'`: Context window prompt cache read tokens (e.g., `⚡ Cache: 70k`)
    - `'5h'`: 5-hour rolling quota saturation & reset countdown timer
    - `'weekly'`: Weekly rolling quota saturation & reset countdown timer
+   - `'credits'`: AI Credit Balance indicator (e.g., ` AI Credits: 120`)
+   - `'apiKey'`: Direct API key badge indicator (e.g., `🔑 [API Key]`)
    - `'mcp'`: Active MCP Tool Servers block (e.g., `🔌 MCP: 3 active` with Cmd+Clickable config link)
    - `'rules'`: Active Rules counter block (e.g., `📜 Rules: 3 active`)
    - `'plugins'`: Active Loaded Plugins block (e.g., `🧩 Plugins: hud, looper`)
@@ -45,6 +47,7 @@ When the user invokes this skill:
    - `'version'`: Antigravity CLI version
    - `'email'`: User's authenticated email address
    - `'plan'`: User's billing tier
+   - `'<custom_key>'`: Any bespoke custom block defined in `customBlocks` (e.g., `'weather'`, `'node_version'`)
 
 3. **Interactive Configuration**:
    Ask the user how they would like to customize their HUD:
@@ -64,13 +67,25 @@ When the user invokes this skill:
    - **Interactive Terminal Hyperlinks (`"clickableLinks"`)**:
      - `true` (Default): Cmd+Clickable OSC 8 hyperlinks on transcript, artifacts, rules, MCP config, and git branches.
      - `false`: Plain text output without OSC 8 terminal sequences.
+   - **Declarative Custom Blocks (`"customBlocks"`)**:
+     - Users can define custom background shell commands executed asynchronously with cached results:
+       ```json
+       "customBlocks": {
+         "weather": {
+           "title": "🌤️ Weather",
+           "command": "curl -s 'wttr.in?format=1'",
+           "intervalMs": 60000
+         }
+       }
+       ```
+     - Place the block key (e.g. `'weather'`) into any layout row.
    - **Predefined Presets**:
      - *Standard* (Default): 4-row organized statusline.
      - *Minimalist*: Only State, Model, Workspace, Git, and Steps.
      - *Full Telemetry*: All telemetry blocks enabled across dedicated lines.
 
    **Auto-Hide Feature**:
-   Ask if they want to enable `autoHideEmptyBlocks` (Boolean, defaults to true) to collapse empty blocks (`tasks`, `subagents`, `tool`, `artifacts`, `git`, `looper`, `skill`, `cache`, `mcp`, `rules`, `plugins`).
+   Ask if they want to enable `autoHideEmptyBlocks` (Boolean, defaults to true) to collapse empty blocks (`tasks`, `subagents`, `tool`, `artifacts`, `git`, `looper`, `skill`, `cache`, `mcp`, `rules`, `plugins`, `session_time`, `apiKey`, and empty custom blocks).
 
    **Budget Ceilings**:
    Ask if they want to customize `budget` limits (`maxSteps` defaults to 20). Context soft degradation limit defaults to 200,000 tokens (or `AGY_SOFT_CONTEXT_TOKENS`) and model physical max capacity defaults to `context_window_size` / 1,048,576 tokens (or `AGY_MAX_CONTEXT_TOKENS`).
