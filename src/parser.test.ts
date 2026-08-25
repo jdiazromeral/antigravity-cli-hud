@@ -226,6 +226,62 @@ describe('parseStream', () => {
       query: undefined,
       action: 'send_input'
     });
+
+    const killAllTasksPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_task', action: 'kill_all', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(killAllTasksPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_task',
+      summary: 'Killed all tasks',
+      status: 'running',
+      query: undefined,
+      action: 'kill_all'
+    });
+
+    const subagentsListPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_subagents', action: 'list', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(subagentsListPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_subagents',
+      summary: 'Listed subagents',
+      status: 'running',
+      query: undefined,
+      action: 'list'
+    });
+
+    const subagentsKillPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_subagents', action: 'kill', taskId: 'sub-1', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(subagentsKillPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_subagents',
+      summary: 'Killed subagent sub-1',
+      status: 'running',
+      query: undefined,
+      action: 'kill'
+    });
+
+    const subagentsKillAllPayload = {
+      agent_state: 'Working',
+      editor_mode: "N", credits: undefined,
+      tool_info: { name: 'manage_subagents', action: 'kill_all', status: 'running' }
+    };
+    result = await parseStream(Readable.from([JSON.stringify(subagentsKillAllPayload)]));
+    expect(result.activeTool).toEqual({
+      name: 'manage_subagents',
+      summary: 'Killed all subagents',
+      status: 'running',
+      query: undefined,
+      action: 'kill_all'
+    });
   });
 
   it('should preserve explicit summary when present alongside action', async () => {

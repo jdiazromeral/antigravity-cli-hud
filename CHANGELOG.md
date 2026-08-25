@@ -5,6 +5,19 @@ All notable changes to the **Antigravity HUD Plugin** will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-08-25
+
+### Added
+- **Antigravity CLI 1.1.20 Skill Icon Visual Branding:** Added `metadata.icon` frontmatter declarations (`🎛️` and `📜`) to bundled skills (`hud-config` and `rules`) for visual branding in the `/skills` catalog list.
+- **Skill Visual Branding in HUD Statusline:** Enriched `skill` telemetry block with iconic badges mapped across ecosystem skills (`looper 🔄`, `tdd 🧪`, `mapper 🗺️`, `hud-config 🎛️`, `rules 📜`, `code-review 🧐`, etc.) with namespace-aware fallback.
+- **Windows PowerShell Title Hook Parity:** Added `hooks/title.ps1` for native UTF-8 dynamic window title progress on Windows environments.
+- **Extended Subagent & Task Action Streaming:** Synthesizes `manage_subagents` lifecycle actions (`kill`, `kill_all`, `list`) and `manage_task` (`kill_all`) in the in-flight tool telemetry block.
+
+### Tooling
+- **Oxlint Script Standardization:** Updated `npm run lint` in `package.json` to `npx oxlint --deny-warnings` for environment resilience.
+
+---
+
 ## [1.4.0] - 2026-08-24
 
 ### Added

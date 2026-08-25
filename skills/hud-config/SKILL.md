@@ -1,6 +1,8 @@
 ---
 name: hud-config
 description: An interactive wizard that helps the user configure their HUD Matrix Layout via ~/.gemini/hud_config.json at runtime without requiring recompilation.
+metadata:
+  icon: 🎛️
 ---
 
 # HUD Configurator Skill

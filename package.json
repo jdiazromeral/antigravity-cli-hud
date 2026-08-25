@@ -1,12 +1,12 @@
 {
   "name": "antigravity-cli-hud",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --deny-warnings",
+    "lint": "npx oxlint --deny-warnings",
     "demo": "esbuild scripts/demo.ts --bundle --platform=node --format=esm --outfile=scripts/demo.js && node scripts/demo.js",
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js && esbuild src/title.ts --bundle --platform=node --format=esm --outfile=dist/title.js",
     "sync": "npm run build && node scripts/sync_installed_plugin.js"

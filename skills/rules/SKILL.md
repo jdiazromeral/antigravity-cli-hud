@@ -1,6 +1,8 @@
 ---
 name: rules
 description: Interactive inspector scanning and displaying all active rules applied in the current workspace (AGENTS.md, GEMINI.md, project mandates) with direct file links, rule scopes, and directive summaries.
+metadata:
+  icon: 📜
 ---
 
 # HUD Rules Inspector Skill

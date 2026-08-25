@@ -55,18 +55,35 @@ describe('formatMetrics', () => {
     isApiKey: false
   };
 
-  it('formats single and multiple active skills correctly', () => {
+  it('formats single and multiple active skills correctly with visual icon branding', () => {
     const singleSkillMetrics = { ...baseMetrics, activeSkills: ['looper'] };
     const outSingle = formatMetrics(singleSkillMetrics);
     expect(outSingle).toContain('🧠 Skill:');
+    expect(outSingle).toContain('🔄');
     expect(outSingle).toContain('looper');
 
-    const multiSkillMetrics = { ...baseMetrics, activeSkills: ['looper', 'tdd', 'mapper'] };
+    const multiSkillMetrics = { ...baseMetrics, activeSkills: ['looper', 'tdd', 'mapper', 'hud-config', 'rules'] };
     const outMulti = formatMetrics(multiSkillMetrics);
     expect(outMulti).toContain('🧠 Skills:');
+    expect(outMulti).toContain('🔄');
     expect(outMulti).toContain('looper');
+    expect(outMulti).toContain('🧪');
     expect(outMulti).toContain('tdd');
+    expect(outMulti).toContain('🗺️');
     expect(outMulti).toContain('mapper');
+    expect(outMulti).toContain('🎛️');
+    expect(outMulti).toContain('hud-config');
+    expect(outMulti).toContain('📜');
+    expect(outMulti).toContain('rules');
+
+    const namespacedSkillMetrics = { ...baseMetrics, activeSkills: ['matt:code-review'] };
+    const outNamespaced = formatMetrics(namespacedSkillMetrics);
+    expect(outNamespaced).toContain('🧐');
+    expect(outNamespaced).toContain('matt:code-review');
+
+    const unmappedSkillMetrics = { ...baseMetrics, activeSkills: ['custom-unmapped-skill'] };
+    const outUnmapped = formatMetrics(unmappedSkillMetrics);
+    expect(outUnmapped).toContain('custom-unmapped-skill');
   });
 
   it('formats correctly with wide terminals', () => {

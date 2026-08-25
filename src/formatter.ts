@@ -153,6 +153,32 @@ export const STYLES: Record<string, HudStyleConfig> = {
   }
 };
 
+export const SKILL_ICONS: Record<string, string> = {
+  'hud-config': '🎛️',
+  'rules': '📜',
+  'looper': '🔄',
+  'tdd': '🧪',
+  'mapper': '🗺️',
+  'retro': '🔍',
+  'epic-planner': '📐',
+  'epic-runner': '🏃',
+  'explore': '🔭',
+  'init': '🚀',
+  'address-review': '💬',
+  'status': '📊',
+  'code-review': '🧐',
+  'codebase-design': '🏗️',
+  'diagnosing-bugs': '🩺',
+  'domain-modeling': '🏛️',
+  'grilling': '🔥',
+  'melon': '🍉',
+  'prototype': '🛠️',
+  'research': '📚',
+  'wizard': '🧙',
+  'agy-customizations': '⚙️',
+  'antigravity-guide': '🪐'
+};
+
 export function stripAnsi(str: string): string {
   return str
     .replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, '') // Strip OSC 8 opening URL tags
@@ -454,7 +480,12 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
   let skillBlockStr = '';
   if (metrics.activeSkills && metrics.activeSkills.length > 0) {
     const label = metrics.activeSkills.length > 1 ? '🧠 Skills:' : '🧠 Skill:';
-    const names = metrics.activeSkills.map(s => `${colors.cyan}${s}${colors.reset}`).join(' & ');
+    const names = metrics.activeSkills.map(s => {
+      const baseName = s.split(':').pop()?.toLowerCase() || '';
+      const icon = SKILL_ICONS[s.toLowerCase()] || SKILL_ICONS[baseName] || '';
+      const iconPrefix = icon ? `${icon} ` : '';
+      return `${iconPrefix}${colors.cyan}${s}${colors.reset}`;
+    }).join(' & ');
     skillBlockStr = `${label} ${names}`;
   }
 

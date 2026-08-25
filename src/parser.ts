@@ -640,16 +640,31 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         summary = query;
       } else if (action) {
         const actLower = action.toLowerCase();
-        if (actLower === 'kill') {
-          summary = taskId ? `Killed task ${taskId}` : 'Killed task';
-        } else if (actLower === 'status' || actLower === 'check') {
-          summary = taskId ? `Checked task ${taskId}` : 'Checked task';
-        } else if (actLower === 'list') {
-          summary = 'Listed tasks';
-        } else if (actLower === 'send_input') {
-          summary = taskId ? `Sent input to task ${taskId}` : 'Sent input to task';
+        const toolNameLower = (toolInfoObj.name || '').toLowerCase();
+        if (toolNameLower === 'manage_subagents') {
+          if (actLower === 'kill') {
+            summary = taskId ? `Killed subagent ${taskId}` : 'Killed subagent';
+          } else if (actLower === 'kill_all') {
+            summary = 'Killed all subagents';
+          } else if (actLower === 'list') {
+            summary = 'Listed subagents';
+          } else {
+            summary = taskId ? `${action} subagent ${taskId}` : `${action} subagents`;
+          }
         } else {
-          summary = taskId ? `${action} task ${taskId}` : action;
+          if (actLower === 'kill') {
+            summary = taskId ? `Killed task ${taskId}` : 'Killed task';
+          } else if (actLower === 'kill_all') {
+            summary = 'Killed all tasks';
+          } else if (actLower === 'status' || actLower === 'check') {
+            summary = taskId ? `Checked task ${taskId}` : 'Checked task';
+          } else if (actLower === 'list') {
+            summary = 'Listed tasks';
+          } else if (actLower === 'send_input') {
+            summary = taskId ? `Sent input to task ${taskId}` : 'Sent input to task';
+          } else {
+            summary = taskId ? `${action} task ${taskId}` : action;
+          }
         }
       }
     } else if (query && !summary.includes(query)) {
