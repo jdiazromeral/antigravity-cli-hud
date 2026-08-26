@@ -13,7 +13,7 @@ import { recordSessionSpendAsync as _recordSessionSpendAsync } from './ledger.js
 async function main() {
   try {
     const metrics = await _parseStream(process.stdin);
-    const width = process.stdout.columns || 80;
+    const width = metrics.terminalWidth || process.stdout.columns || 80;
 
     // Asynchronously update historical spend ledger in background without blocking render loop
     _recordSessionSpendAsync(metrics);

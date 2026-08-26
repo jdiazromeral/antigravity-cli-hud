@@ -370,20 +370,3 @@ export function formatAuditReport(res: AuditResult): string {
 
   return lines.join('\n');
 }
-
-function main() {
-  const args = process.argv.slice(2);
-  const binOverride = args.find(a => !a.startsWith('-'));
-  const result = auditAgy(binOverride);
-
-  if (args.includes('--json')) {
-    console.log(JSON.stringify(result, null, 2));
-    return;
-  }
-
-  console.log(formatAuditReport(result));
-}
-
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename)) {
-  main();
-}

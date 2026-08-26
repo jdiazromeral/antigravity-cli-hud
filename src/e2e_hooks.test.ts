@@ -54,6 +54,8 @@ describe('E2E Hook Invariant Black-Box Tests', () => {
 
     const res = runHook(statusLineHook, payload);
     expect(res.status).toBe(0);
+    expect(res.stdout).not.toContain('Antigravity CLI vs HUD Telemetry Audit Report');
+    expect(res.stdout).not.toContain('Latest CLI Changelog');
     expect(res.stdout).toContain('WORKING');
     expect(res.stdout).toContain('Gemini 3.6 Flash');
     expect(res.stdout).toContain('my-project');
