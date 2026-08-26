@@ -59,7 +59,7 @@ This plugin was engineered with strict defensive paradigms and advanced layout a
 - **Experimental Voice & Audio Dictation (`'voice'` Block)**: Real-time visual status for `/voice`, `[F5]` dictation, and `agy mic-serve` audio streaming (`🎙️ Voice: Ready [F5]`, `🔴 🎙️ REC`, `🎙️ Mic: 4713`), with configurable keybindings and automatic culling.
 - **Automated CLI Reverse-Engineering & Telemetry Auditor (`/hud:audit-agy`)**: Programmatically reverse-engineers the local `agy` Go binary, extracts internal `StatusLine*` structs, compares telemetry schemas against `src/parser.ts`, scans for unbranded ecosystem skills, and drafts instant upgrade roadmaps (`npm run audit:agy`).
 - **Interactive Config & Analytics Skills**: Ships with built-in AI skills: `/hud:hud-config` (runtime layout & theme wizard), `/hud:rules` (active workspace rules inspector), `/hud:stats` (token financial & cache efficiency dashboard), `/hud:voice` (microphone setup & audio streamer assistant), and `/hud:audit-agy` (platform telemetry gap auditor).
-- **High-Performance Build**: Hand-written in TypeScript and bundled via `esbuild` into single ECMAScript Modules (`dist/index.js`, `dist/title.js`, `dist/stats.js`, `scripts/audit_agy.js`) that execute in **~1ms**.
+- **High-Performance Build**: Hand-written in TypeScript and bundled via `esbuild` into single ECMAScript Modules (`dist/index.js`, `dist/title.js`, `dist/stats.js`, `dist/audit.js`) that execute in **~1ms**.
 
 ## Installation
 

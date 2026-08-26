@@ -16,8 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Interactive Spend Analytics Skill (`/hud:stats`):** Built-in financial inspector and token analytics dashboard providing daily/weekly spend summaries, prompt cache savings percentages, and breakdowns by model and workspace.
 - **Standalone CLI Stats Reporter (`dist/stats.js`):** Bundled standalone script support for `npm run stats` and `--summary` / `--json` flags for custom block integration.
 - **Experimental Voice & Audio Dictation (`'voice'` Block):** Added support for `/voice` prompt dictation, `[F5]` keybinding badge, and `agy mic-serve` remote microphone status (`🎙️ Voice: Ready [F5]`, `🔴 🎙️ REC`, `🎙️ Mic: 4713`), accompanied by the `/hud:voice` assistant skill.
-- **Automated CLI Telemetry Auditor (`/hud:audit-agy` & `scripts/audit_agy.ts`):** Programmatically inspects the local `agy` Go binary to extract internal `StatusLine*` structs, flags schema gaps against `src/parser.ts`, audits missing skill icons, and generates instant upgrade roadmaps (`npm run audit:agy`).
+- **Automated CLI Telemetry Auditor (`/hud:audit-agy` & `dist/audit.js`):** Programmatically inspects the local `agy` Go binary to extract internal `StatusLine*` structs, flags schema gaps against `src/parser.ts`, audits missing skill icons, and generates instant upgrade roadmaps (`npm run audit:agy`).
 - **Dynamic Cost Culling:** Automatically hides empty or zero-value cost telemetry when `autoHideEmptyBlocks: true` without leaving orphaned whitespace.
+
+### Fixed
+- **Statusline Hook Stdout Isolation:** Decoupled the standalone CLI auditor (`src/audit_cli.ts`) from library exports (`src/audit.ts`) to eliminate accidental stdout output leaks inside `dist/index.js` during statusline hook ticks.
+- **Accurate Terminal Width Resolution:** Corrected `src/index.ts` to prioritize `metrics.terminalWidth` from incoming Antigravity CLI stdin telemetry over `process.stdout.columns` (which resolves to `undefined` inside piped subshells).
 
 ---
 
