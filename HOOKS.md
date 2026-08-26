@@ -63,15 +63,21 @@ The incoming `stdin` payload is a single, unformatted JSON object. Below is a co
     { 
       "name": "self", 
       "role": "Execute tests", 
-      "status": "working" 
+      "status": "working",
+      "total_usd": 0.012
     }
   ],
+  "cost": {
+    "total_usd": 0.04235,
+    "subagent_usd": 0.012,
+    "estimated": true
+  },
   "sandbox": { "enabled": false },
   "terminal_width": 184,
   "task_count": 1,
   "plan_tier": "Google AI Pro",
   "email": "user@example.com",
-  "version": "1.1.1",
+  "version": "1.1.21",
   "vcs": {
     "branch": "main",
     "dirty": false
@@ -79,6 +85,8 @@ The incoming `stdin` payload is a single, unformatted JSON object. Below is a co
   "transcript_path": "/Users/path/to/.gemini/antigravity-cli/brain/transcript.jsonl"
 }
 ```
+
+*Note: In `agy 1.1.21+`, the CLI provides unrounded estimated running session spend via the `cost` struct (`total_usd`, `subagent_usd`, `estimated`).*
 
 *Note: The CLI execution mode (`request-review`, `accept-edits`, etc.) is NOT currently streamed in the telemetry payload. It must be read directly from the `~/.gemini/antigravity-cli/settings.json` file.*
 

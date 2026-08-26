@@ -161,4 +161,28 @@ describe('E2E Hook Invariant Black-Box Tests', () => {
     expect(res.stdout).toContain('[Gemini 3.6 Flash]');
     expect(res.stdout).toContain('🔵 WORKING');
   });
+
+  it('Invariant 9: Running Cost Telemetry with Subagent Breakdown', () => {
+    const payload = {
+      agent_state: 'WORKING',
+      model: { display_name: 'Gemini 3.1 Pro' },
+      cost: {
+        total_usd: 0.04235,
+        subagent_usd: 0.012,
+        estimated: true
+      },
+      subagents: [
+        { name: 'worker-1', role: 'Feature Dev', status: 'working', depth: 0, total_usd: 0.012 }
+      ]
+    };
+
+    const res = runHook(statusLineHook, payload);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('💲 Cost:');
+    expect(res.stdout).toContain('~$0.042');
+    expect(res.stdout).toContain('(sub: $0.012)');
+    expect(res.stdout).toContain('worker-1');
+    expect(res.stdout).toContain('[$0.012]');
+  });
 });
+

@@ -1199,6 +1199,102 @@ describe('parseStream', () => {
         });
       });
     });
+
+    describe('v1.5.0 Extended Telemetry (Running Cost & Hierarchical Rules)', () => {
+      it('parses scalar number cost from payload', async () => {
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.1 Pro' },
+          cost: 0.04235
+        };
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.cost).toBeDefined();
+        expect(result.cost?.totalUsd).toBe(0.04235);
+        expect(result.cost?.subagentUsd).toBeUndefined();
+        expect(result.cost?.estimated).toBeUndefined();
+      });
+
+      it('parses structured cost object with total_usd, subagent_usd, and estimated', async () => {
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.1 Pro' },
+          cost: {
+            total_usd: 0.085,
+            subagent_usd: 0.021,
+            estimated: true
+          }
+        };
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.cost).toBeDefined();
+        expect(result.cost?.totalUsd).toBe(0.085);
+        expect(result.cost?.subagentUsd).toBe(0.021);
+        expect(result.cost?.estimated).toBe(true);
+      });
+
+      it('falls back to top-level total_usd or session_cost if cost field is omitted', async () => {
+        const payload1 = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.1 Pro' },
+          total_usd: 0.125
+        };
+        const result1 = await parseStream(Readable.from([JSON.stringify(payload1)]));
+        expect(result1.cost?.totalUsd).toBe(0.125);
+
+        const payload2 = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.1 Pro' },
+          session_cost: 0.033
+        };
+        const result2 = await parseStream(Readable.from([JSON.stringify(payload2)]));
+        expect(result2.cost?.totalUsd).toBe(0.033);
+      });
+
+      it('parses total_usd on individual subagents', async () => {
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.1 Pro' },
+          subagents: [
+            { name: 'worker-1', role: 'Dev', status: 'working', depth: 0, total_usd: 0.015 },
+            { name: 'worker-2', role: 'Reviewer', status: 'working', depth: 1 }
+          ]
+        };
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.subagents).toHaveLength(2);
+        expect(result.subagents[0]?.totalUsd).toBe(0.015);
+        expect(result.subagents[1]?.totalUsd).toBeUndefined();
+      });
+
+      it('discovers hierarchical rules in .agents/rules/*.md and ancestor directories', async () => {
+        const projectRoot = path.join(mockHome, 'monorepo');
+        const subPkg = path.join(projectRoot, 'packages', 'web');
+        fs.mkdirSync(path.join(subPkg, '.agents', 'rules'), { recursive: true });
+        fs.mkdirSync(path.join(projectRoot, '.agents', 'rules'), { recursive: true });
+
+        fs.writeFileSync(path.join(projectRoot, 'AGENTS.md'), '# Root Agents', 'utf8');
+        fs.writeFileSync(path.join(projectRoot, '.agents', 'rules', 'security.md'), '# Security', 'utf8');
+        fs.writeFileSync(path.join(subPkg, 'AGENTS.md'), '# Subpackage Agents', 'utf8');
+        fs.writeFileSync(path.join(subPkg, '.agents', 'rules', 'react.md'), '# React Rules', 'utf8');
+
+        // Global rule
+        const globalRulesDir = path.join(mockHome, '.gemini', 'config', 'rules');
+        fs.mkdirSync(globalRulesDir, { recursive: true });
+        fs.writeFileSync(path.join(globalRulesDir, 'global-mandate.md'), '# Global Mandates', 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          cwd: subPkg
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.activeRules).toBeDefined();
+        const ruleNames = result.activeRules?.map(r => r.name);
+        expect(ruleNames).toContain('AGENTS.md');
+        expect(ruleNames).toContain('react.md');
+        expect(ruleNames).toContain('security.md');
+        expect(ruleNames).toContain('global-mandate.md');
+      });
+    });
   });
 });
 

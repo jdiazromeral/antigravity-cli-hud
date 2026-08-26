@@ -42,6 +42,11 @@ const mockMetrics: ParsedMetrics = {
   quotaWeeklyResetSeconds: 86400 * 2,
   quota5h: 45,
   quota5hResetSeconds: 3600,
+  cost: {
+    totalUsd: 0.0423,
+    subagentUsd: 0.0125,
+    estimated: true
+  },
   taskCount: 3,
   activeTool: {
     name: 'run_command',
@@ -53,15 +58,16 @@ const mockMetrics: ParsedMetrics = {
   mcpConfigPath: `${process.env.HOME || '/Users/user'}/.gemini/config/mcp_config.json`,
   activeRules: [
     { name: 'AGENTS.md', path: '/workspace/AGENTS.md', scope: 'project' },
-    { name: 'GEMINI.md', path: '/workspace/GEMINI.md', scope: 'global' }
+    { name: 'GEMINI.md', path: '/workspace/GEMINI.md', scope: 'global' },
+    { name: 'security.md', path: '/workspace/.agents/rules/security.md', scope: 'project' }
   ],
   activePlugins: ['hud', 'looper'],
   sessionElapsedSeconds: 862,
   subagents: [
     { name: 'orchestrator', role: 'Epic Runner', status: 'working', depth: 0, conversationId: 'abc12345' },
-    { name: 'worker-1', role: 'Feature Dev', status: 'working', depth: 1, conversationId: 'def67890' },
+    { name: 'worker-1', role: 'Feature Dev', status: 'working', depth: 1, conversationId: 'def67890', totalUsd: 0.008 },
     { name: 'researcher', role: 'Context Finder', status: 'completed', depth: 2, conversationId: 'ghi11223' },
-    { name: 'reviewer', role: 'Code Review', status: 'working', depth: 1, conversationId: 'jkl44556' }
+    { name: 'reviewer', role: 'Code Review', status: 'working', depth: 1, conversationId: 'jkl44556', totalUsd: 0.0045 }
   ],
   artifacts: [
     'v1.4_hud_implementation_plan.md',

@@ -54,6 +54,15 @@ export interface AntigravityPayload {
   is_api_key?: boolean | undefined;
   api_key_mode?: boolean | undefined;
   is_api_key_mode?: boolean | undefined;
+  cost?: number | {
+    total_usd?: number | undefined;
+    subagent_usd?: number | undefined;
+    estimated?: boolean | undefined;
+    total?: number | undefined;
+    cost?: number | undefined;
+  } | undefined;
+  total_usd?: number | undefined;
+  session_cost?: number | undefined;
 }
 
 export function formatToolActionSummary(toolName: string, action: string, taskId?: string): string {
@@ -87,6 +96,12 @@ import * as path from 'path';
 import * as os from 'os';
 import * as cp from 'child_process';
 
+export interface CostInfo {
+  totalUsd: number;
+  subagentUsd?: number | undefined;
+  estimated?: boolean | undefined;
+}
+
 export interface SubagentInfo {
   name: string;
   role: string;
@@ -94,6 +109,7 @@ export interface SubagentInfo {
   depth?: number | undefined;
   conversationId?: string | undefined;
   logUri?: string | undefined;
+  totalUsd?: number | undefined;
 }
 
 export interface ActiveToolInfo {
@@ -168,6 +184,7 @@ export interface ParsedMetrics {
   toolElapsedSeconds?: number | undefined;
   gitStats?: GitStats | undefined;
   clickableLinks?: boolean | undefined;
+  cost?: CostInfo | undefined;
 }
 
 interface TranscriptCacheEntry {
@@ -718,13 +735,16 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   for (const s of rawSubagents) {
     if (!s || typeof s !== 'object' || Array.isArray(s)) continue;
     if (s.status === 'completed') continue;
+    const rawTotalUsd = (s as any).total_usd;
+    const totalUsd = typeof rawTotalUsd === 'number' && !isNaN(rawTotalUsd) && rawTotalUsd >= 0 ? rawTotalUsd : undefined;
     parsedSubagents.push({
       name: typeof s.name === 'string' ? s.name : 'Unknown Subagent',
       role: typeof s.role === 'string' ? s.role : 'Worker',
       status: typeof s.status === 'string' ? s.status : 'working',
       depth: typeof s.depth === 'number' && s.depth >= 0 ? s.depth : 0,
       conversationId: typeof s.conversation_id === 'string' ? s.conversation_id : undefined,
-      logUri: typeof s.log_uri === 'string' ? s.log_uri : undefined
+      logUri: typeof s.log_uri === 'string' ? s.log_uri : undefined,
+      totalUsd
     });
   }
 
@@ -891,20 +911,54 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     } catch (e) {}
   }
 
-  // 3. Active Rules Discovery
+  // 3. Active Rules Discovery (Hierarchical .agents/rules, ancestor traversal, and global)
   const activeRules: ActiveRuleInfo[] = [];
   const checkedRuleFiles = new Set<string>();
 
   if (cwd) {
-    const projectAgents = path.join(cwd, 'AGENTS.md');
-    if (fs.existsSync(projectAgents) && !checkedRuleFiles.has(projectAgents)) {
-      activeRules.push({ name: 'AGENTS.md', path: projectAgents, scope: 'project' });
-      checkedRuleFiles.add(projectAgents);
-    }
-    const projectGemini = path.join(cwd, 'GEMINI.md');
-    if (fs.existsSync(projectGemini) && !checkedRuleFiles.has(projectGemini)) {
-      activeRules.push({ name: 'GEMINI.md', path: projectGemini, scope: 'project' });
-      checkedRuleFiles.add(projectGemini);
+    let currentScanDir = path.resolve(cwd);
+    const rootBoundary = path.parse(currentScanDir).root;
+    let gitRootDir: string | null = null;
+    try {
+      gitRootDir = cp.execSync('git rev-parse --show-toplevel', { cwd, stdio: 'pipe', timeout: 200 }).toString().trim();
+    } catch (e) {}
+
+    while (currentScanDir && currentScanDir !== rootBoundary) {
+      const isCwd = currentScanDir === path.resolve(cwd);
+      const scope: 'project' | 'workspace' = isCwd ? 'project' : 'workspace';
+
+      for (const fname of ['AGENTS.md', 'GEMINI.md', 'CLAUDE.md']) {
+        const filePath = path.join(currentScanDir, fname);
+        if (fs.existsSync(filePath) && !checkedRuleFiles.has(filePath)) {
+          activeRules.push({ name: fname, path: filePath, scope });
+          checkedRuleFiles.add(filePath);
+        }
+      }
+
+      for (const dotAgentDirName of ['.agents', '.agent']) {
+        const rulesSubDir = path.join(currentScanDir, dotAgentDirName, 'rules');
+        if (fs.existsSync(rulesSubDir)) {
+          try {
+            const rFiles = fs.readdirSync(rulesSubDir);
+            for (const rf of rFiles) {
+              if (rf.endsWith('.md')) {
+                const fullRulePath = path.join(rulesSubDir, rf);
+                if (!checkedRuleFiles.has(fullRulePath)) {
+                  activeRules.push({ name: rf, path: fullRulePath, scope });
+                  checkedRuleFiles.add(fullRulePath);
+                }
+              }
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (gitRootDir && currentScanDir === path.resolve(gitRootDir)) {
+        break;
+      }
+      const parentDir = path.dirname(currentScanDir);
+      if (parentDir === currentScanDir) break;
+      currentScanDir = parentDir;
     }
   }
 
@@ -917,6 +971,30 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   if (fs.existsSync(globalGemini) && !checkedRuleFiles.has(globalGemini)) {
     activeRules.push({ name: 'GEMINI.md', path: globalGemini, scope: 'global' });
     checkedRuleFiles.add(globalGemini);
+  }
+
+  const globalRuleDirs = [
+    path.join(os.homedir(), '.gemini', 'config', 'rules'),
+    path.join(os.homedir(), '.gemini', 'rules'),
+    path.join(os.homedir(), '.agents', 'rules'),
+    path.join(os.homedir(), '.agent', 'rules')
+  ];
+
+  for (const gDir of globalRuleDirs) {
+    if (fs.existsSync(gDir)) {
+      try {
+        const gFiles = fs.readdirSync(gDir);
+        for (const gf of gFiles) {
+          if (gf.endsWith('.md')) {
+            const fullPath = path.join(gDir, gf);
+            if (!checkedRuleFiles.has(fullPath)) {
+              activeRules.push({ name: gf, path: fullPath, scope: 'global' });
+              checkedRuleFiles.add(fullPath);
+            }
+          }
+        }
+      } catch (e) {}
+    }
   }
 
   // 4. Active Plugins Discovery
@@ -940,6 +1018,43 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         sessionElapsedSeconds = Math.max(0, Math.round((Date.now() - birthtime) / 1000));
       }
     } catch (e) {}
+  }
+
+  // 6. Running Cost Telemetry (agy 1.1.21+)
+  let costInfo: CostInfo | undefined = undefined;
+  if (parsed.cost !== undefined) {
+    if (typeof parsed.cost === 'number' && !isNaN(parsed.cost) && parsed.cost >= 0) {
+      costInfo = {
+        totalUsd: parsed.cost,
+        subagentUsd: undefined,
+        estimated: undefined
+      };
+    } else if (parsed.cost && typeof parsed.cost === 'object' && !Array.isArray(parsed.cost)) {
+      const costObj = parsed.cost as Record<string, any>;
+      const rawTotal = typeof costObj.total_usd === 'number' ? costObj.total_usd : (typeof costObj.total === 'number' ? costObj.total : (typeof costObj.cost === 'number' ? costObj.cost : 0));
+      const totalUsd = !isNaN(rawTotal) && rawTotal >= 0 ? rawTotal : 0;
+      const subagentUsd = typeof costObj.subagent_usd === 'number' && !isNaN(costObj.subagent_usd) && costObj.subagent_usd >= 0 ? costObj.subagent_usd : undefined;
+      const estimated = typeof costObj.estimated === 'boolean' ? costObj.estimated : undefined;
+      if (totalUsd > 0 || subagentUsd !== undefined || estimated !== undefined) {
+        costInfo = {
+          totalUsd,
+          subagentUsd,
+          estimated
+        };
+      }
+    }
+  } else if (typeof parsed.total_usd === 'number' && !isNaN(parsed.total_usd) && parsed.total_usd >= 0) {
+    costInfo = {
+      totalUsd: parsed.total_usd,
+      subagentUsd: undefined,
+      estimated: undefined
+    };
+  } else if (typeof parsed.session_cost === 'number' && !isNaN(parsed.session_cost) && parsed.session_cost >= 0) {
+    costInfo = {
+      totalUsd: parsed.session_cost,
+      subagentUsd: undefined,
+      estimated: undefined
+    };
   }
 
   return {
@@ -990,6 +1105,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     activePlugins,
     sessionElapsedSeconds,
     toolElapsedSeconds,
-    gitStats
+    gitStats,
+    cost: costInfo
   };
 }

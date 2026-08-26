@@ -41,13 +41,20 @@ You can drag and drop these string keys into any layout array:
 - `'ctx'`: The token context window percentage.
 - `'cache'`: Context cache token reads for Gemini 1.5/2.0 API.
 - `'credits'`: AI Credits balance block.
+- `'cost'`: Running session token spend telemetry (e.g. `💲 Cost: ~$0.042 (sub: $0.012)`). Automatically hidden when 0/absent.
 - `'5h'`: The 5-hour rolling Gemini token quota.
 - `'weekly'`: The weekly rolling Gemini token quota.
+- `'apiKey'`: Direct API key badge indicator.
+- `'mcp'`: Active MCP Tool Servers block (e.g. `🔌 MCP: 3 active`).
+- `'rules'`: Active Rules counter block (e.g. `📜 Rules: 3 active`).
+- `'plugins'`: Active Loaded Plugins block (e.g. `🧩 Plugins: hud, looper`).
+- `'session_time'`: Session Elapsed Wall-Clock Timer (e.g. `⏱️ 14m 22s`).
 - `'tasks'`: The active background task count.
-- `'git'`: The list of Active Git Branches. (Stacked block, MUST be the last item on a row or its own row).
-- `'subagents'`: The list of active subagents and their roles. (Stacked block, MUST be the last item on a row or its own row).
-- `'tool'`: The active tool execution block (e.g. 🛠️ run_command (git status)). Automatically hidden when no tool is active.
-- `'version'`: The active Antigravity CLI version (e.g. 📦 v1.1.9).
+- `'git'`: The list of Active Git Branches with diff stats. (Stacked block, MUST be the last item on a row or its own row).
+- `'subagents'`: The list of active subagents and their roles with cost breakdown. (Stacked block, MUST be the last item on a row or its own row).
+- `'tool'`: The active tool execution block with elapsed timer (e.g. `🛠️ run_command (git status) [⏱️ 8s]`). Automatically hidden when no tool is active.
+- `'looper'`: The active Looper missions and epics tree. (Stacked block, MUST be the last item on a row or its own row).
+- `'version'`: The active Antigravity CLI version (e.g. 📦 v1.1.21).
 - `'email'`: Your authenticated Google account email.
 - `'plan'`: Your active billing tier (e.g. 💎 Google AI Pro).
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig, stripAnsi, formatOsc8Link, THEMES, STYLES } from './formatter.js';
+import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig, stripAnsi, formatOsc8Link, THEMES, STYLES, formatCostAmount, SKILL_ICONS } from './formatter.js';
 import type { ParsedMetrics } from './parser.js';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -955,6 +955,101 @@ describe('formatMetrics', () => {
       expect(out).toContain('feat/hud*');
       expect(out).toContain('+42/-10, 3 files');
       expect(out).toContain('↑1 ↓0');
+    });
+  });
+
+  describe('v1.5.0 Running Cost Block & Skill Icons Expansion', () => {
+    it('formats cost amounts with adaptive precision via formatCostAmount', () => {
+      expect(formatCostAmount(0)).toBe('$0.00');
+      expect(formatCostAmount(-1)).toBe('$0.00');
+      expect(formatCostAmount(0.0042)).toBe('$0.0042');
+      expect(formatCostAmount(0.0009)).toBe('$0.0009');
+      expect(formatCostAmount(0.04235)).toBe('$0.042');
+      expect(formatCostAmount(1.25)).toBe('$1.250');
+      expect(formatCostAmount(12.456)).toBe('$12.46');
+    });
+
+    it('renders cost block with standard amount and estimated tilde indicator', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        cost: {
+          totalUsd: 0.042,
+          estimated: true
+        }
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('💲 Cost:');
+      expect(out).toContain('~$0.042');
+    });
+
+    it('renders cost block with subagent breakdown when subagentUsd is present', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        cost: {
+          totalUsd: 0.085,
+          subagentUsd: 0.021,
+          estimated: false
+        }
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('💲 Cost:');
+      expect(out).toContain('$0.085');
+      expect(out).toContain('(sub: $0.021)');
+      expect(out).not.toContain('~$0.085');
+    });
+
+    it('auto-hides cost block when cost is 0 or undefined and autoHideEmptyBlocks is true', () => {
+      const metricsZero: ParsedMetrics = {
+        ...baseMetrics,
+        cost: {
+          totalUsd: 0
+        }
+      };
+      const outZero = formatMetrics(metricsZero);
+      expect(outZero).not.toContain('💲 Cost:');
+
+      const metricsUndef: ParsedMetrics = {
+        ...baseMetrics,
+        cost: undefined
+      };
+      const outUndef = formatMetrics(metricsUndef);
+      expect(outUndef).not.toContain('💲 Cost:');
+    });
+
+    it('renders cost badge on subagents with totalUsd', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        subagents: [
+          { name: 'worker-1', role: 'Dev', status: 'working', depth: 0, totalUsd: 0.015 },
+          { name: 'worker-2', role: 'Reviewer', status: 'working', depth: 1 }
+        ]
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('worker-1');
+      expect(out).toContain('[$0.015]');
+      expect(out).toContain('worker-2');
+      expect(out).not.toContain('worker-2 [id:');
+    });
+
+    it('maps modern built-in and plugin skill icons in SKILL_ICONS dictionary', () => {
+      expect(SKILL_ICONS['melon']).toBe('🍉');
+      expect(SKILL_ICONS['agy-customizations']).toBe('⚙️');
+      expect(SKILL_ICONS['antigravity-guide']).toBe('🪐');
+      expect(SKILL_ICONS['address-review']).toBe('💬');
+      expect(SKILL_ICONS['code-review']).toBe('🧐');
+      expect(SKILL_ICONS['codebase-design']).toBe('🏗️');
+      expect(SKILL_ICONS['diagnosing-bugs']).toBe('🩺');
+      expect(SKILL_ICONS['domain-modeling']).toBe('🏛️');
+      expect(SKILL_ICONS['grilling']).toBe('🔥');
+      expect(SKILL_ICONS['prototype']).toBe('🛠️');
+      expect(SKILL_ICONS['research']).toBe('📚');
+      expect(SKILL_ICONS['wizard']).toBe('🧙');
+      expect(SKILL_ICONS['writing-for-agents']).toBe('✍️');
+      expect(SKILL_ICONS['migrate-to-shoehorn']).toBe('👞');
+      expect(SKILL_ICONS['setup-pre-commit']).toBe('🪝');
+      expect(SKILL_ICONS['git-guardrails-claude-code']).toBe('🛡️');
+      expect(SKILL_ICONS['scaffold-exercises']).toBe('📋');
+      expect(SKILL_ICONS['resolving-merge-conflicts']).toBe('⚔️');
     });
   });
 });

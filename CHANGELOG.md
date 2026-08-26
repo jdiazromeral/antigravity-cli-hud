@@ -5,6 +5,17 @@ All notable changes to the **Antigravity HUD Plugin** will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-26
+
+### Added
+- **Running Session Cost Telemetry (`'cost'` Block):** Full support for Antigravity CLI 1.1.21's new `cost` telemetry model (`types.StatusLineCost`), displaying unrounded real-time spend (`total_usd`, `subagent_usd`, `estimated`) with adaptive micro-cent precision (`$0.0042`, `~$0.042`, `(sub: $0.012)`).
+- **Subagent Cost Attribution:** Parses and renders individual subagent cost spend badges directly within the subagents hierarchy tree view.
+- **Hierarchical & Multi-Directory Rules Discovery:** Scans standard project-level `.agents/rules/*.md` and `.agent/rules/*.md`, walks ancestor directories to repository roots, and scans global rules (`~/.gemini/config/rules/*.md`).
+- **Expanded Skill Branding:** Added comprehensive icon mappings across modern official and plugin skills (`melon 🍉`, `agy-customizations ⚙️`, `antigravity-guide 🪐`, `address-review 💬`, `code-review 🧐`, `codebase-design 🏗️`, `diagnosing-bugs 🩺`, `domain-modeling 🏛️`, `grilling 🔥`, `prototype 🛠️`, `research 📚`, `wizard 🧙`, `writing-for-agents ✍️`, `migrate-to-shoehorn 👞`, `setup-pre-commit 🪝`, `git-guardrails-claude-code 🛡️`, `scaffold-exercises 📋`, `resolving-merge-conflicts ⚔️`).
+- **Dynamic Cost Culling:** Automatically hides empty or zero-value cost telemetry when `autoHideEmptyBlocks: true` without leaving orphaned whitespace.
+
+---
+
 ## [1.4.1] - 2026-08-25
 
 ### Added

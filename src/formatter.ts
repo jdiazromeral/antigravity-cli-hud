@@ -175,9 +175,26 @@ export const SKILL_ICONS: Record<string, string> = {
   'prototype': '🛠️',
   'research': '📚',
   'wizard': '🧙',
+  'writing-for-agents': '✍️',
   'agy-customizations': '⚙️',
-  'antigravity-guide': '🪐'
+  'antigravity-guide': '🪐',
+  'migrate-to-shoehorn': '👞',
+  'setup-pre-commit': '🪝',
+  'git-guardrails-claude-code': '🛡️',
+  'scaffold-exercises': '📋',
+  'resolving-merge-conflicts': '⚔️'
 };
+
+export function formatCostAmount(amount: number): string {
+  if (amount <= 0) return '$0.00';
+  if (amount < 0.01) {
+    return `$${amount.toFixed(4)}`;
+  }
+  if (amount < 10) {
+    return `$${amount.toFixed(3)}`;
+  }
+  return `$${amount.toFixed(2)}`;
+}
 
 export function stripAnsi(str: string): string {
   return str
@@ -205,7 +222,7 @@ export function formatOsc8Link(filePath: string, displayText: string, enabled: b
 // HUD LAYOUT CONFIGURATION
 // Default layout matrix and budget ceilings.
 // Custom overrides can be placed in ~/.gemini/hud_config.json
-// Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'tasks', 'subagents', 'tool', 'transcript', 'mcp', 'rules', 'plugins', 'session_time'
+// Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'cost', 'tasks', 'subagents', 'tool', 'transcript', 'mcp', 'rules', 'plugins', 'session_time'
 // ============================================================================
 export interface CustomBlockConfig {
   title?: string;
@@ -271,7 +288,7 @@ export const DEFAULT_HUD_CONFIG: {
     large: [
       ['state', 'mode', 'model', 'effort', 'skill', 'version', 'plan', 'permissions'],
       ['workspace', 'sandbox', 'cache', 'ctx'],
-      ['steps', '5h', 'weekly'],
+      ['steps', 'cost', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
@@ -281,7 +298,7 @@ export const DEFAULT_HUD_CONFIG: {
     medium: [
       ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox', 'cache', 'ctx'],
-      ['steps', '5h', 'weekly'],
+      ['steps', 'cost', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
@@ -292,7 +309,7 @@ export const DEFAULT_HUD_CONFIG: {
       ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox'],
       ['cache', 'ctx'],
-      ['steps', '5h', 'weekly'],
+      ['steps', 'cost', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
       ['artifacts'],
       ['looper'],
@@ -545,6 +562,20 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     credits: metrics.credits !== undefined ? `\uF155 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
     apiKey: metrics.isApiKey ? `${colors.yellow}🔑 [API Key]${colors.reset}` : '',
+    cost: (() => {
+      if (!metrics.cost || metrics.cost.totalUsd === undefined) return '';
+      const total = metrics.cost.totalUsd;
+      if (total <= 0 && (!metrics.cost.subagentUsd || metrics.cost.subagentUsd <= 0)) {
+        return '';
+      }
+      const estPrefix = metrics.cost.estimated ? '~' : '';
+      const formattedTotal = formatCostAmount(total);
+      let subPart = '';
+      if (metrics.cost.subagentUsd !== undefined && metrics.cost.subagentUsd > 0) {
+        subPart = ` ${colors.dim}(sub: ${formatCostAmount(metrics.cost.subagentUsd)})${colors.reset}`;
+      }
+      return `💲 Cost: ${colors.yellow}${estPrefix}${formattedTotal}${colors.reset}${subPart}`;
+    })(),
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
     tool: (() => {
       if (!metrics.activeTool) return '';
@@ -687,7 +718,8 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     const depth = typeof s.depth === 'number' && s.depth > 0 ? s.depth : 0;
     const prefix = depth > 0 ? '  '.repeat(depth) + '↳ ' : '';
     const idStr = s.conversationId ? ` ${colors.dim}[id:${s.conversationId.substring(0, 6)}]${colors.reset}` : '';
-    return `${prefix}${s.name}${idStr} [${statusColor}${statusLabel}${colors.reset}] (${shortRole})`;
+    const costStr = (typeof s.totalUsd === 'number' && s.totalUsd > 0) ? ` ${colors.dim}[${formatCostAmount(s.totalUsd)}]${colors.reset}` : '';
+    return `${prefix}${s.name}${idStr} [${statusColor}${statusLabel}${colors.reset}] (${shortRole})${costStr}`;
   });
   const chunkedSubagents = calculateStackedChunks(subStrs, 3);
 
@@ -876,6 +908,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     }
     if (!metrics.isApiKey) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'apiKey'));
+    }
+    if (!metrics.cost || (metrics.cost.totalUsd <= 0 && (!metrics.cost.subagentUsd || metrics.cost.subagentUsd <= 0))) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'cost'));
     }
     if (hudConfig.customBlocks) {
       for (const customKey of Object.keys(hudConfig.customBlocks)) {

@@ -5,13 +5,12 @@
 A production-grade, highly responsive terminal HUD for the Antigravity CLI. It dynamically monitors your agent state, token context, quota buckets, and active subagents in real-time.
 
 ```text
-```text
-▌ 🔵 [TARS] WORKING  |  🔵 plan  |  🤖 Gemini 3.6 Flash  |  Effort: 󰾆 high  |  🧠 Skills: looper & tdd & rules  |  📦 v1.4.0  |  💎 Pro
+▌ 🔵 [TARS] WORKING  |  🔵 plan  |  🤖 Gemini 3.6 Flash  |  Effort: 󰾆 high  |  🧠 Skills: 🔄 looper & 🧪 tdd & 📜 rules  |  📦 v1.5.0  |  💎 Pro
 │ 📂 acme-corp/work  |  🔓 Unsandboxed  |  ⚡ Cache: 120k  |  🎧 Ctx: ▰▰▰▰▱ 72% (54k/75k max)
-│ 👟 Steps: ▰▰▰▰▱ 14/20  |  🕒 5h: ▰▰▱▱▱ 45% (01:00)  |  🕒 Weekly: ▰▰▰▰▱ 85% (2d 0h)
+│ 👟 Steps: ▰▰▰▰▱ 14/20  |  💲 Cost: ~$0.042 (sub: $0.013)  |  🕒 5h: ▰▰▱▱▱ 45% (01:00)  |  🕒 Weekly: ▰▰▰▰▱ 85% (2d 0h)
 │ ⚙️  Active Tasks: 3  |  👥 Subagents:  |  🛠️  run_command (npm test) [⏱️ 8s]
 │                             orchestrator [id:abc123] [working] (Epic Runner)
-│                               ↳ worker-1 [id:def678] [working] (Feature Dev)
+│                               ↳ worker-1 [id:def678] [working] (Feature Dev) [$0.0080]
 │                                 ↳ researcher [id:ghi112] [completed] (Context Finder)
 │                             ...and 1 more hidden
 │ 📄 Artifacts (open ~/.gemini/antigravity-cli/brain/ad266f1f*):
@@ -39,6 +38,10 @@ node scripts/demo.js --theme=monochrome --style=minimal
 
 This plugin was engineered with strict defensive paradigms and advanced layout algorithms to guarantee zero-crash execution and a flawless visual experience:
 
+- **Running Session Cost Telemetry (`'cost'` Block)**: Native support for Antigravity CLI 1.1.21's unrounded spend telemetry (`types.StatusLineCost`), displaying real-time session cost (`total_usd`, `subagent_usd`, `estimated`) with micro-cent precision.
+- **Subagent Cost Attribution**: Parses and renders individual subagent cost spend badges directly within the subagents hierarchy tree view.
+- **Hierarchical & Multi-Directory Rules Discovery**: Scans standard project-level `.agents/rules/*.md` and `.agent/rules/*.md`, walks ancestor directories to repository roots, and scans global rules (`~/.gemini/config/rules/*.md`).
+- **Comprehensive Skill Visual Branding**: Displays emoji icons mapped across official, community, and plugin skills (`melon 🍉`, `looper 🔄`, `tdd 🧪`, `agy-customizations ⚙️`, `antigravity-guide 🪐`, `rules 📜`, `code-review 🧐`, etc.).
 - **TrueColor 24-Bit Theming Engine**: Choose from 7 built-in theme presets (`default`, `catppuccin`, `tokyo-night`, `dracula`, `nord`, `solarized`, `monochrome`) via `~/.gemini/hud_config.json`.
 - **Nerd Font Separator Styles**: 4 interchangeable layout styles (`modern` UTF-8 bar, `powerline` chevron arrows ``, `bubble` rounded pills ``/``, and `minimal` whitespace/bullets).
 - **Hardened OSC 8 Terminal Hyperlinks**: Cmd+Clickable hyperlinks on transcript paths, artifacts, MCP configs, rules, and git branches, with zero-width regex strip ANSI hardening.

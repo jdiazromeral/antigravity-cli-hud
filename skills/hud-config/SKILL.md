@@ -31,6 +31,7 @@ When the user invokes this skill:
    - `'cache'`: Context window prompt cache read tokens (e.g., `⚡ Cache: 70k`)
    - `'5h'`: 5-hour rolling quota saturation & reset countdown timer
    - `'weekly'`: Weekly rolling quota saturation & reset countdown timer
+   - `'cost'`: Running session token spend telemetry with subagent slice & estimate flag (e.g., `💲 Cost: ~$0.042 (sub: $0.012)`)
    - `'credits'`: AI Credit Balance indicator (e.g., ` AI Credits: 120`)
    - `'apiKey'`: Direct API key badge indicator (e.g., `🔑 [API Key]`)
    - `'mcp'`: Active MCP Tool Servers block (e.g., `🔌 MCP: 3 active` with Cmd+Clickable config link)
