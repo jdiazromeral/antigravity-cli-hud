@@ -4,6 +4,8 @@ export { formatMetrics, HUD_CONFIG, SKILL_ICONS, formatCostAmount } from './form
 export type { CustomBlockConfig, HudConfig, HudExperimentalConfig, HudExperimentalVoiceConfig } from './formatter.js';
 export { querySpendStats, formatSpendStatsReport, recordSessionSpendAsync, getLedgerDbPath, initLedgerDb } from './ledger.js';
 export type { SpendStats, ModelSpendSummary, WorkspaceSpendSummary } from './ledger.js';
+export { auditAgy, formatAuditReport, extractTelemetryStructsAndTags, auditTelemetryGaps, auditMissingSkillIcons } from './audit.js';
+export type { AuditResult, TelemetryGap, MissingSkillIcon, Recommendation } from './audit.js';
 import { parseStream as _parseStream } from './parser.js';
 import { formatMetrics as _formatMetrics } from './formatter.js';
 import { recordSessionSpendAsync as _recordSessionSpendAsync } from './ledger.js';

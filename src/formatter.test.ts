@@ -1047,7 +1047,9 @@ describe('formatMetrics', () => {
       expect(SKILL_ICONS['writing-for-agents']).toBe('✍️');
       expect(SKILL_ICONS['migrate-to-shoehorn']).toBe('👞');
       expect(SKILL_ICONS['setup-pre-commit']).toBe('🪝');
-      expect(SKILL_ICONS['git-guardrails-claude-code']).toBe('🛡️');
+      expect(SKILL_ICONS['stats']).toBe('📊');
+      expect(SKILL_ICONS['voice']).toBe('🎙️');
+      expect(SKILL_ICONS['audit-agy']).toBe('🔍');
       expect(SKILL_ICONS['scaffold-exercises']).toBe('📋');
       expect(SKILL_ICONS['resolving-merge-conflicts']).toBe('⚔️');
     });

@@ -57,8 +57,9 @@ This plugin was engineered with strict defensive paradigms and advanced layout a
 - **Hysteresis Filtering & Strict Padding**: Mathematically absorbs micro-fluctuations in UI layout padding. By combining a 5-column hysteresis cache with strict 7-character string padding, it completely eliminates both horizontal and vertical UI bouncing during rapid state transitions.
 - **Autonomous SQLite Spend Ledger**: Automatically tracks session spend, subagent costs, prompt cache token reads, and turn counts into a high-performance SQLite database (`~/.gemini/hud_ledger.db`) via asynchronous WAL-mode ingestion (<2ms zero-latency overhead).
 - **Experimental Voice & Audio Dictation (`'voice'` Block)**: Real-time visual status for `/voice`, `[F5]` dictation, and `agy mic-serve` audio streaming (`🎙️ Voice: Ready [F5]`, `🔴 🎙️ REC`, `🎙️ Mic: 4713`), with configurable keybindings and automatic culling.
-- **Interactive Config & Analytics Skills**: Ships with built-in AI skills: `/hud:hud-config` (runtime layout & theme wizard), `/hud:rules` (active workspace rules inspector), `/hud:stats` (token financial & cache efficiency dashboard), and `/hud:voice` (microphone setup & audio streamer assistant).
-- **High-Performance Build**: Hand-written in TypeScript and bundled via `esbuild` into single ECMAScript Modules (`dist/index.js`, `dist/title.js`, `dist/stats.js`) that execute in **~1ms**.
+- **Automated CLI Reverse-Engineering & Telemetry Auditor (`/hud:audit-agy`)**: Programmatically reverse-engineers the local `agy` Go binary, extracts internal `StatusLine*` structs, compares telemetry schemas against `src/parser.ts`, scans for unbranded ecosystem skills, and drafts instant upgrade roadmaps (`npm run audit:agy`).
+- **Interactive Config & Analytics Skills**: Ships with built-in AI skills: `/hud:hud-config` (runtime layout & theme wizard), `/hud:rules` (active workspace rules inspector), `/hud:stats` (token financial & cache efficiency dashboard), `/hud:voice` (microphone setup & audio streamer assistant), and `/hud:audit-agy` (platform telemetry gap auditor).
+- **High-Performance Build**: Hand-written in TypeScript and bundled via `esbuild` into single ECMAScript Modules (`dist/index.js`, `dist/title.js`, `dist/stats.js`, `scripts/audit_agy.js`) that execute in **~1ms**.
 
 ## Installation
 
@@ -91,6 +92,10 @@ To analyze historical AI spend, prompt cache hit rate, and per-model ROI:
 To configure or diagnose microphone setup and experimental voice streaming:
 
 > `/hud:voice`
+
+To audit new Antigravity CLI versions, discover new telemetry structs, and detect missing skill icons:
+
+> `/hud:audit-agy`
 
 ## Usage
 
@@ -148,6 +153,7 @@ For full release history and version details, see the **[CHANGELOG.md](CHANGELOG
 - **Autonomous SQLite Spend Ledger (`~/.gemini/hud_ledger.db`):** High-performance WAL-mode historical spend ledger automatically tracking session costs, subagent slices, prompt cache tokens, and turn step counts asynchronously with zero latency impact on the statusline render loop.
 - **Interactive Spend Analytics Skill (`/hud:stats`):** Built-in financial inspector and token analytics dashboard providing daily/weekly spend summaries, prompt cache savings percentages, and breakdowns by model and workspace.
 - **Experimental Voice Dictation (`'voice'` Block):** Added support for `/voice` prompt dictation, `[F5]` keybinding badge, and `agy mic-serve` remote microphone status (`🎙️ Voice: Ready [F5]`, `🔴 🎙️ REC`, `🎙️ Mic: 4713`), accompanied by the `/hud:voice` assistant skill.
+- **Automated CLI Telemetry Auditor (`/hud:audit-agy`):** Programmatically inspects the local `agy` binary to extract internal `StatusLine*` Go structs, flags missing schema tags in `src/parser.ts`, scans for unbranded ecosystem skills, and drafts instant upgrade roadmaps (`npm run audit:agy`).
 - **Hierarchical & Multi-Directory Rules Discovery:** Scans standard project-level `.agents/rules/*.md` and `.agent/rules/*.md`, walks ancestor directories to repository roots, and scans global rules (`~/.gemini/config/rules/*.md`).
 - **Expanded Skill Branding:** Added comprehensive icon mappings across modern official and plugin skills (`melon 🍉`, `agy-customizations ⚙️`, `antigravity-guide 🪐`, `address-review 💬`, `code-review 🧐`, `codebase-design 🏗️`, `diagnosing-bugs 🩺`, `domain-modeling 🏛️`, `grilling 🔥`, `prototype 🛠️`, `research 📚`, `wizard 🧙`, `writing-for-agents ✍️`, `migrate-to-shoehorn 👞`, `setup-pre-commit 🪝`, `git-guardrails-claude-code 🛡️`).
 

@@ -5,6 +5,7 @@
     "skills/hud-config",
     "skills/rules",
     "skills/stats",
-    "skills/voice"
+    "skills/voice",
+    "skills/audit-agy"
   ]
 }
