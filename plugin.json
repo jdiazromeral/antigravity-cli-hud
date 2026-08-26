@@ -3,6 +3,7 @@
   "hooks": ["status-line", "title"],
   "skills": [
     "skills/hud-config",
-    "skills/rules"
+    "skills/rules",
+    "skills/stats"
   ]
 }

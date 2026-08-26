@@ -46,7 +46,8 @@ describe('E2E Hook Invariant Black-Box Tests', () => {
       quota: {
         'gemini-5h': { remaining_fraction: 0.5, reset_in_seconds: 3600 },
         'gemini-weekly': { remaining_fraction: 0.2, reset_in_seconds: 86400 }
-      }
+      },
+      terminal_width: 140
     };
 
     const res = runHook(statusLineHook, payload);

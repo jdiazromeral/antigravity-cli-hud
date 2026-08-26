@@ -55,8 +55,9 @@ This plugin was engineered with strict defensive paradigms and advanced layout a
 - **Security & Privacy Hardening**: Enforces identifier sanitization against path traversal, restricts custom block caches to `0o600` permissions, protects against symlink traversal, and caps synchronous transcript parsing to 2MB to prevent DoS latency.
 - **Looper Hierarchical Tree**: Groups autonomous Looper missions hierarchically under their parent epic, eliminating redundant repository and epic echoes.
 - **Hysteresis Filtering & Strict Padding**: Mathematically absorbs micro-fluctuations in UI layout padding. By combining a 5-column hysteresis cache with strict 7-character string padding, it completely eliminates both horizontal and vertical UI bouncing during rapid state transitions.
-- **Interactive Config & Inspection Skills**: Ships with built-in AI skills: `/hud:hud-config` (runtime layout & theme wizard) and `/hud:rules` (active workspace rules inspector).
-- **High-Performance Build**: Hand-written in TypeScript and bundled via `esbuild` into single ECMAScript Modules (`dist/index.js`, `dist/title.js`) that execute in **~1ms**.
+- **Autonomous SQLite Spend Ledger**: Automatically tracks session spend, subagent costs, prompt cache token reads, and turn counts into a high-performance SQLite database (`~/.gemini/hud_ledger.db`) via asynchronous WAL-mode ingestion (<2ms zero-latency overhead).
+- **Interactive Config & Analytics Skills**: Ships with built-in AI skills: `/hud:hud-config` (runtime layout & theme wizard), `/hud:rules` (active workspace rules inspector), and `/hud:stats` (token financial & cache efficiency dashboard).
+- **High-Performance Build**: Hand-written in TypeScript and bundled via `esbuild` into single ECMAScript Modules (`dist/index.js`, `dist/title.js`, `dist/stats.js`) that execute in **~1ms**.
 
 ## Installation
 
@@ -81,6 +82,10 @@ The AI will interactively guide you through selecting a theme (e.g. Catppuccin, 
 To inspect active workspace rules and tactical mandates:
 
 > `/hud:rules`
+
+To analyze historical AI spend, prompt cache hit rate, and per-model ROI:
+
+> `/hud:stats`
 
 ## Usage
 
