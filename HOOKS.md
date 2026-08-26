@@ -72,6 +72,12 @@ The incoming `stdin` payload is a single, unformatted JSON object. Below is a co
     "subagent_usd": 0.012,
     "estimated": true
   },
+  "voice": {
+    "enabled": true,
+    "is_recording": false,
+    "status": "ready",
+    "keybinding": "F5"
+  },
   "sandbox": { "enabled": false },
   "terminal_width": 184,
   "task_count": 1,
@@ -86,7 +92,7 @@ The incoming `stdin` payload is a single, unformatted JSON object. Below is a co
 }
 ```
 
-*Note: In `agy 1.1.21+`, the CLI provides unrounded estimated running session spend via the `cost` struct (`total_usd`, `subagent_usd`, `estimated`).*
+*Note: In `agy 1.1.21+`, the CLI provides unrounded estimated running session spend via the `cost` struct (`total_usd`, `subagent_usd`, `estimated`), and experimental voice dictation telemetry (`voice`, `is_recording`, `mic_serve`).*
 
 *Note: The CLI execution mode (`request-review`, `accept-edits`, etc.) is NOT currently streamed in the telemetry payload. It must be read directly from the `~/.gemini/antigravity-cli/settings.json` file.*
 

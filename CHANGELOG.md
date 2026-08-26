@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Autonomous SQLite Spend Ledger (`~/.gemini/hud_ledger.db`):** High-performance WAL-mode historical ledger automatically tracking session spend, subagent slices, prompt cache tokens, and turn step counts asynchronously with zero latency impact on the statusline render loop.
 - **Interactive Spend Analytics Skill (`/hud:stats`):** Built-in financial inspector and token analytics dashboard providing daily/weekly spend summaries, prompt cache savings percentages, and breakdowns by model and workspace.
 - **Standalone CLI Stats Reporter (`dist/stats.js`):** Bundled standalone script support for `npm run stats` and `--summary` / `--json` flags for custom block integration.
+- **Experimental Voice & Audio Dictation (`'voice'` Block):** Added support for `/voice` prompt dictation, `[F5]` keybinding badge, and `agy mic-serve` remote microphone status (`🎙️ Voice: Ready [F5]`, `🔴 🎙️ REC`, `🎙️ Mic: 4713`), accompanied by the `/hud:voice` assistant skill.
 - **Dynamic Cost Culling:** Automatically hides empty or zero-value cost telemetry when `autoHideEmptyBlocks: true` without leaving orphaned whitespace.
 
 ---

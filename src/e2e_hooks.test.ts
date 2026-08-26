@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { spawnSync, execSync } from 'node:child_process';
 import path from 'node:path';
+import os from 'node:os';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -184,6 +186,43 @@ describe('E2E Hook Invariant Black-Box Tests', () => {
     expect(res.stdout).toContain('(sub: $0.012)');
     expect(res.stdout).toContain('worker-1');
     expect(res.stdout).toContain('[$0.012]');
+  });
+
+  it('Invariant 10: Experimental Voice Telemetry & REC Indicator', () => {
+    const payload = {
+      agent_state: 'WORKING',
+      model: { display_name: 'Gemini 3.6 Flash' },
+      terminal_width: 140,
+      voice: {
+        is_recording: true,
+        status: 'recording'
+      }
+    };
+
+    // Save a temporary layout containing 'voice' in ~/.gemini/hud_config.json
+    const configPath = path.join(os.homedir(), '.gemini', 'hud_config.json');
+    let prevConfig: string | null = null;
+    if (fs.existsSync(configPath)) {
+      prevConfig = fs.readFileSync(configPath, 'utf8');
+    }
+
+    try {
+      fs.writeFileSync(configPath, JSON.stringify({
+        layouts: {
+          large: [['state', 'mode', 'voice', 'model']]
+        }
+      }), 'utf8');
+
+      const res = runHook(statusLineHook, payload);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain('🔴 🎙️ REC');
+    } finally {
+      if (prevConfig !== null) {
+        fs.writeFileSync(configPath, prevConfig, 'utf8');
+      } else if (fs.existsSync(configPath)) {
+        fs.unlinkSync(configPath);
+      }
+    }
   });
 });
 

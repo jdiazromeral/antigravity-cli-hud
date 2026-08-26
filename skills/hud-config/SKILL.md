@@ -32,6 +32,7 @@ When the user invokes this skill:
    - `'5h'`: 5-hour rolling quota saturation & reset countdown timer
    - `'weekly'`: Weekly rolling quota saturation & reset countdown timer
    - `'cost'`: Running session token spend telemetry with subagent slice & estimate flag (e.g., `💲 Cost: ~$0.042 (sub: $0.012)`)
+   - `'voice'`: Experimental voice dictation & microphone server indicator (e.g., `🎙️ Voice: Ready [F5]`, `🔴 🎙️ REC`, `🎙️ Mic: 4713`)
    - `'credits'`: AI Credit Balance indicator (e.g., ` AI Credits: 120`)
    - `'apiKey'`: Direct API key badge indicator (e.g., `🔑 [API Key]`)
    - `'mcp'`: Active MCP Tool Servers block (e.g., `🔌 MCP: 3 active` with Cmd+Clickable config link)

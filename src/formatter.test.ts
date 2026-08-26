@@ -1051,5 +1051,131 @@ describe('formatMetrics', () => {
       expect(SKILL_ICONS['scaffold-exercises']).toBe('📋');
       expect(SKILL_ICONS['resolving-merge-conflicts']).toBe('⚔️');
     });
+
+    describe('Experimental Voice Block Formatting', () => {
+      it('renders voice block in standby ready mode', () => {
+        const metrics: ParsedMetrics = {
+          ...baseMetrics,
+          voice: {
+            enabled: true,
+            status: 'ready',
+            keybinding: 'F5'
+          }
+        };
+        const customConfig = {
+          layouts: {
+            large: [['state', 'mode', 'voice', 'model']],
+            medium: [['state', 'mode', 'voice']],
+            small: [['state', 'voice']]
+          }
+        };
+        const out = formatMetrics(metrics, 140, customConfig as any);
+        expect(out).toContain('🎙️ Voice:');
+        expect(out).toContain('Ready');
+        expect(out).toContain('[F5]');
+      });
+
+      it('renders voice block in active recording mode with red REC badge', () => {
+        const metrics: ParsedMetrics = {
+          ...baseMetrics,
+          voice: {
+            enabled: true,
+            isRecording: true,
+            status: 'recording'
+          }
+        };
+        const customConfig = {
+          layouts: {
+            large: [['state', 'mode', 'voice', 'model']],
+            medium: [['state', 'mode', 'voice']],
+            small: [['state', 'voice']]
+          }
+        };
+        const out = formatMetrics(metrics, 140, customConfig as any);
+        expect(out).toContain('🔴 🎙️ REC');
+      });
+
+      it('renders voice block in mic-serve mode with listening address', () => {
+        const metrics: ParsedMetrics = {
+          ...baseMetrics,
+          voice: {
+            enabled: true,
+            status: 'serving',
+            addr: '127.0.0.1:4713'
+          }
+        };
+        const customConfig = {
+          layouts: {
+            large: [['state', 'voice', 'model']],
+            medium: [['state', 'voice']],
+            small: [['voice']]
+          }
+        };
+        const out = formatMetrics(metrics, 140, customConfig as any);
+        expect(out).toContain('🎙️');
+        expect(out).toContain('Mic: 4713');
+      });
+
+      it('renders voice block in quota limit mode', () => {
+        const metrics: ParsedMetrics = {
+          ...baseMetrics,
+          voice: {
+            enabled: true,
+            status: 'limit'
+          }
+        };
+        const customConfig = {
+          layouts: {
+            large: [['state', 'voice']],
+            medium: [['voice']],
+            small: [['voice']]
+          }
+        };
+        const out = formatMetrics(metrics, 140, customConfig as any);
+        expect(out).toContain('⚠️ 🎙️ Limit');
+      });
+
+      it('renders voice block via experimental.voice.enabled config override', () => {
+        const metrics: ParsedMetrics = {
+          ...baseMetrics,
+          voice: undefined
+        };
+        const customConfig = {
+          experimental: {
+            voice: {
+              enabled: true,
+              showKeybinding: true
+            }
+          },
+          layouts: {
+            large: [['state', 'voice', 'model']],
+            medium: [['state', 'voice']],
+            small: [['voice']]
+          }
+        };
+        const out = formatMetrics(metrics, 140, customConfig as any);
+        expect(out).toContain('🎙️ Voice:');
+        expect(out).toContain('Ready');
+        expect(out).toContain('[F5]');
+      });
+
+      it('culls voice block when voice is disabled/undefined and autoHideEmptyBlocks is true', () => {
+        const metrics: ParsedMetrics = {
+          ...baseMetrics,
+          voice: undefined
+        };
+        const customConfig = {
+          autoHideEmptyBlocks: true,
+          layouts: {
+            large: [['state', 'voice', 'model']],
+            medium: [['state', 'voice']],
+            small: [['voice']]
+          }
+        };
+        const out = formatMetrics(metrics, 140, customConfig as any);
+        expect(out).not.toContain('🎙️');
+        expect(out).not.toContain('Voice:');
+      });
+    });
   });
 });

@@ -42,6 +42,7 @@ You can drag and drop these string keys into any layout array:
 - `'cache'`: Context cache token reads for Gemini 1.5/2.0 API.
 - `'credits'`: AI Credits balance block.
 - `'cost'`: Running session token spend telemetry (e.g. `💲 Cost: ~$0.042 (sub: $0.012)`). Automatically hidden when 0/absent.
+- `'voice'`: Experimental voice dictation & microphone server indicator (e.g., `🎙️ Voice: Ready [F5]`, `🔴 🎙️ REC`, `🎙️ Mic: 4713`).
 - `'5h'`: The 5-hour rolling Gemini token quota.
 - `'weekly'`: The weekly rolling Gemini token quota.
 - `'apiKey'`: Direct API key badge indicator.

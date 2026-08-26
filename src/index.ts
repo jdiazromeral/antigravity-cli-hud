@@ -1,7 +1,7 @@
 export { parseStream, formatToolActionSummary } from './parser.js';
-export type { ParsedMetrics, AntigravityPayload, SubagentInfo, CostInfo } from './parser.js';
+export type { ParsedMetrics, AntigravityPayload, SubagentInfo, CostInfo, VoiceInfo } from './parser.js';
 export { formatMetrics, HUD_CONFIG, SKILL_ICONS, formatCostAmount } from './formatter.js';
-export type { CustomBlockConfig, HudConfig } from './formatter.js';
+export type { CustomBlockConfig, HudConfig, HudExperimentalConfig, HudExperimentalVoiceConfig } from './formatter.js';
 export { querySpendStats, formatSpendStatsReport, recordSessionSpendAsync, getLedgerDbPath, initLedgerDb } from './ledger.js';
 export type { SpendStats, ModelSpendSummary, WorkspaceSpendSummary } from './ledger.js';
 import { parseStream as _parseStream } from './parser.js';

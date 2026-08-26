@@ -247,6 +247,17 @@ export interface HudLayoutsConfig {
   small: string[][];
 }
 
+export interface HudExperimentalVoiceConfig {
+  enabled?: boolean;
+  showKeybinding?: boolean;
+  checkMicServe?: boolean;
+  port?: number;
+}
+
+export interface HudExperimentalConfig {
+  voice?: HudExperimentalVoiceConfig;
+}
+
 export interface HudConfig {
   theme?: string;
   style?: string;
@@ -256,6 +267,7 @@ export interface HudConfig {
   breakpoints?: HudBreakpointsConfig;
   layouts?: HudLayoutsConfig;
   customBlocks?: Record<string, CustomBlockConfig>;
+  experimental?: HudExperimentalConfig;
 }
 
 export const DEFAULT_HUD_CONFIG: {
@@ -267,6 +279,7 @@ export const DEFAULT_HUD_CONFIG: {
   breakpoints: { large: number; medium: number; small: number };
   layouts: { large: string[][]; medium: string[][]; small: string[][] };
   customBlocks?: Record<string, CustomBlockConfig>;
+  experimental?: HudExperimentalConfig;
 } = {
   theme: 'default',
   style: 'modern',
@@ -286,7 +299,7 @@ export const DEFAULT_HUD_CONFIG: {
   // Matrix rows map block IDs to visual layout ordering
   layouts: {
     large: [
-      ['state', 'mode', 'model', 'effort', 'skill', 'version', 'plan', 'permissions'],
+      ['state', 'mode', 'voice', 'model', 'effort', 'skill', 'version', 'plan', 'permissions'],
       ['workspace', 'sandbox', 'cache', 'ctx'],
       ['steps', 'cost', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
@@ -296,7 +309,7 @@ export const DEFAULT_HUD_CONFIG: {
       ['transcript']
     ],
     medium: [
-      ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
+      ['state', 'mode', 'voice', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox', 'cache', 'ctx'],
       ['steps', 'cost', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
@@ -306,7 +319,7 @@ export const DEFAULT_HUD_CONFIG: {
       ['transcript']
     ],
     small: [
-      ['state', 'mode', 'model', 'effort', 'skill', 'permissions'],
+      ['state', 'mode', 'voice', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox'],
       ['cache', 'ctx'],
       ['steps', 'cost', '5h', 'weekly'],
@@ -575,6 +588,31 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
         subPart = ` ${colors.dim}(sub: ${formatCostAmount(metrics.cost.subagentUsd)})${colors.reset}`;
       }
       return `💲 Cost: ${colors.yellow}${estPrefix}${formattedTotal}${colors.reset}${subPart}`;
+    })(),
+    voice: (() => {
+      const expVoice = hudConfig.experimental?.voice;
+      const isVoiceConfigured = expVoice?.enabled;
+      if (!metrics.voice && !isVoiceConfigured) return '';
+
+      const v = metrics.voice;
+      if (v?.isRecording || v?.status === 'recording') {
+        return `${colors.red}${colors.bold}🔴 🎙️ REC${colors.reset}`;
+      }
+      if (v?.status === 'serving') {
+        const addr = v.addr || '127.0.0.1:4713';
+        const port = addr.includes(':') ? addr.split(':').pop() : addr;
+        return `🎙️ ${colors.cyan}Mic: ${port}${colors.reset}`;
+      }
+      if (v?.status === 'limit') {
+        return `${colors.yellow}⚠️ 🎙️ Limit${colors.reset}`;
+      }
+      if (v?.status === 'disabled') {
+        return '';
+      }
+
+      const keyHint = v?.keybinding || (expVoice?.showKeybinding !== false ? 'F5' : '');
+      const keyStr = keyHint ? ` [${keyHint}]` : '';
+      return `🎙️ Voice: ${colors.green}Ready${colors.reset}${colors.dim}${keyStr}${colors.reset}`;
     })(),
     tasks: `⚙️  Active Tasks: ${taskColor}${metrics.taskCount}${colors.reset}`,
     tool: (() => {
@@ -911,6 +949,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     }
     if (!metrics.cost || (metrics.cost.totalUsd <= 0 && (!metrics.cost.subagentUsd || metrics.cost.subagentUsd <= 0))) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'cost'));
+    }
+    if (!blocks['voice']) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'voice'));
     }
     if (hudConfig.customBlocks) {
       for (const customKey of Object.keys(hudConfig.customBlocks)) {

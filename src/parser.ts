@@ -63,6 +63,23 @@ export interface AntigravityPayload {
   } | undefined;
   total_usd?: number | undefined;
   session_cost?: number | undefined;
+  voice?: boolean | string | {
+    enabled?: boolean | undefined;
+    is_recording?: boolean | undefined;
+    recording?: boolean | undefined;
+    active?: boolean | undefined;
+    status?: string | undefined;
+    state?: string | undefined;
+    addr?: string | undefined;
+    keybinding?: string | undefined;
+    source?: string | undefined;
+  } | undefined;
+  is_recording?: boolean | undefined;
+  audio_state?: string | undefined;
+  mic_serve?: {
+    addr?: string | undefined;
+    active?: boolean | undefined;
+  } | undefined;
 }
 
 export function formatToolActionSummary(toolName: string, action: string, taskId?: string): string {
@@ -100,6 +117,14 @@ export interface CostInfo {
   totalUsd: number;
   subagentUsd?: number | undefined;
   estimated?: boolean | undefined;
+}
+
+export interface VoiceInfo {
+  enabled: boolean;
+  isRecording?: boolean | undefined;
+  status: 'ready' | 'recording' | 'serving' | 'limit' | 'disabled';
+  addr?: string | undefined;
+  keybinding?: string | undefined;
 }
 
 export interface SubagentInfo {
@@ -185,6 +210,7 @@ export interface ParsedMetrics {
   gitStats?: GitStats | undefined;
   clickableLinks?: boolean | undefined;
   cost?: CostInfo | undefined;
+  voice?: VoiceInfo | undefined;
 }
 
 interface TranscriptCacheEntry {
@@ -1057,6 +1083,93 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     };
   }
 
+  // 7. Experimental Voice & Audio Dictation Telemetry (agy 1.1.21+)
+  let voiceInfo: VoiceInfo | undefined = undefined;
+  if (parsed.voice !== undefined) {
+    if (typeof parsed.voice === 'boolean') {
+      if (parsed.voice) {
+        voiceInfo = {
+          enabled: true,
+          isRecording: false,
+          status: 'ready',
+          keybinding: 'F5'
+        };
+      }
+    } else if (typeof parsed.voice === 'string') {
+      const st = parsed.voice.toLowerCase();
+      voiceInfo = {
+        enabled: st !== 'disabled' && st !== 'off',
+        isRecording: st === 'recording' || st === 'rec',
+        status: (st === 'recording' || st === 'rec') ? 'recording' : (st === 'serving' ? 'serving' : (st === 'limit' ? 'limit' : 'ready')),
+        keybinding: 'F5'
+      };
+    } else if (parsed.voice && typeof parsed.voice === 'object' && !Array.isArray(parsed.voice)) {
+      const vObj = parsed.voice as Record<string, any>;
+      const isRec = !!vObj.is_recording || !!vObj.recording || vObj.status === 'recording' || vObj.state === 'recording';
+      const statusStr = typeof vObj.status === 'string' ? vObj.status.toLowerCase() : (typeof vObj.state === 'string' ? vObj.state.toLowerCase() : (isRec ? 'recording' : 'ready'));
+      voiceInfo = {
+        enabled: vObj.enabled !== false,
+        isRecording: isRec,
+        status: isRec ? 'recording' : (statusStr === 'serving' ? 'serving' : (statusStr === 'limit' ? 'limit' : 'ready')),
+        addr: typeof vObj.addr === 'string' ? vObj.addr : undefined,
+        keybinding: typeof vObj.keybinding === 'string' ? vObj.keybinding : 'F5'
+      };
+    }
+  } else if (parsed.is_recording || parsed.audio_state === 'recording') {
+    voiceInfo = {
+      enabled: true,
+      isRecording: true,
+      status: 'recording',
+      keybinding: 'F5'
+    };
+  } else if (parsed.mic_serve && typeof parsed.mic_serve === 'object') {
+    voiceInfo = {
+      enabled: true,
+      isRecording: false,
+      status: 'serving',
+      addr: typeof (parsed.mic_serve as any).addr === 'string' ? (parsed.mic_serve as any).addr : '127.0.0.1:4713',
+      keybinding: 'F5'
+    };
+  } else if (process.env.AGY_VOICE_STATE) {
+    const envSt = process.env.AGY_VOICE_STATE.toLowerCase();
+    voiceInfo = {
+      enabled: true,
+      isRecording: envSt === 'recording' || envSt === 'rec',
+      status: (envSt === 'recording' || envSt === 'rec') ? 'recording' : (envSt === 'serving' ? 'serving' : (envSt === 'limit' ? 'limit' : 'ready')),
+      addr: process.env.AGY_MIC_SERVE_ADDR,
+      keybinding: 'F5'
+    };
+  } else if (process.env.AGY_VOICE_ENABLED === '1' || process.env.AGY_VOICE_ENABLED === 'true') {
+    voiceInfo = {
+      enabled: true,
+      isRecording: false,
+      status: 'ready',
+      keybinding: 'F5'
+    };
+  }
+
+  // Defensive local state cache probe (~/.gemini/hud_voice_state.cache)
+  if (!voiceInfo) {
+    const voiceCacheFile = path.join(os.homedir(), '.gemini', 'hud_voice_state.cache');
+    if (fs.existsSync(voiceCacheFile)) {
+      try {
+        const raw = fs.readFileSync(voiceCacheFile, 'utf8').trim();
+        if (raw) {
+          const vData = JSON.parse(raw);
+          if (vData && typeof vData === 'object') {
+            voiceInfo = {
+              enabled: vData.enabled !== false,
+              isRecording: !!vData.isRecording || !!vData.recording || vData.status === 'recording',
+              status: vData.status || (vData.isRecording ? 'recording' : 'ready'),
+              addr: vData.addr,
+              keybinding: vData.keybinding || 'F5'
+            };
+          }
+        }
+      } catch (e) {}
+    }
+  }
+
   return {
     agentState: (typeof parsed.agent_state === 'string' ? parsed.agent_state : 'UNKNOWN').toUpperCase(),
     contextUsage,
@@ -1106,6 +1219,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     sessionElapsedSeconds,
     toolElapsedSeconds,
     gitStats,
-    cost: costInfo
+    cost: costInfo,
+    voice: voiceInfo
   };
 }

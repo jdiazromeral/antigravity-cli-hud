@@ -1294,6 +1294,86 @@ describe('parseStream', () => {
         expect(ruleNames).toContain('security.md');
         expect(ruleNames).toContain('global-mandate.md');
       });
+
+      it('parses experimental voice telemetry (boolean, structured, flags, and mic_serve)', async () => {
+        // 1. Boolean voice
+        const resBool = await parseStream(Readable.from([JSON.stringify({
+          agent_state: 'WORKING',
+          voice: true
+        })]));
+        expect(resBool.voice).toEqual({
+          enabled: true,
+          isRecording: false,
+          status: 'ready',
+          keybinding: 'F5'
+        });
+
+        // 2. String status voice
+        const resRecStr = await parseStream(Readable.from([JSON.stringify({
+          agent_state: 'WORKING',
+          voice: 'recording'
+        })]));
+        expect(resRecStr.voice?.isRecording).toBe(true);
+        expect(resRecStr.voice?.status).toBe('recording');
+
+        // 3. Structured voice with recording
+        const resObj = await parseStream(Readable.from([JSON.stringify({
+          agent_state: 'WORKING',
+          voice: {
+            is_recording: true,
+            status: 'recording',
+            keybinding: 'F5'
+          }
+        })]));
+        expect(resObj.voice?.isRecording).toBe(true);
+        expect(resObj.voice?.status).toBe('recording');
+        expect(resObj.voice?.keybinding).toBe('F5');
+
+        // 4. Structured voice serving microphone
+        const resServing = await parseStream(Readable.from([JSON.stringify({
+          agent_state: 'WORKING',
+          voice: {
+            status: 'serving',
+            addr: '127.0.0.1:4713'
+          }
+        })]));
+        expect(resServing.voice?.status).toBe('serving');
+        expect(resServing.voice?.addr).toBe('127.0.0.1:4713');
+
+        // 5. Top-level is_recording flag
+        const resFlag = await parseStream(Readable.from([JSON.stringify({
+          agent_state: 'WORKING',
+          is_recording: true
+        })]));
+        expect(resFlag.voice?.isRecording).toBe(true);
+
+        // 6. Top-level mic_serve object
+        const resMicServe = await parseStream(Readable.from([JSON.stringify({
+          agent_state: 'WORKING',
+          mic_serve: { addr: '0.0.0.0:4713', active: true }
+        })]));
+        expect(resMicServe.voice?.status).toBe('serving');
+        expect(resMicServe.voice?.addr).toBe('0.0.0.0:4713');
+      });
+
+      it('parses voice state from ~/.gemini/hud_voice_state.cache', async () => {
+        const geminiDir = path.join(mockHome, '.gemini');
+        fs.mkdirSync(geminiDir, { recursive: true });
+        const cacheFile = path.join(geminiDir, 'hud_voice_state.cache');
+        fs.writeFileSync(cacheFile, JSON.stringify({
+          enabled: true,
+          status: 'recording',
+          isRecording: true,
+          keybinding: 'F5'
+        }), 'utf8');
+
+        const result = await parseStream(Readable.from([JSON.stringify({
+          agent_state: 'WORKING'
+        })]));
+        expect(result.voice).toBeDefined();
+        expect(result.voice?.isRecording).toBe(true);
+        expect(result.voice?.status).toBe('recording');
+      });
     });
   });
 });

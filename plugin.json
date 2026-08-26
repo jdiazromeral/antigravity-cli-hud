@@ -4,6 +4,7 @@
   "skills": [
     "skills/hud-config",
     "skills/rules",
-    "skills/stats"
+    "skills/stats",
+    "skills/voice"
   ]
 }

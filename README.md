@@ -5,7 +5,7 @@
 A production-grade, highly responsive terminal HUD for the Antigravity CLI. It dynamically monitors your agent state, token context, quota buckets, and active subagents in real-time.
 
 ```text
-▌ 🔵 [TARS] WORKING  |  🔵 plan  |  🤖 Gemini 3.6 Flash  |  Effort: 󰾆 high  |  🧠 Skills: 🔄 looper & 🧪 tdd & 📜 rules  |  📦 v1.5.0  |  💎 Pro
+▌ 🔵 [TARS] WORKING  |  🔵 plan  |  🎙️ Voice: Ready [F5]  |  🤖 Gemini 3.6 Flash  |  Effort: 󰾆 high  |  🧠 Skills: 🔄 looper & 🧪 tdd & 📜 rules  |  📦 v1.5.0  |  💎 Pro
 │ 📂 acme-corp/work  |  🔓 Unsandboxed  |  ⚡ Cache: 120k  |  🎧 Ctx: ▰▰▰▰▱ 72% (54k/75k max)
 │ 👟 Steps: ▰▰▰▰▱ 14/20  |  💲 Cost: ~$0.042 (sub: $0.013)  |  🕒 5h: ▰▰▱▱▱ 45% (01:00)  |  🕒 Weekly: ▰▰▰▰▱ 85% (2d 0h)
 │ ⚙️  Active Tasks: 3  |  👥 Subagents:  |  🛠️  run_command (npm test) [⏱️ 8s]
@@ -56,7 +56,8 @@ This plugin was engineered with strict defensive paradigms and advanced layout a
 - **Looper Hierarchical Tree**: Groups autonomous Looper missions hierarchically under their parent epic, eliminating redundant repository and epic echoes.
 - **Hysteresis Filtering & Strict Padding**: Mathematically absorbs micro-fluctuations in UI layout padding. By combining a 5-column hysteresis cache with strict 7-character string padding, it completely eliminates both horizontal and vertical UI bouncing during rapid state transitions.
 - **Autonomous SQLite Spend Ledger**: Automatically tracks session spend, subagent costs, prompt cache token reads, and turn counts into a high-performance SQLite database (`~/.gemini/hud_ledger.db`) via asynchronous WAL-mode ingestion (<2ms zero-latency overhead).
-- **Interactive Config & Analytics Skills**: Ships with built-in AI skills: `/hud:hud-config` (runtime layout & theme wizard), `/hud:rules` (active workspace rules inspector), and `/hud:stats` (token financial & cache efficiency dashboard).
+- **Experimental Voice & Audio Dictation (`'voice'` Block)**: Real-time visual status for `/voice`, `[F5]` dictation, and `agy mic-serve` audio streaming (`🎙️ Voice: Ready [F5]`, `🔴 🎙️ REC`, `🎙️ Mic: 4713`), with configurable keybindings and automatic culling.
+- **Interactive Config & Analytics Skills**: Ships with built-in AI skills: `/hud:hud-config` (runtime layout & theme wizard), `/hud:rules` (active workspace rules inspector), `/hud:stats` (token financial & cache efficiency dashboard), and `/hud:voice` (microphone setup & audio streamer assistant).
 - **High-Performance Build**: Hand-written in TypeScript and bundled via `esbuild` into single ECMAScript Modules (`dist/index.js`, `dist/title.js`, `dist/stats.js`) that execute in **~1ms**.
 
 ## Installation
@@ -86,6 +87,10 @@ To inspect active workspace rules and tactical mandates:
 To analyze historical AI spend, prompt cache hit rate, and per-model ROI:
 
 > `/hud:stats`
+
+To configure or diagnose microphone setup and experimental voice streaming:
+
+> `/hud:voice`
 
 ## Usage
 
@@ -142,6 +147,7 @@ For full release history and version details, see the **[CHANGELOG.md](CHANGELOG
 - **Subagent Cost Attribution:** Parses and renders individual subagent cost spend badges directly within the subagents hierarchy tree view (`[$0.0080]`).
 - **Autonomous SQLite Spend Ledger (`~/.gemini/hud_ledger.db`):** High-performance WAL-mode historical spend ledger automatically tracking session costs, subagent slices, prompt cache tokens, and turn step counts asynchronously with zero latency impact on the statusline render loop.
 - **Interactive Spend Analytics Skill (`/hud:stats`):** Built-in financial inspector and token analytics dashboard providing daily/weekly spend summaries, prompt cache savings percentages, and breakdowns by model and workspace.
+- **Experimental Voice Dictation (`'voice'` Block):** Added support for `/voice` prompt dictation, `[F5]` keybinding badge, and `agy mic-serve` remote microphone status (`🎙️ Voice: Ready [F5]`, `🔴 🎙️ REC`, `🎙️ Mic: 4713`), accompanied by the `/hud:voice` assistant skill.
 - **Hierarchical & Multi-Directory Rules Discovery:** Scans standard project-level `.agents/rules/*.md` and `.agent/rules/*.md`, walks ancestor directories to repository roots, and scans global rules (`~/.gemini/config/rules/*.md`).
 - **Expanded Skill Branding:** Added comprehensive icon mappings across modern official and plugin skills (`melon 🍉`, `agy-customizations ⚙️`, `antigravity-guide 🪐`, `address-review 💬`, `code-review 🧐`, `codebase-design 🏗️`, `diagnosing-bugs 🩺`, `domain-modeling 🏛️`, `grilling 🔥`, `prototype 🛠️`, `research 📚`, `wizard 🧙`, `writing-for-agents ✍️`, `migrate-to-shoehorn 👞`, `setup-pre-commit 🪝`, `git-guardrails-claude-code 🛡️`).
 

@@ -47,6 +47,11 @@ const mockMetrics: ParsedMetrics = {
     subagentUsd: 0.0125,
     estimated: true
   },
+  voice: {
+    enabled: true,
+    status: 'ready',
+    keybinding: 'F5'
+  },
   taskCount: 3,
   activeTool: {
     name: 'run_command',
