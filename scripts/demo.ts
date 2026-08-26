@@ -88,7 +88,7 @@ const mockMetrics: ParsedMetrics = {
   gitStats: { added: 42, deleted: 10, filesModified: 3, ahead: 1, behind: 0 },
   transcriptPath: `${process.env.HOME || '/Users/user'}/.gemini/antigravity-cli/brain/ad266f1f-75f3-44dd-b073-c93a1bedc277/.system_generated/logs/transcript.jsonl`,
   sessionName: 'ad266f1f-75f3-44dd-b073-c93a1bedc277',
-  version: '1.4.0',
+  version: '1.5.0',
   email: 'developer@example.com',
   planTier: 'Pro',
   terminalWidth: widthOverride || process.stdout.columns || 140,
