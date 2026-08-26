@@ -137,7 +137,15 @@ npm run sync
 
 For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
 
-### Latest Updates (v1.4.0)
+### Latest Updates (v1.5.0)
+- **Running Session Cost Telemetry (`'cost'` Block):** Native support for Antigravity CLI 1.1.21's unrounded spend telemetry (`types.StatusLineCost`), displaying real-time session cost (`total_usd`, `subagent_usd`, `estimated`) with adaptive micro-cent precision (`$0.0042`, `~$0.042`, `(sub: $0.012)`).
+- **Subagent Cost Attribution:** Parses and renders individual subagent cost spend badges directly within the subagents hierarchy tree view (`[$0.0080]`).
+- **Autonomous SQLite Spend Ledger (`~/.gemini/hud_ledger.db`):** High-performance WAL-mode historical spend ledger automatically tracking session costs, subagent slices, prompt cache tokens, and turn step counts asynchronously with zero latency impact on the statusline render loop.
+- **Interactive Spend Analytics Skill (`/hud:stats`):** Built-in financial inspector and token analytics dashboard providing daily/weekly spend summaries, prompt cache savings percentages, and breakdowns by model and workspace.
+- **Hierarchical & Multi-Directory Rules Discovery:** Scans standard project-level `.agents/rules/*.md` and `.agent/rules/*.md`, walks ancestor directories to repository roots, and scans global rules (`~/.gemini/config/rules/*.md`).
+- **Expanded Skill Branding:** Added comprehensive icon mappings across modern official and plugin skills (`melon 🍉`, `agy-customizations ⚙️`, `antigravity-guide 🪐`, `address-review 💬`, `code-review 🧐`, `codebase-design 🏗️`, `diagnosing-bugs 🩺`, `domain-modeling 🏛️`, `grilling 🔥`, `prototype 🛠️`, `research 📚`, `wizard 🧙`, `writing-for-agents ✍️`, `migrate-to-shoehorn 👞`, `setup-pre-commit 🪝`, `git-guardrails-claude-code 🛡️`).
+
+### Previous Updates (v1.4.0)
 - **TypeScript 7 in Go & Oxlint Tooling:** Upgraded compiler toolchain to native multi-threaded TypeScript 7 (`tsc --noEmit` in ~0.3s) and Rust-based `oxlint` (5ms).
 - **TrueColor 24-Bit Theming Engine:** 7 built-in color themes (`default`, `catppuccin`, `tokyo-night`, `dracula`, `nord`, `solarized`, `monochrome`).
 - **Nerd Font Separator Styles:** 4 styling presets (`modern`, `powerline` arrows ``, `bubble` pills ``/``, and `minimal` ` • `).
@@ -147,12 +155,6 @@ For full release history and version details, see the **[CHANGELOG.md](CHANGELOG
 - **Windows PowerShell Support:** Added `hooks/status-line.ps1` with native UTF-8 console output encoding.
 - **Dynamic Terminal Title Progress:** Terminal window title displays in-flight tool and step counter (`[🛠️ run_command] agy - work (main) [Gemini 3.6 Flash] [👟 14/20] 🔵 WORKING`).
 - **Rules Inspector Skill:** Added `/hud:rules` for scanning and summarizing active behavioral mandates.
-
-### Previous Updates (v1.2.0)
-- **Zero Disk I/O Real-Time Engine**: High-velocity statusline rendering (<2ms) parsing step counts and quotas directly in-memory from telemetry stream with zero disk thrashing.
-- **Declarative Runtime Configuration (`~/.gemini/hud_config.json`)**: Real-time layout customization without needing TypeScript recompilation.
-- **Vim Mode Badge**: Dynamic mode indicator (`[N]`, `[I]`, `[V]`) parsing Vim editing states directly from telemetry.
-- **AI Credits Layout Block**: Replaces standard quotas with a visual AI Credits balance block (``) when pay-as-you-go models are active.
 
 ## Understanding Telemetry Blocks
 
@@ -167,6 +169,7 @@ Here are all the available blocks you can slot into your matrix:
 - **`sandbox`**: The file-system security boundary (🔒 Sandboxed or 🔓 Unsandboxed).
 - **`permissions`**: The Danger Mode indicator. Visually flags if the agent was granted recursive `AGY_SKIP_PERMISSIONS=1` access across the process tree.
 - **`workspace`**: The true repository name. Natively tracks AI session context via `hud_context.json` to ensure explicitly targeted directories are visible without polluting the view with unrelated subfolders!
+- **`cost`**: Running Session Cost Telemetry (`💲 Cost: ~$0.042 (sub: $0.012)`). Displays real-time session token spend, subagent cost slices, and estimated markers. Automatically hidden when $0.00 or absent.
 - **`looper`**: The Active Looper Missions block. Dynamically scans `.looper/epics/` in active repositories and nests missions hierarchically under their parent epic (e.g., `🎯 Epic: auth-v2` -> `↳ [M1] [IN_PROGRESS]`). Automatically hides itself if no missions are active.
 - **`git`**: The Active Branches block. Dynamically stacks line-by-line (`🌱 Active Branches:`) to cleanly display multi-repo worktrees alongside their active branches.
 - **`artifacts`**: The Active Artifacts block. Dynamically stacks line-by-line (`📄 Artifacts:`) to list the `.md` files generated during the active AI session. Automatically hides itself if no artifacts exist.
@@ -183,7 +186,7 @@ Here are all the available blocks you can slot into your matrix:
 - **`credits`**: AI Credits block. Renders the active credit balance with a distinct Nerd Font icon. Automatically replaces `5h` and `weekly` quotas when pay-as-you-go models are active.
 - **`5h` / `weekly`**: Rolling quota buckets. Shows percentage used and the countdown timer until the quota bucket resets.
 - **`tasks`**: Active asynchronous background processes (shell commands, cron jobs, active timers, or background scripts) spawned by the CLI.
-- **`subagents`**: Active parallel AI subagents. Surfacing subagent IDs (`[id:abc123]`). Grandchild subagents (depth > 0) are visually nested in a tree hierarchy using `↳` characters. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
+- **`subagents`**: Active parallel AI subagents with cost spend attribution (`[id:abc123] [$0.0080]`). Grandchild subagents (depth > 0) are visually nested in a tree hierarchy using `↳` characters. The list dynamically truncates to 3 lines with a hidden counter to preserve vertical layout stability.
 - **`version`**: The installed version of the Antigravity CLI.
 - **`email`**: The authenticated user's email address.
 - **`plan`**: The active billing tier of the user account.
