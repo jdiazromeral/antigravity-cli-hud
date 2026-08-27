@@ -5,6 +5,11 @@ All notable changes to the **Antigravity HUD Plugin** will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-08-27
+
+### Changed
+- **Antigravity CLI Compatibility**: Audited and verified full compatibility with `agy 1.1.22`. The telemetry schema and payload structures have zero gaps against the new binary. Both the `cost` field and the experimental `voice` block introduced in `1.1.21` are fully operational and have been tested against `1.1.22`.
+
 ## [1.5.0] - 2026-08-26
 
 ### Added
