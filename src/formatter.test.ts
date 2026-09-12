@@ -919,6 +919,28 @@ describe('formatMetrics', () => {
       expect(out).toContain('2 active');
     });
 
+    it('renders warning badge in rules block when deprecatedRulesCount is present', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        activeRules: [
+          { name: 'AGENTS.md', path: '/Users/javidiaz/workspace/AGENTS.md', scope: 'project' },
+          { name: 'settings.json', path: '/Users/javidiaz/.gemini/settings.json', scope: 'global', hasDeprecatedRules: true, deprecatedRules: ['unsandboxed(git commit)'] }
+        ],
+        deprecatedRulesCount: 1
+      };
+      const configOverride = {
+        layouts: {
+          large: [['state', 'rules']],
+          medium: [['state', 'rules']],
+          small: [['state', 'rules']]
+        }
+      };
+      const out = formatMetrics(metrics, 140, configOverride);
+      expect(out).toContain('📜 Rules:');
+      expect(out).toContain('2 active');
+      expect(out).toContain('(⚠️ 1 deprecated)');
+    });
+
     it('renders session elapsed wall-clock timer in session_time block', () => {
       const metrics: ParsedMetrics = {
         ...baseMetrics,

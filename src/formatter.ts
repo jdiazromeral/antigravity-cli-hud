@@ -682,6 +682,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     rules: (() => {
       if (!metrics.activeRules || metrics.activeRules.length === 0) return '';
       const countLabel = `${metrics.activeRules.length} active`;
+      if (metrics.deprecatedRulesCount && metrics.deprecatedRulesCount > 0) {
+        return `📜 Rules: ${colors.cyan}${countLabel}${colors.reset} ${colors.yellow}(⚠️ ${metrics.deprecatedRulesCount} deprecated)${colors.reset}`;
+      }
       return `📜 Rules: ${colors.cyan}${countLabel}${colors.reset}`;
     })(),
     plugins: (() => {

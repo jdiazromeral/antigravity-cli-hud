@@ -1168,6 +1168,33 @@ describe('parseStream', () => {
         expect(ruleNames).toContain('GEMINI.md');
       });
 
+      it('detects deprecated unsandboxed rules in config files and sets deprecatedRulesCount', async () => {
+        const testCwd = path.join(mockHome, 'test-project-with-deprecated-rules');
+        fs.mkdirSync(path.join(testCwd, '.gemini'), { recursive: true });
+        fs.writeFileSync(path.join(testCwd, 'AGENTS.md'), '# Project Rules', 'utf8');
+        fs.writeFileSync(path.join(testCwd, '.gemini', 'settings.json'), JSON.stringify({
+          permissions: {
+            allow: ['unsandboxed(git commit)', 'unsandboxed(docker build)']
+          }
+        }), 'utf8');
+
+        const payload = {
+          agent_state: 'Working',
+          model: { display_name: 'Gemini 3.6 Flash' },
+          conversation_id: 'conv-rules-deprecated-1',
+          cwd: testCwd
+        };
+
+        const result = await parseStream(Readable.from([JSON.stringify(payload)]));
+        expect(result.activeRules).toBeDefined();
+        expect(result.deprecatedRulesCount).toBe(2);
+
+        const settingsRule = result.activeRules?.find(r => r.name === 'settings.json');
+        expect(settingsRule).toBeDefined();
+        expect(settingsRule?.hasDeprecatedRules).toBe(true);
+        expect(settingsRule?.deprecatedRules).toEqual(['unsandboxed(git commit)', 'unsandboxed(docker build)']);
+      });
+
       it('hydrates git stats (+/- lines, ahead/behind) from session git cache', async () => {
         const testCwd = path.join(mockHome, 'my-git-repo');
         fs.mkdirSync(testCwd, { recursive: true });

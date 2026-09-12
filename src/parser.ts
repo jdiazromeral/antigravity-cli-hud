@@ -112,6 +112,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as cp from 'child_process';
+import { findDeprecatedUnsandboxedRules } from './rules.js';
 
 export interface CostInfo {
   totalUsd: number;
@@ -149,6 +150,8 @@ export interface ActiveRuleInfo {
   name: string;
   path: string;
   scope: 'project' | 'workspace' | 'global';
+  hasDeprecatedRules?: boolean | undefined;
+  deprecatedRules?: string[] | undefined;
 }
 
 export interface GitStats {
@@ -204,6 +207,7 @@ export interface ParsedMetrics {
   mcpServers?: string[] | undefined;
   mcpConfigPath?: string | undefined;
   activeRules?: ActiveRuleInfo[] | undefined;
+  deprecatedRulesCount?: number | undefined;
   activePlugins?: string[] | undefined;
   sessionElapsedSeconds?: number | undefined;
   toolElapsedSeconds?: number | undefined;
@@ -941,6 +945,19 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const activeRules: ActiveRuleInfo[] = [];
   const checkedRuleFiles = new Set<string>();
 
+  const registerRuleFile = (filePath: string, name: string, scope: 'project' | 'workspace' | 'global') => {
+    if (!fs.existsSync(filePath) || checkedRuleFiles.has(filePath)) return;
+    checkedRuleFiles.add(filePath);
+    const deprecated = findDeprecatedUnsandboxedRules(filePath);
+    activeRules.push({
+      name,
+      path: filePath,
+      scope,
+      hasDeprecatedRules: deprecated.length > 0 ? true : undefined,
+      deprecatedRules: deprecated.length > 0 ? deprecated : undefined
+    });
+  };
+
   if (cwd) {
     let currentScanDir = path.resolve(cwd);
     const rootBoundary = path.parse(currentScanDir).root;
@@ -955,10 +972,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
       for (const fname of ['AGENTS.md', 'GEMINI.md', 'CLAUDE.md']) {
         const filePath = path.join(currentScanDir, fname);
-        if (fs.existsSync(filePath) && !checkedRuleFiles.has(filePath)) {
-          activeRules.push({ name: fname, path: filePath, scope });
-          checkedRuleFiles.add(filePath);
-        }
+        registerRuleFile(filePath, fname, scope);
       }
 
       for (const dotAgentDirName of ['.agents', '.agent']) {
@@ -969,13 +983,24 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
             for (const rf of rFiles) {
               if (rf.endsWith('.md')) {
                 const fullRulePath = path.join(rulesSubDir, rf);
-                if (!checkedRuleFiles.has(fullRulePath)) {
-                  activeRules.push({ name: rf, path: fullRulePath, scope });
-                  checkedRuleFiles.add(fullRulePath);
-                }
+                registerRuleFile(fullRulePath, rf, scope);
               }
             }
           } catch (e) {}
+        }
+      }
+
+      const configCandidates = [
+        path.join(currentScanDir, '.gemini', 'settings.json'),
+        path.join(currentScanDir, '.gemini', 'permissions.json'),
+        path.join(currentScanDir, '.agents', 'settings.json')
+      ];
+      for (const cfg of configCandidates) {
+        if (fs.existsSync(cfg)) {
+          const deprecated = findDeprecatedUnsandboxedRules(cfg);
+          if (deprecated.length > 0) {
+            registerRuleFile(cfg, path.basename(cfg), scope);
+          }
         }
       }
 
@@ -989,15 +1014,10 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   }
 
   const globalAgents = path.join(os.homedir(), '.gemini', 'AGENTS.md');
-  if (fs.existsSync(globalAgents) && !checkedRuleFiles.has(globalAgents)) {
-    activeRules.push({ name: 'AGENTS.md', path: globalAgents, scope: 'global' });
-    checkedRuleFiles.add(globalAgents);
-  }
+  registerRuleFile(globalAgents, 'AGENTS.md', 'global');
+
   const globalGemini = path.join(os.homedir(), '.gemini', 'GEMINI.md');
-  if (fs.existsSync(globalGemini) && !checkedRuleFiles.has(globalGemini)) {
-    activeRules.push({ name: 'GEMINI.md', path: globalGemini, scope: 'global' });
-    checkedRuleFiles.add(globalGemini);
-  }
+  registerRuleFile(globalGemini, 'GEMINI.md', 'global');
 
   const globalRuleDirs = [
     path.join(os.homedir(), '.gemini', 'config', 'rules'),
@@ -1013,13 +1033,24 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
         for (const gf of gFiles) {
           if (gf.endsWith('.md')) {
             const fullPath = path.join(gDir, gf);
-            if (!checkedRuleFiles.has(fullPath)) {
-              activeRules.push({ name: gf, path: fullPath, scope: 'global' });
-              checkedRuleFiles.add(fullPath);
-            }
+            registerRuleFile(fullPath, gf, 'global');
           }
         }
       } catch (e) {}
+    }
+  }
+
+  const globalConfigCandidates = [
+    path.join(os.homedir(), '.gemini', 'settings.json'),
+    path.join(os.homedir(), '.gemini', 'permissions.json'),
+    path.join(os.homedir(), '.agents', 'settings.json')
+  ];
+  for (const gcfg of globalConfigCandidates) {
+    if (fs.existsSync(gcfg)) {
+      const deprecated = findDeprecatedUnsandboxedRules(gcfg);
+      if (deprecated.length > 0) {
+        registerRuleFile(gcfg, path.basename(gcfg), 'global');
+      }
     }
   }
 
@@ -1215,6 +1246,10 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     mcpServers,
     mcpConfigPath,
     activeRules: activeRules.length > 0 ? activeRules : undefined,
+    deprecatedRulesCount: (() => {
+      const count = activeRules.reduce((sum, r) => sum + (r.deprecatedRules?.length || 0), 0);
+      return count > 0 ? count : undefined;
+    })(),
     activePlugins,
     sessionElapsedSeconds,
     toolElapsedSeconds,
