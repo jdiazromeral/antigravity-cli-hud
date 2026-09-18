@@ -1,6 +1,7 @@
 export interface AntigravityPayload {
   agent_state: string;
   conversation_id?: string | undefined;
+  conversation_title?: string | undefined;
   context_window?: {
     used_percentage: number;
     total_input_tokens: number;
@@ -189,6 +190,7 @@ export interface ParsedMetrics {
   gitBranches: { name: string, branch: string, path?: string | undefined }[];
   artifactCount: number;
   conversationId?: string | undefined;
+  conversationTitle?: string | undefined;
   artifacts?: string[] | undefined;
   looperMissions?: {repo: string, epic: string, mission: string, status: string, iteration?: number | undefined, maxIterations?: number | undefined, reason?: string | undefined}[] | undefined;
   looperEpics?: {repo: string, epic: string, total: number, done: number}[] | undefined;
@@ -292,6 +294,9 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const rawConvId = typeof parsed.conversation_id === 'string' ? parsed.conversation_id : (typeof parsed.session_id === 'string' ? parsed.session_id : undefined);
   const conversationId = isSafeIdentifier(rawConvId) ? rawConvId : undefined;
+  const conversationTitle = (typeof parsed.conversation_title === 'string' && parsed.conversation_title.trim())
+    ? parsed.conversation_title.replace(/[\r\n\t]+/g, ' ').trim()
+    : undefined;
 
   const rawPlanTier = typeof parsed.plan_tier === 'string' ? parsed.plan_tier : '';
   const rawEmail = typeof parsed.email === 'string' ? parsed.email : '';
@@ -1228,6 +1233,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     gitBranches,
     artifactCount,
     conversationId,
+    conversationTitle,
     artifacts: artifactList,
     looperMissions,
     looperEpics,

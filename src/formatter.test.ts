@@ -978,6 +978,39 @@ describe('formatMetrics', () => {
       expect(out).toContain('+42/-10, 3 files');
       expect(out).toContain('↑1 ↓0');
     });
+
+    it('renders conversationTitle in title block when configured and present', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        conversationTitle: 'Modernize HUD Telemetry'
+      };
+      const configOverride = {
+        layouts: {
+          large: [['state', 'title', 'model']],
+          medium: [['state', 'title']],
+          small: [['state']]
+        }
+      };
+      const out = formatMetrics(metrics, 140, configOverride);
+      expect(stripAnsi(out)).toContain('🏷️  Modernize HUD Telemetry');
+    });
+
+    it('auto-hides title block when conversationTitle is undefined', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        conversationTitle: undefined
+      };
+      const configOverride = {
+        layouts: {
+          large: [['state', 'title', 'model']],
+          medium: [['state', 'title']],
+          small: [['state']]
+        },
+        autoHideEmptyBlocks: true
+      };
+      const out = formatMetrics(metrics, 140, configOverride);
+      expect(out).not.toContain('🏷️');
+    });
   });
 
   describe('v1.5.0 Running Cost Block & Skill Icons Expansion', () => {

@@ -253,7 +253,7 @@ export function formatOsc8Link(filePath: string, displayText: string, enabled: b
 // HUD LAYOUT CONFIGURATION
 // Default layout matrix and budget ceilings.
 // Custom overrides can be placed in ~/.gemini/hud_config.json
-// Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'cost', 'tasks', 'subagents', 'tool', 'transcript', 'mcp', 'rules', 'plugins', 'session_time'
+// Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'cost', 'tasks', 'subagents', 'tool', 'transcript', 'mcp', 'rules', 'plugins', 'session_time', 'title'
 // ============================================================================
 export interface CustomBlockConfig {
   title?: string;
@@ -597,6 +597,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     sandbox: metrics.isSandboxed ? `${colors.gray}🔒 Sandboxed${colors.reset}` : `${colors.yellow}🔓 Unsandboxed${colors.reset}`,
     permissions: metrics.skipPermissions ? `${colors.red}☢️ Danger Mode${colors.reset}` : '',
     workspace: `📂 ${colors.blue}${metrics.workspace}${colors.reset}`,
+    title: metrics.conversationTitle ? `🏷️  ${colors.bold}${metrics.conversationTitle}${colors.reset}` : '',
     steps: stepStr,
     git: (metrics.gitBranches && metrics.gitBranches.length > 0 && metrics.gitBranches[0]) ? `🌱 ${colors.cyan}${metrics.gitBranches[0].branch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',

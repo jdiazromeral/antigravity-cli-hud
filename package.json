@@ -1,12 +1,12 @@
 {
   "name": "antigravity-cli-hud",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "npx oxlint --deny-warnings",
+    "lint": "npx --yes oxlint --deny-warnings src",
     "demo": "esbuild scripts/demo.ts --bundle --platform=node --format=esm --outfile=scripts/demo.js && node scripts/demo.js",
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js && esbuild src/title.ts --bundle --platform=node --format=esm --outfile=dist/title.js && esbuild src/stats.ts --bundle --platform=node --format=esm --outfile=dist/stats.js && esbuild src/audit_cli.ts --bundle --platform=node --format=esm --outfile=dist/audit.js && esbuild src/rules_cli.ts --bundle --platform=node --format=esm --outfile=dist/rules.js",
     "stats": "node dist/stats.js",

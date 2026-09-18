@@ -14,9 +14,12 @@ export function formatTitle(metrics: Partial<ParsedMetrics> & { workspace: strin
   }
 
   const toolPrefix = (metrics.activeTool && metrics.activeTool.name) ? `[🛠️ ${metrics.activeTool.name}] ` : '';
+  const titlePrefix = (metrics.conversationTitle && metrics.conversationTitle.trim())
+    ? `"${metrics.conversationTitle.trim()}" · `
+    : '';
   const stepPart = (metrics.stepCount !== undefined && metrics.stepCount > 0) ? ` [👟 ${metrics.stepCount}/${metrics.maxSteps || 20}]` : '';
   const statePart = metrics.agentState === 'IDLE' ? '🟢 IDLE' : (metrics.agentState === 'WAITING' ? '🟡 WAITING' : `🔵 ${metrics.agentState}`);
-  return `${toolPrefix}agy - ${metrics.workspace} ${gitPart}[${metrics.model}]${stepPart} ${statePart}`;
+  return `${toolPrefix}${titlePrefix}agy - ${metrics.workspace} ${gitPart}[${metrics.model}]${stepPart} ${statePart}`;
 }
 
 async function main() {

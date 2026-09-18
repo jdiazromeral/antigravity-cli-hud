@@ -57,4 +57,29 @@ describe('title formatting', () => {
     });
     expect(title).toBe('[🛠️ vitest] agy - work (main) [Gemini 3.6 Flash] [👟 14/20] 🔵 WORKING');
   });
+
+  it('formats title with conversationTitle when provided', () => {
+    const title = formatTitle({
+      workspace: 'work',
+      gitBranches: [{ name: 'work', branch: 'main' }],
+      model: 'Gemini 3.8 Flash',
+      agentState: 'IDLE',
+      conversationTitle: 'Audit Antigravity CLI'
+    });
+    expect(title).toBe('"Audit Antigravity CLI" · agy - work (main) [Gemini 3.8 Flash] 🟢 IDLE');
+  });
+
+  it('formats title with conversationTitle and active tool combined', () => {
+    const title = formatTitle({
+      workspace: 'work',
+      gitBranches: [{ name: 'work', branch: 'main' }],
+      model: 'Gemini 3.8 Flash',
+      agentState: 'WORKING',
+      activeTool: { name: 'run_command' },
+      stepCount: 3,
+      maxSteps: 20,
+      conversationTitle: 'Refactor Auth Engine'
+    });
+    expect(title).toBe('[🛠️ run_command] "Refactor Auth Engine" · agy - work (main) [Gemini 3.8 Flash] [👟 3/20] 🔵 WORKING');
+  });
 });

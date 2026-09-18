@@ -5,6 +5,13 @@ All notable changes to the **Antigravity HUD Plugin** will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] - 2026-09-18
+
+### Added
+- **Conversation Title Telemetry (`conversation_title`)**: Full support for upstream Antigravity CLI's `conversation_title` payload field. Terminal window titles via `hooks/title.sh` (`src/title.ts`) now display the human-readable conversation name prominently.
+- **Optional `'title'` Statusline Block**: Added `title` block to statusline layout matrix (`🏷️  <Title>`) with auto-hiding when title is undefined.
+- **Audit Engine Update**: Added `conversation_title` to `candidateTelemetryKeys` in `src/audit.ts` to maintain 100% schema parity with `agy 1.2.6`.
+
 ## [1.5.1] - 2026-08-27
 
 ### Changed

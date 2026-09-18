@@ -1402,6 +1402,51 @@ describe('parseStream', () => {
         expect(result.voice?.status).toBe('recording');
       });
     });
+
+    describe('conversation_title parsing', () => {
+      it('parses valid conversation_title correctly', async () => {
+        const payload = {
+          agent_state: 'IDLE',
+          conversation_id: 'c123456',
+          conversation_title: 'My Custom Conversation Title'
+        };
+        const stream = Readable.from([JSON.stringify(payload)]);
+        const result = await parseStream(stream);
+        expect(result.conversationTitle).toBe('My Custom Conversation Title');
+      });
+
+      it('sanitizes newlines and extra whitespace in conversation_title', async () => {
+        const payload = {
+          agent_state: 'IDLE',
+          conversation_id: 'c123456',
+          conversation_title: '  Line 1\nLine 2\twith tabs  '
+        };
+        const stream = Readable.from([JSON.stringify(payload)]);
+        const result = await parseStream(stream);
+        expect(result.conversationTitle).toBe('Line 1 Line 2 with tabs');
+      });
+
+      it('treats empty or whitespace-only conversation_title as undefined', async () => {
+        const payload = {
+          agent_state: 'IDLE',
+          conversation_id: 'c123456',
+          conversation_title: '   \n\t  '
+        };
+        const stream = Readable.from([JSON.stringify(payload)]);
+        const result = await parseStream(stream);
+        expect(result.conversationTitle).toBeUndefined();
+      });
+
+      it('treats omitted conversation_title as undefined', async () => {
+        const payload = {
+          agent_state: 'IDLE',
+          conversation_id: 'c123456'
+        };
+        const stream = Readable.from([JSON.stringify(payload)]);
+        const result = await parseStream(stream);
+        expect(result.conversationTitle).toBeUndefined();
+      });
+    });
   });
 });
 

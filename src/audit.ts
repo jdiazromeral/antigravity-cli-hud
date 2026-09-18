@@ -211,7 +211,7 @@ export function auditTelemetryGaps(discoveredTags: string[]): TelemetryGap[] {
   }
 
   const candidateTelemetryKeys = [
-    'agent_state', 'model', 'context_window', 'cost', 'total_usd', 'subagent_usd',
+    'agent_state', 'conversation_title', 'model', 'context_window', 'cost', 'total_usd', 'subagent_usd',
     'estimated', 'quota', 'subagents', 'vcs', 'vim', 'voice', 'audio', 'mic_serve',
     'credits', 'dangerously_skip_permissions', 'task_count', 'plan_tier', 'editor_mode'
   ];

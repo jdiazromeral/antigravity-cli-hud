@@ -33,12 +33,16 @@ describe('AGY Binary & Telemetry Audit Engine', () => {
   });
 
   it('accurately categorizes implemented vs experimental vs missing telemetry gaps', () => {
-    const discoveredTags = ['agent_state', 'model', 'cost', 'total_usd', 'voice', 'audio', 'non_existent_future_metric'];
+    const discoveredTags = ['agent_state', 'conversation_title', 'model', 'cost', 'total_usd', 'voice', 'audio', 'non_existent_future_metric'];
     const gaps = auditTelemetryGaps(discoveredTags);
 
     const agentState = gaps.find(g => g.field === 'agent_state');
     expect(agentState).toBeDefined();
     expect(agentState?.status).toBe('implemented');
+
+    const convTitle = gaps.find(g => g.field === 'conversation_title');
+    expect(convTitle).toBeDefined();
+    expect(convTitle?.status).toBe('implemented');
 
     const voice = gaps.find(g => g.field === 'voice');
     expect(voice).toBeDefined();
