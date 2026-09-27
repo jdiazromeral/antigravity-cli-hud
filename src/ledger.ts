@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
-import * as cp from 'child_process';
+import { DatabaseSync } from 'node:sqlite';
 import type { ParsedMetrics } from './parser.js';
 
 export interface ModelSpendSummary {
@@ -76,9 +76,13 @@ export function initLedgerDb(dbPath: string = getLedgerDbPath()): boolean {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     }
-    const sql = getInitDbSql();
-    cp.execFileSync('sqlite3', [dbPath, sql], { stdio: 'pipe', timeout: 1000 });
-    return true;
+    const db = new DatabaseSync(dbPath);
+    try {
+      db.exec(getInitDbSql());
+      return true;
+    } finally {
+      db.close();
+    }
   } catch {
     return false;
   }
@@ -125,8 +129,11 @@ ON CONFLICT(conversation_id) DO UPDATE SET
 }
 
 export function recordSessionSpendAsync(metrics: ParsedMetrics, dbPath: string = getLedgerDbPath()): void {
-  const sql = buildUpsertSql(metrics);
-  if (!sql) return;
+  if (!metrics.conversationId || !metrics.cost) return;
+  const totalUsd = typeof metrics.cost.totalUsd === 'number' && !isNaN(metrics.cost.totalUsd) ? metrics.cost.totalUsd : 0;
+  if (totalUsd <= 0 && (!metrics.cost.subagentUsd || metrics.cost.subagentUsd <= 0)) {
+    return;
+  }
 
   try {
     const dir = path.dirname(dbPath);
@@ -134,17 +141,46 @@ export function recordSessionSpendAsync(metrics: ParsedMetrics, dbPath: string =
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     }
 
-    const fullSql = `${getInitDbSql()}\n${sql}`;
-    const child = cp.spawn('sqlite3', [dbPath, fullSql], {
-      detached: true,
-      stdio: 'ignore'
-    });
-    child.unref();
+    const db = new DatabaseSync(dbPath);
+    try {
+      db.exec(getInitDbSql());
+      const convId = metrics.conversationId;
+      const sessName = metrics.sessionName || 'unknown';
+      const workspace = metrics.workspace || 'unknown';
+      const model = metrics.model || 'unknown';
+      const subagentUsd = typeof metrics.cost.subagentUsd === 'number' && !isNaN(metrics.cost.subagentUsd) ? metrics.cost.subagentUsd : 0.0;
+      const isEstimated = metrics.cost.estimated ? 1 : 0;
+      const inputTokens = Math.max(0, Math.round(metrics.totalInputTokens || 0));
+      const cacheTokens = Math.max(0, Math.round(metrics.cacheTokens || 0));
+      const stepCount = Math.max(0, Math.round(metrics.stepCount || 0));
+      const nowUnix = Math.floor(Date.now() / 1000);
+
+      const stmt = db.prepare(`
+        INSERT INTO session_spend (
+          conversation_id, session_name, workspace, model, cost_usd, subagent_usd,
+          is_estimated, input_tokens, cache_tokens, step_count, started_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(conversation_id) DO UPDATE SET
+          session_name = excluded.session_name,
+          workspace = excluded.workspace,
+          model = excluded.model,
+          cost_usd = excluded.cost_usd,
+          subagent_usd = excluded.subagent_usd,
+          is_estimated = excluded.is_estimated,
+          input_tokens = excluded.input_tokens,
+          cache_tokens = excluded.cache_tokens,
+          step_count = excluded.step_count,
+          updated_at = excluded.updated_at
+      `);
+      stmt.run(convId, sessName, workspace, model, totalUsd, subagentUsd, isEstimated, inputTokens, cacheTokens, stepCount, nowUnix, nowUnix);
+    } finally {
+      db.close();
+    }
   } catch {}
 }
 
-export function parseMultipleJsonArrays(raw: string): any[][] {
-  const results: any[][] = [];
+export function parseMultipleJsonArrays(raw: string): unknown[][] {
+  const results: unknown[][] = [];
   let depth = 0;
   let start = -1;
   let inString = false;
@@ -203,37 +239,23 @@ export function querySpendStats(dbPath: string = getLedgerDbPath()): SpendStats 
 
   try {
     initLedgerDb(dbPath);
-    const querySql = `
-SELECT
-  (SELECT COALESCE(SUM(cost_usd), 0.0) FROM session_spend WHERE date(updated_at, 'unixepoch', 'localtime') = date('now', 'localtime')) AS today_usd,
-  (SELECT COALESCE(SUM(subagent_usd), 0.0) FROM session_spend WHERE date(updated_at, 'unixepoch', 'localtime') = date('now', 'localtime')) AS today_subagent_usd,
-  (SELECT COUNT(*) FROM session_spend WHERE date(updated_at, 'unixepoch', 'localtime') = date('now', 'localtime')) AS today_sessions,
-  (SELECT COALESCE(SUM(cost_usd), 0.0) FROM session_spend WHERE updated_at >= strftime('%s', 'now', '-7 days')) AS week_usd,
-  (SELECT COUNT(*) FROM session_spend WHERE updated_at >= strftime('%s', 'now', '-7 days')) AS week_sessions,
-  (SELECT COALESCE(SUM(cost_usd), 0.0) FROM session_spend) AS all_time_usd,
-  (SELECT COUNT(*) FROM session_spend) AS all_time_sessions,
-  (SELECT COALESCE(SUM(input_tokens), 0) FROM session_spend) AS total_input_tokens,
-  (SELECT COALESCE(SUM(cache_tokens), 0) FROM session_spend) AS total_cache_tokens;
+    const db = new DatabaseSync(dbPath);
+    try {
+      const summaryStmt = db.prepare(`
+        SELECT
+          (SELECT COALESCE(SUM(cost_usd), 0.0) FROM session_spend WHERE date(updated_at, 'unixepoch', 'localtime') = date('now', 'localtime')) AS today_usd,
+          (SELECT COALESCE(SUM(subagent_usd), 0.0) FROM session_spend WHERE date(updated_at, 'unixepoch', 'localtime') = date('now', 'localtime')) AS today_subagent_usd,
+          (SELECT COUNT(*) FROM session_spend WHERE date(updated_at, 'unixepoch', 'localtime') = date('now', 'localtime')) AS today_sessions,
+          (SELECT COALESCE(SUM(cost_usd), 0.0) FROM session_spend WHERE updated_at >= strftime('%s', 'now', '-7 days')) AS week_usd,
+          (SELECT COUNT(*) FROM session_spend WHERE updated_at >= strftime('%s', 'now', '-7 days')) AS week_sessions,
+          (SELECT COALESCE(SUM(cost_usd), 0.0) FROM session_spend) AS all_time_usd,
+          (SELECT COUNT(*) FROM session_spend) AS all_time_sessions,
+          (SELECT COALESCE(SUM(input_tokens), 0) FROM session_spend) AS total_input_tokens,
+          (SELECT COALESCE(SUM(cache_tokens), 0) FROM session_spend) AS total_cache_tokens
+      `);
+      const s = summaryStmt.get() as Record<string, unknown> | undefined;
 
-SELECT model, COUNT(*) as sessions, COALESCE(SUM(input_tokens), 0) as tokens, COALESCE(SUM(cost_usd), 0.0) as cost_usd
-FROM session_spend
-GROUP BY model
-ORDER BY cost_usd DESC;
-
-SELECT workspace, COUNT(*) as sessions, COALESCE(SUM(cost_usd), 0.0) as cost_usd
-FROM session_spend
-GROUP BY workspace
-ORDER BY cost_usd DESC
-LIMIT 10;
-`.trim();
-
-    const output = cp.execFileSync('sqlite3', ['-json', dbPath, querySql], { encoding: 'utf8', timeout: 2000 });
-    const jsonBlocks = parseMultipleJsonArrays(output);
-
-    if (jsonBlocks.length >= 1) {
-      const summaryArr = jsonBlocks[0] || [];
-      if (summaryArr.length > 0) {
-        const s = summaryArr[0];
+      if (s) {
         emptyStats.todayUsd = Number(s.today_usd) || 0;
         emptyStats.todaySubagentUsd = Number(s.today_subagent_usd) || 0;
         emptyStats.todaySessions = Number(s.today_sessions) || 0;
@@ -249,25 +271,36 @@ LIMIT 10;
           ? Math.round((emptyStats.totalCacheTokens / totalContext) * 1000) / 10
           : 0;
       }
-    }
 
-    if (jsonBlocks.length >= 2) {
-      const modelsArr = jsonBlocks[1] || [];
-      emptyStats.models = modelsArr.map((m: any) => ({
+      const modelsStmt = db.prepare(`
+        SELECT model, COUNT(*) as sessions, COALESCE(SUM(input_tokens), 0) as tokens, COALESCE(SUM(cost_usd), 0.0) as cost_usd
+        FROM session_spend
+        GROUP BY model
+        ORDER BY cost_usd DESC
+      `);
+      const modelRows = modelsStmt.all() as Array<Record<string, unknown>>;
+      emptyStats.models = modelRows.map(m => ({
         model: String(m.model || 'Unknown'),
         sessions: Number(m.sessions) || 0,
         tokens: Number(m.tokens) || 0,
         costUsd: Number(m.cost_usd) || 0
       }));
-    }
 
-    if (jsonBlocks.length >= 3) {
-      const workspacesArr = jsonBlocks[2] || [];
-      emptyStats.workspaces = workspacesArr.map((w: any) => ({
+      const workspacesStmt = db.prepare(`
+        SELECT workspace, COUNT(*) as sessions, COALESCE(SUM(cost_usd), 0.0) as cost_usd
+        FROM session_spend
+        GROUP BY workspace
+        ORDER BY cost_usd DESC
+        LIMIT 10
+      `);
+      const wsRows = workspacesStmt.all() as Array<Record<string, unknown>>;
+      emptyStats.workspaces = wsRows.map(w => ({
         workspace: String(w.workspace || 'Unknown'),
         sessions: Number(w.sessions) || 0,
         costUsd: Number(w.cost_usd) || 0
       }));
+    } finally {
+      db.close();
     }
 
     return emptyStats;

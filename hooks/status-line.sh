@@ -8,4 +8,4 @@ if [ -z "$AGY_SKIP_PERMISSIONS" ]; then
   fi
 fi
 
-exec node "$DIR/../dist/index.js"
+exec node --no-warnings "$DIR/../dist/index.js"
