@@ -25,13 +25,9 @@ A production-grade, highly responsive terminal HUD for the Antigravity CLI. It d
 │ 📜 tail -f ~/.gemini/antigravity-cli/brain/ad266f1f-75f3-44dd-b073-c93a1bedc277/.system_generated/logs/transcript.jsonl
 ```
 
-To run this demo in your terminal (with optional theme/style flags):
+To run this demo in your terminal:
 ```bash
 npm run demo
-# Or test specific themes and separator styles:
-node scripts/demo.js --theme=catppuccin --style=powerline
-node scripts/demo.js --theme=tokyo-night --style=bubble
-node scripts/demo.js --theme=monochrome --style=minimal
 ```
 
 ## Architecture & Features
@@ -147,7 +143,15 @@ npm run sync
 
 For full release history and version details, see the **[CHANGELOG.md](CHANGELOG.md)**.
 
-### Latest Updates (v1.5.0)
+### Latest Updates (v1.5.4)
+- **Tool Confirmation Action Pulse (`'state'` Block):** Renders a prominent amber action indicator `[⚠️ Tool Confirmation]` whenever an agent pauses waiting for manual tool approval or user confirmation.
+- **Model Reasoning Effort Telemetry:** Native support for Antigravity CLI 1.2.11's reasoning effort level (`--effort` / `/effort`), rendering effort badges alongside model names (e.g. `Gemini 3.8 Flash (high effort)`).
+- **Model Battle Telemetry (`'battle'` Block):** Parses `types.StatusLineBattle` and displays active model comparison arms (`⚔️ Battle: <focused_arm>`) across layout profiles (automatically hidden when inactive).
+- **Native In-Process SQLite Ledger (`node:sqlite`):** Migrated historical spend ledger from external `sqlite3` child process spawning to Node.js v22+'s built-in `node:sqlite` (`DatabaseSync`), achieving >3x faster execution, parameterized query safety, and zero shell-fork overhead.
+- **Dynamic CLI Binary Auditor & Symlink Traversal:** Resolved directory symlink traversal in `/hud:audit-agy` (discovering all symlinked plugin skills like TARS) and upgraded Go JSON struct tag regex parsing with options support (`omitempty`, `omitzero`).
+- **Comprehensive Ecosystem Skill Branding:** Registered 17 new skill icons in `SKILL_ICONS` across built-in CLI commands (`automation ⏱️`, `plugin 🔌`, `ui-extension 🧩`, `ui-plugin-navigation 🧭`) and the full TARS second-brain suite (`ask 💡`, `capture 📥`, `digest 📰`, `end-of-day 🌅`, `gardener 🌿`, `promote 💎`, `sync-all 🔄`, `sync-gmail ✉️`, `sync-granola 🥣`, `sync-jira 🎯`, `sync-slack 💬`, `sync-github 🐙`, `tasks 📋`).
+
+### Previous Updates (v1.5.0)
 - **Running Session Cost Telemetry (`'cost'` Block):** Native support for Antigravity CLI 1.1.21's unrounded spend telemetry (`types.StatusLineCost`), displaying real-time session cost (`total_usd`, `subagent_usd`, `estimated`) with adaptive micro-cent precision (`$0.0042`, `~$0.042`, `(sub: $0.012)`).
 - **Subagent Cost Attribution:** Parses and renders individual subagent cost spend badges directly within the subagents hierarchy tree view (`[$0.0080]`).
 - **Autonomous SQLite Spend Ledger (`~/.gemini/hud_ledger.db`):** High-performance WAL-mode historical spend ledger automatically tracking session costs, subagent slices, prompt cache tokens, and turn step counts asynchronously with zero latency impact on the statusline render loop.
@@ -255,13 +259,13 @@ Inspired by the direct, high-honesty robotic companion in *Interstellar*, TARS e
 
 *You can customize your HUD's agent tag anytime by setting `export AGY_AGENT_NAME="YourName"` in your shell!*
 
-### Bundled Token Ledger & Evaluation Hook
+### Autonomous In-Process SQLite Spend Ledger
 
-Included in `scripts/token_eval_hook.py` is a security-hardened token evaluation hook:
-* **Zero Content Disclosure:** Evaluates prompt turn steps and character lengths without storing raw text or code.
-* **Strict Permissions (`0600`):** Enforces user-only read/write permissions on ledger log files.
-* **Path Containment:** Verifies `transcriptPath` is rooted inside `~/.gemini/antigravity-cli/brain/`.
-* **Token Ledger:** Appends session token metrics to `~/.gemini/antigravity-cli/token_ledger.jsonl`.
+The HUD features a zero-dependency, in-process spend ledger powered by Node.js native `node:sqlite`:
+* **Zero Content Disclosure:** Records session IDs, workspaces, model tiers, and token counts without storing raw user prompts or transcript code.
+* **In-Process Performance:** Direct parameterized execution with zero child process forking overhead (<0.2ms latency).
+* **WAL Mode Persistence:** SQLite database stored at `~/.gemini/hud_ledger.db` with WAL mode for safe multi-session concurrent access.
+* **Interactive Analytics:** Inspect historical token efficiency and prompt cache hit rates at any time via `/hud:stats` or `npm run stats`.
 
 ## Documentation
 
