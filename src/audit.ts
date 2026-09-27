@@ -144,9 +144,9 @@ export function extractTelemetryStructsAndTags(stringsList: string[]): { structs
   };
 }
 
-export function auditMissingSkillIcons(): MissingSkillIcon[] {
+export function auditMissingSkillIcons(searchDirsOverride?: string[]): MissingSkillIcon[] {
   const missing: MissingSkillIcon[] = [];
-  const searchDirs = [
+  const searchDirs = searchDirsOverride || [
     path.join(os.homedir(), '.gemini', 'config', 'plugins'),
     path.join(os.homedir(), '.gemini', 'skills'),
     path.join(os.homedir(), '.gemini', 'antigravity-cli', 'builtin', 'skills')

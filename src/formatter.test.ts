@@ -1235,4 +1235,86 @@ describe('formatMetrics', () => {
       });
     });
   });
+
+  describe('agy 1.2.12 formatter alignment', () => {
+    it('registers all 16 missing skill icons in SKILL_ICONS', () => {
+      const expectedSkillIcons: Record<string, string> = {
+        'automation': '⏱️',
+        'plugin': '🔌',
+        'ui-extension': '🧩',
+        'ui-plugin-navigation': '🧭',
+        'ask': '💡',
+        'capture': '📥',
+        'digest': '📰',
+        'end-of-day': '🌅',
+        'gardener': '🌿',
+        'promote': '💎',
+        'sync-all': '🔄',
+        'sync-gmail': '✉️',
+        'sync-granola': '🥣',
+        'sync-jira': '🎯',
+        'sync-slack': '💬',
+        'tasks': '📋'
+      };
+
+      for (const [skill, icon] of Object.entries(expectedSkillIcons)) {
+        expect(SKILL_ICONS[skill]).toBe(icon);
+      }
+    });
+
+    it('renders visual icon branding for new skills in skill block', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        activeSkills: ['sync-gmail', 'automation', 'gardener']
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('✉️');
+      expect(out).toContain('⏱️');
+      expect(out).toContain('🌿');
+    });
+
+    it('renders [⚠️ Tool Confirmation] pulse badge when tool_confirmation_pending is true', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        agentState: 'WAITING',
+        tool_confirmation_pending: true
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('[⚠️ Tool Confirmation]');
+    });
+
+    it('does not render [⚠️ Tool Confirmation] when tool_confirmation_pending is false or undefined', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        agentState: 'WAITING',
+        tool_confirmation_pending: false
+      };
+      const out = formatMetrics(metrics);
+      expect(out).not.toContain('[⚠️ Tool Confirmation]');
+    });
+
+    it('displays reasoning effort if present in model.effort', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        model: 'Gemini 3.8 Flash',
+        modelEffort: 'medium'
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('Gemini 3.8 Flash');
+      expect(out).toContain('(medium effort)');
+    });
+
+    it('displays battle mode arm if battle is active', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        battle: {
+          status: 'active',
+          focused_arm: 'gemini-2.5-pro'
+        }
+      };
+      const out = formatMetrics(metrics);
+      expect(out).toContain('⚔️ Battle: gemini-2.5-pro');
+    });
+  });
 });
+

@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import {
   extractTelemetryStructsAndTags,
   auditTelemetryGaps,
   formatAuditReport,
-  auditAgy
+  auditAgy,
+  auditMissingSkillIcons
 } from './audit.js';
 import type { AuditResult } from './audit.js';
 
@@ -32,6 +36,26 @@ describe('AGY Binary & Telemetry Audit Engine', () => {
     expect(tags).toContain('audio');
   });
 
+  it('extracts Go struct tags with omitempty and omitzero options', () => {
+    const mockStrings = [
+      'ToolConfirmationPending*json:"tool_confirmation_pending,omitempty"',
+      'PendingInputCountojson:"pending_input_count,omitempty"',
+      'CycleModeojson:"cycle_mode,omitempty"',
+      'Battleojson:"battle,omitempty"',
+      'FocusedArmojson:"focused_arm"',
+      'Effortojson:"effort,omitzero"'
+    ];
+
+    const { tags } = extractTelemetryStructsAndTags(mockStrings);
+
+    expect(tags).toContain('tool_confirmation_pending');
+    expect(tags).toContain('pending_input_count');
+    expect(tags).toContain('cycle_mode');
+    expect(tags).toContain('battle');
+    expect(tags).toContain('focused_arm');
+    expect(tags).toContain('effort');
+  });
+
   it('accurately categorizes implemented vs experimental vs missing telemetry gaps', () => {
     const discoveredTags = ['agent_state', 'conversation_title', 'model', 'cost', 'total_usd', 'voice', 'audio', 'non_existent_future_metric'];
     const gaps = auditTelemetryGaps(discoveredTags);
@@ -47,6 +71,36 @@ describe('AGY Binary & Telemetry Audit Engine', () => {
     const voice = gaps.find(g => g.field === 'voice');
     expect(voice).toBeDefined();
     expect(voice?.status).toBe('experimental');
+  });
+
+  it('detects tool_confirmation_pending, cycle_mode, pending_input_count, battle in telemetry gaps', () => {
+    const discoveredTags = ['tool_confirmation_pending', 'cycle_mode', 'pending_input_count', 'battle'];
+    const gaps = auditTelemetryGaps(discoveredTags);
+
+    expect(gaps.some(g => g.field === 'tool_confirmation_pending')).toBe(true);
+    expect(gaps.some(g => g.field === 'cycle_mode')).toBe(true);
+    expect(gaps.some(g => g.field === 'pending_input_count')).toBe(true);
+    expect(gaps.some(g => g.field === 'battle')).toBe(true);
+  });
+
+  it('resolves and traverses symlinked plugin directories in auditMissingSkillIcons', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-symlink-test-'));
+    try {
+      const realPluginDir = path.join(tmpDir, 'real-plugin');
+      const skillDir = path.join(realPluginDir, 'skills', 'unregistered-symlink-skill');
+      fs.mkdirSync(skillDir, { recursive: true });
+      fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '---\nname: unregistered-symlink-skill\nicon: 🛸\n---\nTest skill');
+
+      const pluginsDir = path.join(tmpDir, 'plugins');
+      fs.mkdirSync(pluginsDir, { recursive: true });
+      const symlinkPath = path.join(pluginsDir, 'symlinked-plugin');
+      fs.symlinkSync(realPluginDir, symlinkPath, 'dir');
+
+      const missing = auditMissingSkillIcons([pluginsDir]);
+      expect(missing.some(m => m.name === 'unregistered-symlink-skill')).toBe(true);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   it('formats a structured markdown audit report', () => {

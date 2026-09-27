@@ -1448,6 +1448,131 @@ describe('parseStream', () => {
       });
     });
   });
+
+  describe('agy 1.2.12 telemetry alignment', () => {
+    it('parses tool_confirmation_pending boolean', async () => {
+      const payload: AntigravityPayload = {
+        agent_state: 'WAITING',
+        tool_confirmation_pending: true
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.tool_confirmation_pending).toBe(true);
+      expect(result.toolConfirmationPending).toBe(true);
+    });
+
+    it('parses pending_input_count number', async () => {
+      const payload: AntigravityPayload = {
+        agent_state: 'WAITING',
+        pending_input_count: 5
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.pending_input_count).toBe(5);
+      expect(result.pendingInputCount).toBe(5);
+    });
+
+    it('parses cycle_mode string', async () => {
+      const payload: AntigravityPayload = {
+        agent_state: 'WORKING',
+        cycle_mode: 'autonomous'
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.cycle_mode).toBe('autonomous');
+      expect(result.cycleMode).toBe('autonomous');
+    });
+
+    it('parses battle mode status and focused_arm', async () => {
+      const payload: AntigravityPayload = {
+        agent_state: 'WORKING',
+        battle: {
+          status: 'active',
+          focused_arm: 'arm_b'
+        }
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.battle).toEqual({
+        status: 'active',
+        focused_arm: 'arm_b'
+      });
+    });
+
+    it('parses model id and reasoning effort', async () => {
+      const payload: AntigravityPayload = {
+        agent_state: 'WORKING',
+        model: {
+          id: 'gemini-3.8-flash',
+          display_name: 'Gemini 3.8 Flash',
+          effort: 'medium'
+        }
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.model).toBe('Gemini 3.8 Flash');
+      expect(result.modelId).toBe('gemini-3.8-flash');
+      expect(result.modelEffort).toBe('medium');
+    });
+
+    it('parses vcs client and type metadata', async () => {
+      const payload: AntigravityPayload = {
+        agent_state: 'WORKING',
+        cwd: '/path/to/project',
+        vcs: {
+          branch: 'feat/test',
+          dirty: false,
+          client: 'git',
+          type: 'worktree'
+        }
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.vcsClient).toBe('git');
+      expect(result.vcsType).toBe('worktree');
+    });
+
+    it('parses sandbox allow_network flag', async () => {
+      const payload: AntigravityPayload = {
+        agent_state: 'WORKING',
+        sandbox: {
+          enabled: true,
+          allow_network: true
+        }
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.isSandboxed).toBe(true);
+      expect(result.allowNetwork).toBe(true);
+    });
+
+    it('parses quota remaining_amount and disabled state', async () => {
+      const payload: AntigravityPayload = {
+        agent_state: 'WORKING',
+        quota: {
+          'gemini-weekly': {
+            remaining_fraction: 0.8,
+            reset_in_seconds: 3600,
+            remaining_amount: 1500,
+            disabled: false
+          },
+          'gemini-5h': {
+            remaining_fraction: 0.5,
+            reset_in_seconds: 1800,
+            remaining_amount: 250,
+            disabled: true
+          }
+        }
+      };
+      const stream = Readable.from([JSON.stringify(payload)]);
+      const result = await parseStream(stream);
+      expect(result.quotaWeeklyRemainingAmount).toBe(1500);
+      expect(result.quotaWeeklyDisabled).toBe(false);
+      expect(result.quota5hRemainingAmount).toBe(250);
+      expect(result.quota5hDisabled).toBe(true);
+    });
+  });
 });
+
 
 

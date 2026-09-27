@@ -2,6 +2,10 @@ export interface AntigravityPayload {
   agent_state: string;
   conversation_id?: string | undefined;
   conversation_title?: string | undefined;
+  tool_confirmation_pending?: boolean | undefined;
+  pending_input_count?: number | undefined;
+  cycle_mode?: string | undefined;
+  battle?: { status: string; focused_arm?: string | undefined; } | undefined;
   context_window?: {
     used_percentage: number;
     total_input_tokens: number;
@@ -11,10 +15,11 @@ export interface AntigravityPayload {
     } | undefined;
   } | undefined;
   quota?: {
-    "gemini-weekly"?: { remaining_fraction: number; reset_in_seconds?: number | undefined } | undefined;
-    "gemini-5h"?: { remaining_fraction: number; reset_in_seconds?: number | undefined } | undefined;
-    "3p-weekly"?: { remaining_fraction: number; reset_in_seconds?: number | undefined } | undefined;
-    "3p-5h"?: { remaining_fraction: number; reset_in_seconds?: number | undefined } | undefined;
+    "gemini-weekly"?: { remaining_fraction: number; reset_in_seconds?: number | undefined; remaining_amount?: number | undefined; disabled?: boolean | undefined } | undefined;
+    "gemini-5h"?: { remaining_fraction: number; reset_in_seconds?: number | undefined; remaining_amount?: number | undefined; disabled?: boolean | undefined } | undefined;
+    "3p-weekly"?: { remaining_fraction: number; reset_in_seconds?: number | undefined; remaining_amount?: number | undefined; disabled?: boolean | undefined } | undefined;
+    "3p-5h"?: { remaining_fraction: number; reset_in_seconds?: number | undefined; remaining_amount?: number | undefined; disabled?: boolean | undefined } | undefined;
+    [key: string]: { remaining_fraction?: number | undefined; reset_in_seconds?: number | undefined; remaining_amount?: number | undefined; disabled?: boolean | undefined } | undefined;
   } | undefined;
   subagents?: Array<{ name: string; role: string; status: string; depth?: number | undefined; conversation_id?: string | undefined; log_uri?: string | undefined }> | undefined;
   tool_info?: {
@@ -27,8 +32,8 @@ export interface AntigravityPayload {
     task_id?: string | undefined;
   } | undefined;
   task_count?: number | undefined;
-  sandbox?: { enabled: boolean } | undefined;
-  model?: { display_name: string } | undefined;
+  sandbox?: { enabled: boolean; allow_network?: boolean | undefined } | undefined;
+  model?: { id?: string | undefined; display_name: string; effort?: string | undefined } | undefined;
   workspace?: { project_dir: string } | undefined;
   exceeds_200k_tokens?: boolean | undefined;
   version?: string | undefined;
@@ -39,7 +44,7 @@ export interface AntigravityPayload {
   cwd?: string | undefined;
   artifact_count?: number | undefined;
   artifacts?: unknown[] | undefined;
-  vcs?: { branch?: string | undefined; dirty?: boolean | undefined } | undefined;
+  vcs?: { branch?: string | undefined; dirty?: boolean | undefined; client?: string | undefined; type?: string | undefined } | undefined;
   transcript_path?: string | undefined;
   effort?: string | undefined;
   mode?: string | undefined;
@@ -217,6 +222,22 @@ export interface ParsedMetrics {
   clickableLinks?: boolean | undefined;
   cost?: CostInfo | undefined;
   voice?: VoiceInfo | undefined;
+  toolConfirmationPending?: boolean | undefined;
+  tool_confirmation_pending?: boolean | undefined;
+  pendingInputCount?: number | undefined;
+  pending_input_count?: number | undefined;
+  cycleMode?: string | undefined;
+  cycle_mode?: string | undefined;
+  battle?: { status: string; focused_arm?: string | undefined; } | undefined;
+  modelId?: string | undefined;
+  modelEffort?: string | undefined;
+  vcsClient?: string | undefined;
+  vcsType?: string | undefined;
+  allowNetwork?: boolean | undefined;
+  quotaWeeklyRemainingAmount?: number | undefined;
+  quotaWeeklyDisabled?: boolean | undefined;
+  quota5hRemainingAmount?: number | undefined;
+  quota5hDisabled?: boolean | undefined;
 }
 
 interface TranscriptCacheEntry {
