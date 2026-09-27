@@ -128,12 +128,11 @@ export function extractTelemetryStructsAndTags(stringsList: string[]): { structs
       for (const m of structMatches) structSet.add(m);
     }
 
-    // Go JSON tags
-    const tagMatches = s.match(/json:"([a-z0-9_]+)"/g);
-    if (tagMatches) {
-      for (const tm of tagMatches) {
-        const key = tm.replace('json:"', '').replace('"', '');
-        tagSet.add(key);
+    // Go JSON tags (e.g. json:"tag_name", json:"tag_name,omitempty", json:"tag_name,omitzero")
+    const tagMatches = s.matchAll(/json:"([a-z0-9_]+)(?:,[^"]*)?"/g);
+    for (const match of tagMatches) {
+      if (match[1]) {
+        tagSet.add(match[1]);
       }
     }
   }
@@ -157,11 +156,34 @@ export function auditMissingSkillIcons(searchDirsOverride?: string[]): MissingSk
   for (const baseDir of searchDirs) {
     if (!fs.existsSync(baseDir)) continue;
     try {
+      const visited = new Set<string>();
       const walkSkills = (dir: string) => {
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        let realDir = dir;
+        try {
+          realDir = fs.realpathSync(dir);
+        } catch {}
+        if (visited.has(realDir)) return;
+        visited.add(realDir);
+
+        let entries: fs.Dirent[] = [];
+        try {
+          entries = fs.readdirSync(dir, { withFileTypes: true });
+        } catch {
+          return;
+        }
+
         for (const entry of entries) {
           const fullPath = path.join(dir, entry.name);
-          if (entry.isDirectory()) {
+          let isDir = entry.isDirectory();
+          if (!isDir && entry.isSymbolicLink()) {
+            try {
+              isDir = fs.statSync(fullPath).isDirectory();
+            } catch {
+              isDir = false;
+            }
+          }
+
+          if (isDir) {
             const skillFile = path.join(fullPath, 'SKILL.md');
             if (fs.existsSync(skillFile)) {
               const skillName = entry.name.toLowerCase();
@@ -213,7 +235,8 @@ export function auditTelemetryGaps(discoveredTags: string[]): TelemetryGap[] {
   const candidateTelemetryKeys = [
     'agent_state', 'conversation_title', 'model', 'context_window', 'cost', 'total_usd', 'subagent_usd',
     'estimated', 'quota', 'subagents', 'vcs', 'vim', 'voice', 'audio', 'mic_serve',
-    'credits', 'dangerously_skip_permissions', 'task_count', 'plan_tier', 'editor_mode'
+    'credits', 'dangerously_skip_permissions', 'task_count', 'plan_tier', 'editor_mode',
+    'tool_confirmation_pending', 'cycle_mode', 'pending_input_count', 'battle'
   ];
 
   const gaps: TelemetryGap[] = [];

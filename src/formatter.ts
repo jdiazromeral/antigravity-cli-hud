@@ -213,7 +213,23 @@ export const SKILL_ICONS: Record<string, string> = {
   'setup-matt-pocock-skills': '📦',
   'setup-ts-deep-modules': '🏗️',
   'improve-codebase-architecture': '🏛️',
-  'typer': '⌨️'
+  'typer': '⌨️',
+  'automation': '⏱️',
+  'plugin': '🔌',
+  'ui-extension': '🧩',
+  'ui-plugin-navigation': '🧭',
+  'ask': '💡',
+  'capture': '📥',
+  'digest': '📰',
+  'end-of-day': '🌅',
+  'gardener': '🌿',
+  'promote': '💎',
+  'sync-all': '🔄',
+  'sync-gmail': '✉️',
+  'sync-granola': '🥣',
+  'sync-jira': '🎯',
+  'sync-slack': '💬',
+  'tasks': '📋'
 };
 
 export function formatCostAmount(amount: number): string {
@@ -253,7 +269,7 @@ export function formatOsc8Link(filePath: string, displayText: string, enabled: b
 // HUD LAYOUT CONFIGURATION
 // Default layout matrix and budget ceilings.
 // Custom overrides can be placed in ~/.gemini/hud_config.json
-// Available blocks: 'state', 'mode', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'cost', 'tasks', 'subagents', 'tool', 'transcript', 'mcp', 'rules', 'plugins', 'session_time', 'title'
+// Available blocks: 'state', 'mode', 'battle', 'effort', 'model', 'sandbox', 'permissions', 'workspace', 'git', 'artifacts', 'ctx', '5h', 'weekly', 'cost', 'tasks', 'subagents', 'tool', 'transcript', 'mcp', 'rules', 'plugins', 'session_time', 'title'
 // ============================================================================
 export interface CustomBlockConfig {
   title?: string;
@@ -330,7 +346,7 @@ export const DEFAULT_HUD_CONFIG: {
   // Matrix rows map block IDs to visual layout ordering
   layouts: {
     large: [
-      ['state', 'mode', 'voice', 'model', 'effort', 'skill', 'version', 'plan', 'permissions'],
+      ['state', 'mode', 'battle', 'voice', 'model', 'effort', 'skill', 'version', 'plan', 'permissions'],
       ['workspace', 'sandbox', 'cache', 'ctx'],
       ['steps', 'cost', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
@@ -340,7 +356,7 @@ export const DEFAULT_HUD_CONFIG: {
       ['transcript']
     ],
     medium: [
-      ['state', 'mode', 'voice', 'model', 'effort', 'skill', 'permissions'],
+      ['state', 'mode', 'battle', 'voice', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox', 'cache', 'ctx'],
       ['steps', 'cost', '5h', 'weekly'],
       ['tasks', 'subagents', 'tool'],
@@ -350,7 +366,7 @@ export const DEFAULT_HUD_CONFIG: {
       ['transcript']
     ],
     small: [
-      ['state', 'mode', 'voice', 'model', 'effort', 'skill', 'permissions'],
+      ['state', 'mode', 'battle', 'voice', 'model', 'effort', 'skill', 'permissions'],
       ['workspace', 'sandbox'],
       ['cache', 'ctx'],
       ['steps', 'cost', '5h', 'weekly'],
@@ -450,13 +466,16 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
   const styleConfig: HudStyleConfig = (hudConfig.style && STYLES[hudConfig.style]) ? STYLES[hudConfig.style]! : defaultStyle;
   const clickableLinks = hudConfig.clickableLinks !== false && metrics.clickableLinks !== false;
 
-  // 1. Calculate Blocks Independently
   const paddedState = metrics.agentState.padEnd(7, ' ');
   const agentLabel = metrics.agentName ? `[${metrics.agentName}] ` : '';
   let stateIndicator = `🤖 ${agentLabel}${paddedState}`;
   if (metrics.agentState === 'IDLE') stateIndicator = `${colors.green}🟢 ${agentLabel}${paddedState}${colors.reset}`;
   else if (metrics.agentState === 'WAITING') stateIndicator = `${colors.yellow}🟡 ${agentLabel}${paddedState}${colors.reset}`;
   else stateIndicator = `${colors.cyan}🔵 ${agentLabel}${paddedState}${colors.reset}`;
+
+  if (metrics.tool_confirmation_pending || metrics.toolConfirmationPending) {
+    stateIndicator += ` ${colors.yellow}${colors.bold}[⚠️ Tool Confirmation]${colors.reset}`;
+  }
 
   // 3-tier traffic light threshold color logic for percentages
   const getThresholdColor = (percent: number) => {
@@ -588,12 +607,29 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     ? `${usedTokensStr}/${limitTokensStr} max`
     : `${usedTokensStr}/${softLimitTokensStr} soft • ${limitTokensStr} max`;
 
+  let modelEffortDisplay = '';
+  if (metrics.modelEffort && !metrics.model.toLowerCase().includes(metrics.modelEffort.toLowerCase())) {
+    const raw = metrics.modelEffort.trim();
+    if (raw.startsWith('(') && raw.endsWith(')')) {
+      modelEffortDisplay = ` ${raw}`;
+    } else if (raw.toLowerCase().endsWith('effort')) {
+      modelEffortDisplay = ` (${raw})`;
+    } else {
+      modelEffortDisplay = ` (${raw} effort)`;
+    }
+  }
+
   const blocks: Record<string, string> = {
     state: stateIndicator,
     mode: modeStr,
+    battle: (() => {
+      if (!metrics.battle) return '';
+      const arm = metrics.battle.focused_arm;
+      return arm ? `⚔️ Battle: ${arm}` : `⚔️ Battle: ${metrics.battle.status}`;
+    })(),
     effort: effortStr,
     skill: skillBlockStr,
-    model: `🤖 ${colors.bold}${metrics.model}${colors.reset}`,
+    model: `🤖 ${colors.bold}${metrics.model}${modelEffortDisplay}${colors.reset}`,
     sandbox: metrics.isSandboxed ? `${colors.gray}🔒 Sandboxed${colors.reset}` : `${colors.yellow}🔓 Unsandboxed${colors.reset}`,
     permissions: metrics.skipPermissions ? `${colors.red}☢️ Danger Mode${colors.reset}` : '',
     workspace: `📂 ${colors.blue}${metrics.workspace}${colors.reset}`,
@@ -940,6 +976,9 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
 
   // Dynamic Culling: Hide empty blocks when they are inactive to prevent clutter
   if (hudConfig.autoHideEmptyBlocks) {
+    if (!metrics.battle) {
+      activeLayout = activeLayout.map(row => row.filter(k => k !== 'battle'));
+    }
     if (metrics.taskCount === 0) {
       activeLayout = activeLayout.map(row => row.filter(k => k !== 'tasks'));
     }

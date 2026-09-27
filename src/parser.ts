@@ -356,7 +356,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const getQuotaObj = (key: string) => {
     if (isApiKey) {
-      return { percent: 0, resetSeconds: 0 };
+      return { percent: 0, resetSeconds: 0, remainingAmount: undefined, disabled: undefined };
     }
     let q: any;
     if (parsed.quota && typeof parsed.quota === 'object' && !Array.isArray(parsed.quota)) {
@@ -401,15 +401,21 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     const resetSeconds = typeof q.reset_in_seconds === 'number' && q.reset_in_seconds > 0 ? q.reset_in_seconds : 0;
     const remFrac = typeof q.remaining_fraction === 'number' ? q.remaining_fraction : 1;
     const percent = resetSeconds <= 0 ? 0 : Math.max(0, Math.min(100, Math.round((1 - remFrac) * 100)));
-    return { percent, resetSeconds };
+    const remainingAmount = typeof q.remaining_amount === 'number' ? q.remaining_amount : undefined;
+    const disabled = typeof q.disabled === 'boolean' ? q.disabled : undefined;
+    return { percent, resetSeconds, remainingAmount, disabled };
   };
 
   const rawSessId = isSafeIdentifier(parsed.session_id) ? parsed.session_id : (isSafeIdentifier(parsed.conversation_id) ? parsed.conversation_id : '');
   const sessName = rawSessId ? rawSessId.substring(0, 6) : 'Unknown';
   let modelName = (parsed.model && typeof parsed.model === 'object' && !Array.isArray(parsed.model) && typeof parsed.model.display_name === 'string') ? parsed.model.display_name : 'Unknown Model';
+  const rawModelId = (parsed.model && typeof parsed.model === 'object' && !Array.isArray(parsed.model) && typeof parsed.model.id === 'string') ? parsed.model.id : undefined;
+  const rawModelEffort = (parsed.model && typeof parsed.model === 'object' && !Array.isArray(parsed.model) && typeof parsed.model.effort === 'string') ? parsed.model.effort : undefined;
   if (modelName.length > 25) modelName = modelName.substring(0, 22) + '...';
 
-  const isGemini = modelName.toLowerCase().includes('gemini');
+  const hasGeminiQuota = !!(parsed.quota && (parsed.quota['gemini-weekly'] || parsed.quota['gemini-5h']));
+  const has3pQuota = !!(parsed.quota && (parsed.quota['3p-weekly'] || parsed.quota['3p-5h']));
+  const isGemini = hasGeminiQuota ? true : (has3pQuota ? false : modelName.toLowerCase().includes('gemini'));
   const qWeeklyObj = isGemini ? getQuotaObj('gemini-weekly') : getQuotaObj('3p-weekly');
   const q5hObj = isGemini ? getQuotaObj('gemini-5h') : getQuotaObj('3p-5h');
 
@@ -444,6 +450,8 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
 
   const cwd = typeof parsed.cwd === 'string' ? parsed.cwd : undefined;
   const vcsObj = (parsed.vcs && typeof parsed.vcs === 'object' && !Array.isArray(parsed.vcs)) ? parsed.vcs : undefined;
+  const vcsClient = (vcsObj && typeof vcsObj.client === 'string') ? vcsObj.client : undefined;
+  const vcsType = (vcsObj && typeof vcsObj.type === 'string') ? vcsObj.type : undefined;
 
   let gitBranches: {name: string, branch: string, path?: string}[] = [];
   let gitStats: GitStats | undefined = undefined;
@@ -852,6 +860,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
   const contextWindowSize = (typeof rawCtxSize === 'number' && rawCtxSize > 0) ? rawCtxSize : ((typeof parsed.max_context_tokens === 'number' && parsed.max_context_tokens > 0) ? parsed.max_context_tokens : 1048576);
 
   const isSandboxed = !!(parsed.sandbox && typeof parsed.sandbox === 'object' && !Array.isArray(parsed.sandbox) && parsed.sandbox.enabled);
+  const allowNetwork = (parsed.sandbox && typeof parsed.sandbox === 'object' && !Array.isArray(parsed.sandbox) && typeof parsed.sandbox.allow_network === 'boolean') ? parsed.sandbox.allow_network : undefined;
 
   const customBlocks: Record<string, string> = {};
   const hudConfigFile = path.join(os.homedir(), '.gemini', 'hud_config.json');
@@ -1227,6 +1236,16 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     }
   }
 
+  const toolConfirmationPending = typeof parsed.tool_confirmation_pending === 'boolean' ? parsed.tool_confirmation_pending : undefined;
+  const pendingInputCount = typeof parsed.pending_input_count === 'number' ? parsed.pending_input_count : undefined;
+  const cycleMode = typeof parsed.cycle_mode === 'string' ? parsed.cycle_mode : undefined;
+  const battle = (parsed.battle && typeof parsed.battle === 'object' && !Array.isArray(parsed.battle) && typeof parsed.battle.status === 'string')
+    ? {
+        status: parsed.battle.status,
+        focused_arm: typeof parsed.battle.focused_arm === 'string' ? parsed.battle.focused_arm : undefined
+      }
+    : undefined;
+
   return {
     agentState: (typeof parsed.agent_state === 'string' ? parsed.agent_state : 'UNKNOWN').toUpperCase(),
     contextUsage,
@@ -1282,6 +1301,22 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     toolElapsedSeconds,
     gitStats,
     cost: costInfo,
-    voice: voiceInfo
+    voice: voiceInfo,
+    toolConfirmationPending,
+    tool_confirmation_pending: toolConfirmationPending,
+    pendingInputCount,
+    pending_input_count: pendingInputCount,
+    cycleMode,
+    cycle_mode: cycleMode,
+    battle,
+    modelId: rawModelId,
+    modelEffort: rawModelEffort,
+    vcsClient,
+    vcsType,
+    allowNetwork,
+    quotaWeeklyRemainingAmount: qWeeklyObj.remainingAmount,
+    quotaWeeklyDisabled: qWeeklyObj.disabled,
+    quota5hRemainingAmount: q5hObj.remainingAmount,
+    quota5hDisabled: q5hObj.disabled
   };
 }
