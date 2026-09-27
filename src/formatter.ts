@@ -229,6 +229,7 @@ export const SKILL_ICONS: Record<string, string> = {
   'sync-granola': '🥣',
   'sync-jira': '🎯',
   'sync-slack': '💬',
+  'sync-github': '🐙',
   'tasks': '📋'
 };
 

@@ -54,6 +54,7 @@ export interface AntigravityPayload {
   max_steps?: number | undefined;
   max_context_tokens?: number | undefined;
   editor_mode?: string | undefined;
+  vim?: { mode?: string | undefined } | undefined;
   credits?: { balance: number } | undefined;
   dangerously_skip_permissions?: boolean | undefined;
   skip_permissions?: boolean | undefined;
@@ -1285,7 +1286,7 @@ export async function parseStream(stream: NodeJS.ReadableStream): Promise<Parsed
     transcriptPath: resolvedTranscriptPath,
     effort,
     agentName,
-    editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : undefined,
+    editorMode: typeof parsed.editor_mode === 'string' ? parsed.editor_mode : (typeof parsed.vim?.mode === 'string' ? parsed.vim.mode : undefined),
     credits: (parsed.credits && typeof parsed.credits === 'object' && !Array.isArray(parsed.credits) && typeof parsed.credits.balance === 'number') ? parsed.credits.balance : undefined,
     isApiKey,
     customBlocks,
