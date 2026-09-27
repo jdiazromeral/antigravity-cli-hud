@@ -2,7 +2,7 @@
 validator: "npm run typecheck && npm run lint && npm test && npm run build"
 max_iterations: 8
 branch: feat/agy-1-2-12-alignment
-status: IN_PROGRESS
+status: DONE
 ---
 
 # Purpose
