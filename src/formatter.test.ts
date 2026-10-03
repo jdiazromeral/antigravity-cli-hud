@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig, stripAnsi, formatOsc8Link, THEMES, STYLES, formatCostAmount, SKILL_ICONS } from './formatter.js';
+import { formatMetrics, DEFAULT_HUD_CONFIG, HUD_CONFIG, loadHudConfig, stripAnsi, formatOsc8Link, THEMES, STYLES, formatCostAmount, SKILL_ICONS, SUBAGENT_ICONS } from './formatter.js';
 import type { ParsedMetrics } from './parser.js';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -1315,6 +1315,25 @@ describe('formatMetrics', () => {
       const out = formatMetrics(metrics);
       expect(out).toContain('⚔️ Battle: gemini-2.5-pro');
     });
+
+    it('renders persona icon prefixes for known and built-in subagents', () => {
+      expect(SUBAGENT_ICONS['image-generator']).toBe('🎨');
+      expect(SUBAGENT_ICONS['research']).toBe('📚');
+      expect(SUBAGENT_ICONS['self']).toBe('👥');
+
+      const metricsWithIcons: ParsedMetrics = {
+        ...baseMetrics,
+        terminalWidth: 120,
+        subagents: [
+          { name: 'image-generator', role: 'Illustration Artist', status: 'working', depth: 0 },
+          { name: 'research', role: 'Codebase Scout', status: 'working', depth: 1 }
+        ]
+      };
+      const out = formatMetrics(metricsWithIcons);
+      expect(out).toContain('🎨 image-generator');
+      expect(out).toContain('↳ 📚 research');
+    });
   });
 });
+
 

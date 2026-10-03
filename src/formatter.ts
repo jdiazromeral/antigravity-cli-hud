@@ -233,6 +233,13 @@ export const SKILL_ICONS: Record<string, string> = {
   'tasks': '📋'
 };
 
+export const SUBAGENT_ICONS: Record<string, string> = {
+  'image-generator': '🎨',
+  'image_generator': '🎨',
+  'research': '📚',
+  'self': '👥'
+};
+
 export function formatCostAmount(amount: number): string {
   if (amount <= 0) return '$0.00';
   if (amount < 0.01) {
@@ -829,7 +836,8 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     const prefix = depth > 0 ? '  '.repeat(depth) + '↳ ' : '';
     const idStr = s.conversationId ? ` ${colors.dim}[id:${s.conversationId.substring(0, 6)}]${colors.reset}` : '';
     const costStr = (typeof s.totalUsd === 'number' && s.totalUsd > 0) ? ` ${colors.dim}[${formatCostAmount(s.totalUsd)}]${colors.reset}` : '';
-    return `${prefix}${s.name}${idStr} [${statusColor}${statusLabel}${colors.reset}] (${shortRole})${costStr}`;
+    const icon = SUBAGENT_ICONS[s.name.toLowerCase()] ? `${SUBAGENT_ICONS[s.name.toLowerCase()]} ` : '';
+    return `${prefix}${icon}${s.name}${idStr} [${statusColor}${statusLabel}${colors.reset}] (${shortRole})${costStr}`;
   });
   const chunkedSubagents = calculateStackedChunks(subStrs, 3);
 
