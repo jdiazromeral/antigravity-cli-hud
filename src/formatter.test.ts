@@ -1333,6 +1333,24 @@ describe('formatMetrics', () => {
       expect(out).toContain('🎨 image-generator');
       expect(out).toContain('↳ 📚 research');
     });
+
+    it('provides visual air between microbars and counters to avoid glyph overlap', () => {
+      const metrics: ParsedMetrics = {
+        ...baseMetrics,
+        stepCount: 4,
+        maxSteps: 20,
+        quota5h: 4,
+        quotaWeekly: 13,
+        contextUsage: 39,
+        totalInputTokens: 78000,
+        terminalWidth: 140
+      };
+      const out = stripAnsi(formatMetrics(metrics, 140));
+      expect(out).toMatch(/Steps:\s+[▰▱]{5}\s{2,}\d+\/\d+/);
+      expect(out).toMatch(/5h:\s+[▰▱]{5}\s{2,}\d+%/);
+      expect(out).toMatch(/Weekly:\s+[▰▱]{5}\s{2,}\d+%/);
+      expect(out).toMatch(/Ctx:\s+[▰▱]{5}\s{2,}\d+%/);
+    });
   });
 });
 
