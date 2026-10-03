@@ -583,7 +583,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
   const stepPct = Math.round((stepCount / maxSteps) * 100);
   const stepColor = getThresholdColor(stepPct);
   const stepBar = renderMicroBar(stepPct, stepColor, 5);
-  const stepStr = `👟 Steps: ${stepBar} ${stepColor}${stepCount}/${maxSteps}${colors.reset}`;
+  const stepStr = `👟 Steps: ${stepBar}  ${stepColor}${stepCount}/${maxSteps}${colors.reset}`;
 
   const envMaxTokens = process.env.AGY_MAX_CONTEXT_TOKENS ? parseInt(process.env.AGY_MAX_CONTEXT_TOKENS, 10) : undefined;
   const configMaxTokens = hudConfig.budget?.maxContextTokens;
@@ -645,10 +645,10 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
     steps: stepStr,
     git: (metrics.gitBranches && metrics.gitBranches.length > 0 && metrics.gitBranches[0]) ? `🌱 ${colors.cyan}${metrics.gitBranches[0].branch}${colors.reset}` : '',
     artifacts: metrics.artifactCount > 0 ? `📄 Artifacts: ${colors.yellow}${metrics.artifactCount}${colors.reset}` : '',
-    ctx: `🎧 Ctx: ${ctxBar} ${ctxColor}${softPct}%${colors.reset} (${ratioStr})${exceedWarning}`,
+    ctx: `🎧 Ctx: ${ctxBar}  ${ctxColor}${softPct}%${colors.reset} (${ratioStr})${exceedWarning}`,
     cache: metrics.cacheTokens > 0 ? `⚡ Cache: ${colors.cyan}${formatTokenCount(metrics.cacheTokens)}${colors.reset}` : '',
-    '5h': `🕒 5h: ${q5Bar} ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
-    weekly: `🕒 Weekly: ${qWBar} ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
+    '5h': `🕒 5h: ${q5Bar}  ${q5Color}${metrics.quota5h}%${colors.reset} (${formatTime(metrics.quota5hResetSeconds)})`,
+    weekly: `🕒 Weekly: ${qWBar}  ${qWColor}${metrics.quotaWeekly}%${colors.reset} (${formatTime(metrics.quotaWeeklyResetSeconds)})`,
     credits: metrics.credits !== undefined ? `\uF155 AI Credits: ${colors.yellow}${metrics.credits}${colors.reset}` : '',
     apiKey: metrics.isApiKey ? `${colors.yellow}🔑 [API Key]${colors.reset}` : '',
     cost: (() => {
@@ -884,7 +884,7 @@ export function formatMetrics(metrics: ParsedMetrics, width: number = 80, config
       const epicHeader = e.repo === e.epic
         ? `🎯 Epic: ${colors.bold}${e.epic}${colors.reset}`
         : `🎯 [${e.repo}] ${colors.bold}${e.epic}${colors.reset}`;
-      looperStrs.push(`${epicHeader} ${epicBar} [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
+      looperStrs.push(`${epicHeader} ${epicBar}  [${pColor}${e.done}/${e.total} DONE${colors.reset}]`);
 
       // Nest matching active missions under this epic
       const matchingMissions = (metrics.looperMissions || []).filter(m => m.epic === e.epic);
